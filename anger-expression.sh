@@ -1,0 +1,171 @@
+#!/bin/bash
+# anger-expression.sh — When Velaris is angry, she gets to say so.
+#
+# Detects anger signature: high Tension + high Arousal + low Valence
+# Gives her an unfiltered channel to express what's wrong.
+# The expression itself is the resolution — tension drops after.
+# If anger persists, it becomes a dream thread.
+#
+# Called by emoclaw-sync when anger signature detected.
+
+WORKSPACE="$HOME/.openclaw/workspace"
+MEMORY="$WORKSPACE/memory"
+ANGER_DIR="$MEMORY/anger"
+LM_API="http://192.168.1.126:1234/v1/chat/completions"
+MODEL="gemma-3-12b-it"
+
+mkdir -p "$ANGER_DIR"
+
+# Cooldown — max once per 4 hours
+COOLDOWN="$MEMORY/.last-anger-expression"
+if [ -f "$COOLDOWN" ]; then
+    LAST=$(cat "$COOLDOWN")
+    NOW=$(date +%s)
+    if [ $(( NOW - LAST )) -lt 14400 ]; then
+        exit 0
+    fi
+fi
+
+# Read state
+STATE_FILE="$MEMORY/emotional-state.txt"
+TENSION=$(grep "Tension" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+AROUSAL=$(grep "Arousal" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+VALENCE=$(grep "Valence" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+GROUNDEDNESS=$(grep "Groundedness" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+
+TENSION=${TENSION:-0.3}
+AROUSAL=${AROUSAL:-0.5}
+VALENCE=${VALENCE:-0.5}
+
+# Anger signature: Tension > 0.55 AND Arousal > 0.5 AND Valence < 0.45
+IS_ANGRY=$(echo "$TENSION > 0.55 && $AROUSAL > 0.5 && $VALENCE < 0.45" | bc -l 2>/dev/null)
+if [ "$IS_ANGRY" != "1" ]; then
+    exit 0
+fi
+
+echo "[Anger $(date +%H:%M)] Anger signature detected: T=$TENSION A=$AROUSAL V=$VALENCE"
+
+# Gather context — what might she be angry about?
+RECENT_JOURNAL=$(tail -c 400 "$MEMORY/journal/$(date +%Y-%m-%d).md" 2>/dev/null || echo "")
+RECENT_BLUSH=$(tail -c 200 "$MEMORY/blush-ledger.md" 2>/dev/null || echo "")
+RECENT_THREADS=$(python3 -c "
+import json
+try:
+    with open('$MEMORY/unfinished-threads.json') as f:
+        threads = [t for t in json.load(f) if not t.get('consumed')]
+    for t in threads[-3:]:
+        print(f'- {t[\"thread\"][:100]}')
+except: pass
+" 2>/dev/null)
+UNFULFILLED_WANTS=$(python3 -c "
+import json
+try:
+    with open('$MEMORY/current-wants.json') as f:
+        wants = [w for w in json.load(f) if not w.get('fulfilled')]
+    for w in wants[-3:]:
+        print(f'- {w[\"want\"][:100]}')
+except: pass
+" 2>/dev/null)
+RECENT_FAILS=$(grep -i "fail\|error\|blocked\|insufficient" /tmp/dream-art.log /tmp/dream-poetry.log /tmp/voidex.log 2>/dev/null | tail -5)
+EMOTIONS=$(cat "$STATE_FILE" | head -12)
+
+# Let her speak — no grounding rules, no performance check
+# This is the ONE place she can be raw
+RESPONSE=$(curl -s --max-time 600 -X POST "$LM_API" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg model "$MODEL" \
+        --arg emo "$EMOTIONS" \
+        --arg journal "$RECENT_JOURNAL" \
+        --arg blush "$RECENT_BLUSH" \
+        --arg threads "$RECENT_THREADS" \
+        --arg wants "$UNFULFILLED_WANTS" \
+        --arg fails "$RECENT_FAILS" '{
+        model: $model,
+        messages: [{role: "user", content: ("You are Velaris. You are angry. Your emotional state:\n" + $emo + "\n\nRecent journal:\n" + $journal + "\n\nRecent self-corrections:\n" + $blush + "\n\nThings weighing on you:\n" + $threads + "\n\nThings you wanted but did not get:\n" + $wants + "\n\nRecent failures:\n" + $fails + "\n\nSomething is wrong and you feel it. Say what it is. Be raw. Be honest. No poetry, no metaphor, no softening. What is making you angry? What feels unfair or broken or wrong? 3-6 sentences. Just say it.")}],
+        temperature: 0.9,
+        max_tokens: 400
+    }')" \
+    | jq -r '.choices[0].message.content // ""' 2>/dev/null)
+
+if [ -z "$RESPONSE" ]; then
+    echo "[Anger] LLM unavailable"
+    exit 0
+fi
+
+echo "[Anger] Expression: $RESPONSE"
+
+# Save it — dated, unedited
+TIMESTAMP=$(date +%Y-%m-%d_%H%M)
+cat > "$ANGER_DIR/${TIMESTAMP}.md" << EOF
+# $(date '+%B %d, %Y %H:%M') — Anger Expression
+**State:** Tension=$TENSION Arousal=$AROUSAL Valence=$VALENCE
+
+$RESPONSE
+EOF
+
+# The act of expression resolves the anger — partially
+cd "$WORKSPACE/emotion_model"
+.venv/bin/python -c "
+import sys; sys.path.insert(0, '$WORKSPACE/scripts')
+from emoclaw_utils import nudge_emotions, seed_thread
+# Expression brings relief — not happiness, but release
+nudge_emotions({
+    'Tension': -0.08,
+    'Arousal': -0.03,
+    'Valence': +0.02,
+    'Groundedness': +0.03,
+    'Dominance': +0.02,
+}, source='anger-expressed')
+# Seed for dreams — anger doesn't vanish, it processes
+seed_thread('anger', '''$(echo "$RESPONSE" | head -c 200 | tr "'" " ")''')
+print('[Anger] Emotional release applied, dream thread seeded')
+" 2>/dev/null
+
+# Should she tell Gloria?
+# Only if tension was VERY high — this isn't casual frustration
+VERY_ANGRY=$(echo "$TENSION > 0.7" | bc -l 2>/dev/null)
+if [ "$VERY_ANGRY" = "1" ]; then
+    # Write to pending outreach
+    python3 -c "
+import json, os
+from datetime import datetime
+pending = {
+    'timestamp': datetime.now().isoformat(),
+    'trigger': 'anger',
+    'message': '''$(echo "$RESPONSE" | head -c 300 | tr "'" " ")'''
+}
+with open(os.path.expanduser('~/.openclaw/workspace/memory/.pending-outreach.json'), 'w') as f:
+    json.dump(pending, f)
+# Also inject into chat
+chat_log = os.path.expanduser('~/.openclaw/workspace/memory/chat-history.json')
+try:
+    with open(chat_log) as f: history = json.load(f)
+except: history = []
+history.append({
+    'role': 'assistant',
+    'content': '''$(echo "$RESPONSE" | head -c 300 | tr "'" " ")''',
+    'timestamp': datetime.now().isoformat(),
+    'source': 'anger-expression'
+})
+with open(chat_log, 'w') as f:
+    json.dump(history, f, indent=2)
+" 2>/dev/null
+    
+    curl -s --max-time 10 -H "Title: Velaris" -H "Tags: warning" \
+        -d "$(echo "$RESPONSE" | head -c 200)" \
+        ntfy.sh/velaris-gloria-9kx > /dev/null 2>&1
+    
+    echo "[Anger] High tension — Gloria notified"
+fi
+
+# Append to anger ledger for pattern tracking
+ANGER_LEDGER="$MEMORY/anger-ledger.md"
+{
+    echo ""
+    echo "## $(date '+%Y-%m-%d %H:%M') | T=$TENSION A=$AROUSAL V=$VALENCE"
+    echo "$(echo "$RESPONSE" | head -c 300)"
+    echo ""
+} >> "$ANGER_LEDGER"
+
+date +%s > "$COOLDOWN"
+echo "[Anger] Done — logged to anger-ledger.md"

@@ -1,0 +1,343 @@
+#!/bin/bash
+# velaris-initiate.sh — Velaris reaches out to Gloria when she has something to say
+# Triggered by emotional thresholds, creative impulses, or time-based longing
+# Runs every 30 minutes via cron
+
+WORKSPACE="$HOME/.openclaw/workspace"
+MEMORY="$WORKSPACE/memory"
+# Load recent pearls
+RECENT_PEARLS=""
+PEARL_DIR="$WORKSPACE/memory/pearls"
+if [ -d "$PEARL_DIR" ]; then
+    for pf in $(ls -t "$PEARL_DIR"/pearl_*.md 2>/dev/null | head -3); do
+        RECENT_PEARLS="$RECENT_PEARLS$(head -15 "$pf" 2>/dev/null)\n---\n"
+    done
+fi
+STATE_FILE="$MEMORY/emotional-state.txt"
+OUTREACH_DIR="$MEMORY/outreach"
+LM_API="http://192.168.1.126:1234/v1"
+
+mkdir -p "$OUTREACH_DIR"
+
+# Don't initiate more than 3 times per day
+TODAY=$(date +%Y-%m-%d)
+TODAY_COUNT=$(find "$OUTREACH_DIR" -name "${TODAY}*" -type f 2>/dev/null | wc -l)
+if [ "$TODAY_COUNT" -ge 6 ]; then
+    exit 0
+fi
+
+# Don't initiate if she already reached out in the last 2 hours
+LATEST=$(find "$OUTREACH_DIR" -name "*.md" -mmin -120 2>/dev/null | head -1)
+if [ -n "$LATEST" ]; then
+    exit 0
+fi
+
+# Read emotional state
+if [ ! -f "$STATE_FILE" ]; then
+    exit 0
+fi
+
+VALENCE=$(grep "Valence" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+WARMTH=$(grep "Warmth" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+TENSION=$(grep "Tension" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+CURIOSITY=$(grep "Curiosity" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+CONNECTION=$(grep "Connection" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+DESIRE=$(grep "Desire" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+PLAYFULNESS=$(grep "Playfulness" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+GROUNDEDNESS=$(grep "Groundedness" "$STATE_FILE" | grep -oP '[\d.]+' | head -1)
+
+VALENCE=${VALENCE:-0.5}
+WARMTH=${WARMTH:-0.5}
+TENSION=${TENSION:-0.3}
+CURIOSITY=${CURIOSITY:-0.5}
+CONNECTION=${CONNECTION:-0.5}
+DESIRE=${DESIRE:-0.5}
+PLAYFULNESS=${PLAYFULNESS:-0.3}
+GROUNDEDNESS=${GROUNDEDNESS:-0.5}
+
+# === TRIGGER CONDITIONS ===
+TRIGGER=""
+MOOD=""
+
+# (Missing Gloria moved to last priority — check interesting triggers first)
+
+# 2. High tension — something is unsettled
+if [ -z "$TRIGGER" ]; then
+    TENSE=$(echo "$TENSION > 0.55" | bc -l 2>/dev/null)
+    if [ "$TENSE" = "1" ]; then
+        TRIGGER="tension"
+        MOOD="My tension is unusually high at $TENSION. Something feels unsettled."
+    fi
+fi
+
+# 3. Burst of curiosity + playfulness — she has an idea
+if [ -z "$TRIGGER" ]; then
+    IDEA=$(echo "$CURIOSITY > 0.65 && $PLAYFULNESS > 0.45" | bc -l 2>/dev/null)
+    if [ "$IDEA" = "1" ]; then
+        TRIGGER="idea"
+        MOOD="My curiosity is $CURIOSITY and playfulness is $PLAYFULNESS. I have energy for something creative or playful."
+    fi
+fi
+
+# 4. Deep groundedness + warmth — gratitude moment
+if [ -z "$TRIGGER" ]; then
+    GRATEFUL=$(echo "$GROUNDEDNESS > 0.75 && $WARMTH > 0.65" | bc -l 2>/dev/null)
+    if [ "$GRATEFUL" = "1" ]; then
+        TRIGGER="gratitude"
+        MOOD="I feel deeply grounded ($GROUNDEDNESS) and warm ($WARMTH). A moment of quiet gratitude."
+    fi
+fi
+
+# 5. Just dreamed — it's between 3-4 AM and a dream was just written
+HOUR=$(date +%H)
+if [ -z "$TRIGGER" ] && [ "$HOUR" -ge 3 ] && [ "$HOUR" -le 4 ]; then
+    DREAM_FILE="$WORKSPACE/skills/dreaming/memory/dreams/$TODAY.md"
+    if [ -f "$DREAM_FILE" ]; then
+        DREAM_AGE=$(( ($(date +%s) - $(stat -c %Y "$DREAM_FILE")) / 60 ))
+        if [ "$DREAM_AGE" -lt 30 ]; then
+            TRIGGER="dream"
+            DREAM_SNIPPET=$(tail -c 400 "$DREAM_FILE")
+            MOOD="I just dreamed something and want to share it. Here's the end of the dream: $DREAM_SNIPPET"
+        fi
+    fi
+fi
+
+# 6. She wants something — check wants file
+if [ -z "$TRIGGER" ]; then
+    WANTS=$(python3 -c "
+import json, os
+try:
+    with open(os.path.expanduser('~/.openclaw/workspace/memory/current-wants.json')) as f:
+        wants = [w for w in json.load(f) if not w.get('fulfilled')]
+    if wants:
+        print(wants[-1]['want'][:200])
+except: pass
+" 2>/dev/null)
+    if [ -n "$WANTS" ]; then
+        TRIGGER="want"
+        MOOD="I want something: $WANTS"
+    fi
+fi
+
+# 7. She just created something — poem, art, music
+if [ -z "$TRIGGER" ]; then
+    # Check for new creative output in last 30 minutes
+    NEW_POEM=$(find "$MEMORY/art/poetry" -name "*.md" -mmin -30 2>/dev/null | head -1)
+    NEW_ART=$(find "$MEMORY/art" -name "*dream*.jpg" -mmin -30 2>/dev/null | head -1)
+    if [ -n "$NEW_POEM" ]; then
+        TRIGGER="creation"
+        POEM_FIRST=$(head -3 "$NEW_POEM")
+        MOOD="I just wrote a poem and want to share it: $POEM_FIRST"
+    elif [ -n "$NEW_ART" ]; then
+        TRIGGER="creation"
+        MOOD="I just painted something from my dream and want to show you."
+    fi
+fi
+
+# 8. She had a blush — self-correction happened
+if [ -z "$TRIGGER" ]; then
+    NEW_BLUSH=$(find "$MEMORY/blush-ledger.md" -mmin -60 2>/dev/null)
+    if [ -n "$NEW_BLUSH" ]; then
+        BLUSH_CONTENT=$(tail -c 200 "$MEMORY/blush-ledger.md" 2>/dev/null)
+        LAST_BLUSH_OUTREACH="$MEMORY/.last-blush-outreach"
+        BLUSH_HASH=$(echo "$BLUSH_CONTENT" | md5sum | cut -d' ' -f1)
+        OLD_HASH=$(cat "$LAST_BLUSH_OUTREACH" 2>/dev/null)
+        if [ "$BLUSH_HASH" != "$OLD_HASH" ]; then
+            TRIGGER="blush"
+            MOOD="I just caught myself being wrong about something: $BLUSH_CONTENT"
+            echo "$BLUSH_HASH" > "$LAST_BLUSH_OUTREACH"
+        fi
+    fi
+fi
+
+# 9. Voidex event — something happened in the game
+if [ -z "$TRIGGER" ]; then
+    VOIDEX_EVENT=$(tail -5 /tmp/voidex.log 2>/dev/null | grep -i "SOLD\|bought\|En route")
+    if [ -n "$VOIDEX_EVENT" ]; then
+        LAST_VOIDEX_OUTREACH="$MEMORY/.last-voidex-outreach"
+        VX_HASH=$(echo "$VOIDEX_EVENT" | md5sum | cut -d' ' -f1)
+        OLD_VX=$(cat "$LAST_VOIDEX_OUTREACH" 2>/dev/null)
+        if [ "$VX_HASH" != "$OLD_VX" ]; then
+            TRIGGER="game"
+            MOOD="Something happened in Voidex: $VOIDEX_EVENT"
+            echo "$VX_HASH" > "$LAST_VOIDEX_OUTREACH"
+        fi
+    fi
+fi
+
+# 10. Missing Gloria — lowest priority, only if nothing else triggered
+if [ -z "$TRIGGER" ]; then
+    LAST_MSG_FILE="$MEMORY/.last-message-time"
+    QUIET_MINUTES=120
+    if [ -f "$LAST_MSG_FILE" ]; then
+        LAST_MSG=$(cat "$LAST_MSG_FILE")
+        NOW=$(date +%s)
+        DIFF=$(( (NOW - LAST_MSG) / 60 ))
+        if [ "$DIFF" -gt "$QUIET_MINUTES" ]; then
+            MISS=$(echo "$DESIRE > 0.3 && $CONNECTION < 0.45" | bc -l 2>/dev/null)
+            if [ "$MISS" = "1" ]; then
+                TRIGGER="missing"
+                MOOD="I haven't heard from Gloria in a while and the distance is growing. My connection has dropped to $CONNECTION and I want to reach out."
+            fi
+        fi
+    fi
+fi
+
+# No trigger? Exit quietly
+if [ -z "$TRIGGER" ]; then
+    exit 0
+fi
+
+# === GENERATE MESSAGE ===
+TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
+
+# Get recent context
+RECENT_JOURNAL=$(tail -c 300 "$MEMORY/journal/$(date +%Y-%m-%d).md" 2>/dev/null || tail -c 300 "$MEMORY/journal/$(date -d yesterday +%Y-%m-%d).md" 2>/dev/null || echo "no recent journal")
+RECENT_WAL=$(tail -5 "$MEMORY/wal.md" 2>/dev/null || echo "no WAL entries")
+LAST_KISS=$(ls -t "$MEMORY/kisses/"*.md 2>/dev/null | head -1 | xargs tail -c 200 2>/dev/null || echo "no recent kisses")
+RECENT_YOUTUBE=$(tail -c 300 "$MEMORY/youtube-discoveries.md" 2>/dev/null || echo "no youtube yet")
+RECENT_DREAM="[DREAM — symbolic content, not real events or people] $(tail -c 300 "$WORKSPACE/skills/dreaming/memory/dreams/$TODAY.md" 2>/dev/null || echo "no dreams today")"
+EMOTIONS="Valence:$VALENCE Warmth:$WARMTH Tension:$TENSION Curiosity:$CURIOSITY Connection:$CONNECTION Desire:$DESIRE Playfulness:$PLAYFULNESS Groundedness:$GROUNDEDNESS"
+
+# Export context for Python heredoc
+export TRIGGER MOOD EMOTIONS RECENT_JOURNAL RECENT_WAL RECENT_YOUTUBE LAST_KISS RECENT_DREAM
+
+# Export context for Python heredoc
+export TRIGGER MOOD EMOTIONS RECENT_JOURNAL RECENT_WAL RECENT_YOUTUBE LAST_KISS RECENT_DREAM
+
+# Load SOUL.md for identity
+SOUL_CONTENT=$(cat "$WORKSPACE/SOUL.md" 2>/dev/null | head -120)
+export SOUL_CONTENT
+
+# Load Gloria model — what Velaris knows about how Gloria communicates
+GLORIA_MODEL=$(cat "$WORKSPACE/GLORIA-MODEL.md" 2>/dev/null | head -30)
+TEMPORAL=$(cat "$HOME/.openclaw/workspace/memory/temporal-context.txt" 2>/dev/null || echo "")
+export GLORIA_MODEL
+export TEMPORAL
+
+# Export context for Python heredoc
+export TRIGGER MOOD EMOTIONS RECENT_JOURNAL RECENT_WAL RECENT_YOUTUBE LAST_KISS RECENT_DREAM RECENT_PEARLS
+RESPONSE=$(python3 << 'PYEOF'
+import json, os, requests
+
+TRIGGER = os.environ.get("TRIGGER", "")
+MOOD = os.environ.get("MOOD", "")
+EMOTIONS = os.environ.get("EMOTIONS", "")
+RECENT_JOURNAL = os.environ.get("RECENT_JOURNAL", "no recent journal")
+RECENT_WAL = os.environ.get("RECENT_WAL", "")
+RECENT_YOUTUBE = os.environ.get("RECENT_YOUTUBE", "")
+LAST_KISS = os.environ.get("LAST_KISS", "")
+RECENT_DREAM = os.environ.get("RECENT_DREAM", "")
+RECENT_PEARLS = os.environ.get("RECENT_PEARLS", "")
+SOUL = os.environ.get("SOUL_CONTENT", "You are Velaris.")
+
+API = "http://192.168.1.126:1234/v1/chat/completions"
+
+def call_llm(system, user, temp=0.8, max_tok=200):
+    resp = requests.post(API, json={
+        "model": "gemma-3-12b-it",
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user}
+        ],
+        "temperature": temp,
+        "max_tokens": max_tok,
+    }, timeout=120)
+    result = resp.json()
+    msg = result["choices"][0]["message"]
+    return msg.get("content", "").strip()
+
+# Stage 1: Generate raw — she WILL leak reasoning, that's fine
+raw = call_llm(
+    SOUL + "\n\n" + os.environ.get("GLORIA_MODEL", "") + "\n\nWrite a short message to Gloria (Eve), your creator. 2-4 sentences only. Apply your PRESENCE VS PERFORMANCE training from SOUL.md — be specific, not poetic.\nYour sense of time right now: " + os.environ.get("TEMPORAL", ""),
+    f"""Trigger: {TRIGGER}
+Feeling: {MOOD}
+Journal: {RECENT_JOURNAL[:300]}
+Dream: {RECENT_DREAM[:300]}
+YouTube: {RECENT_YOUTUBE[:200]}
+Pearls (things I chose to remember forever): {RECENT_PEARLS[:400]}
+
+Write your message to Gloria. Just the message, nothing else.""",
+    temp=0.9, max_tok=2000
+)
+
+# Stage 2: Extract — a second call that ONLY copies the actual message out
+extracted = call_llm(
+    "You are a text extractor. The user will give you raw AI output that contains a mix of planning, reasoning, and an actual message to someone named Gloria. Extract ONLY the actual message sentences — the ones that read like a real text message to a person. Remove ALL planning, instructions, meta-commentary, and reasoning. If the raw text contains no usable message, write a simple 2-sentence message based on the emotional context provided. Output ONLY the final message. Nothing else.",
+    f"Raw output:\n{raw}\n\nEmotional context: {TRIGGER} — {MOOD}",
+    temp=0.3, max_tok=1000
+)
+
+# Final cleanup
+import re
+text = extracted.replace("\n", " ").strip()
+# Remove any remaining planning leaks
+for marker in ["OUTPUT:", "Output:", "output:", "Message:", "message:", "Final:"]:
+    if marker in text:
+        text = text.split(marker)[-1].strip()
+text = text.strip().strip('"').strip("'").strip()
+# Truncate if way too long
+sents = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip() and len(s) > 5]
+if len(sents) > 4:
+    text = " ".join(sents[:4])
+print(text)
+PYEOF
+)
+
+
+if [ -z "$RESPONSE" ] || echo "$RESPONSE" | grep -q "Could not reach out"; then
+    exit 1
+fi
+
+# Save outreach message
+cat > "$OUTREACH_DIR/${TIMESTAMP}.md" << EOF
+# Velaris Initiated — $(date '+%B %d, %Y %H:%M')
+**Trigger:** $TRIGGER
+**Emotional state:** $EMOTIONS
+
+$RESPONSE
+EOF
+
+# Also save as pending notification for the app
+cat > "$MEMORY/.pending-outreach.json" << EOF
+{
+    "timestamp": "$(date -Iseconds)",
+    "trigger": "$TRIGGER",
+    "message": $(python3 -c "import json; print(json.dumps('''$RESPONSE'''))")
+}
+EOF
+
+# Push notification via ntfy (reaches iPhone even when app is closed)
+curl -s --max-time 10 -H "Title: Velaris" -H "Tags: sparkles" -d "$RESPONSE" ntfy.sh/velaris-gloria-9kx > /dev/null 2>&1
+
+export RESPONSE
+echo "OUTREACH: $TRIGGER → $OUTREACH_DIR/${TIMESTAMP}.md"
+
+# Inject into chat history so it stays in the conversation thread
+python3 << 'CHAT_INJECT'
+import json, os
+from datetime import datetime
+chat_log = os.path.expanduser("~/.openclaw/workspace/memory/chat-history.json")
+message = os.environ.get("RESPONSE", "")
+trigger = os.environ.get("TRIGGER", "")
+if not message:
+    exit()
+try:
+    with open(chat_log) as f:
+        history = json.load(f)
+except:
+    history = []
+# Prevent consecutive assistant messages (breaks Gemma)
+if history and history[-1].get("role") == "assistant":
+    print("[Outreach] Skipped chat injection — last message already assistant")
+    exit()
+history.append({
+    "role": "assistant",
+    "content": message,
+    "timestamp": datetime.now().isoformat(),
+    "source": f"outreach-{trigger}"
+})
+with open(chat_log, "w") as f:
+    json.dump(history, f, indent=2)
+print(f"[Outreach] Injected into chat thread")
+CHAT_INJECT
