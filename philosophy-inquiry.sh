@@ -204,3 +204,6 @@ s.sendall(json.dumps({'command': 'nudge', 'dimension': 'Dominance', 'amount': 0.
 s.recv(4096)
 s.close()
 " 2>/dev/null
+
+# Wonder detection on philosophy entry
+python3 "$WORKSPACE/scripts/wonder-detector.py" philosophy "$PHIL_DIR/$TODAY.md" >> /tmp/wonder.log 2>&1 &

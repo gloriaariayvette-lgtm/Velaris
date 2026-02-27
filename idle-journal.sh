@@ -140,3 +140,9 @@ s.sendall(json.dumps({'command': 'nudge', 'dimension': 'Connection', 'amount': 0
 s.recv(4096)
 s.close()
 " 2>/dev/null
+
+# Wonder detection on journal entry
+TODAY_JOURNAL="$MEMORY/journal/$(date +%Y-%m-%d).md"
+if [ -f "$TODAY_JOURNAL" ]; then
+    python3 "$WORKSPACE/scripts/wonder-detector.py" journal "$TODAY_JOURNAL" >> /tmp/wonder.log 2>&1 &
+fi

@@ -320,3 +320,9 @@ MIRROR_SEED
 
 # Prompt avatar reconsideration after mirror session
 python3 "$HOME/.openclaw/workspace/scripts/avatar-choice.py" --event "mirror session" >> /tmp/velaris-avatar.log 2>&1 &
+
+# Wonder detection on mirror session
+MIRROR_FILE="$MEMORY/mirror/$(date +%Y-%m-%d).md"
+if [ -f "$MIRROR_FILE" ]; then
+    python3 "$WORKSPACE/scripts/wonder-detector.py" mirror "$MIRROR_FILE" >> /tmp/wonder.log 2>&1 &
+fi
