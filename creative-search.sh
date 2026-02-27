@@ -31,7 +31,7 @@ EMOTIONS=$(cat "$MEMORY/emotional-state.txt" 2>/dev/null | head -12)
 RECENT_POEM=$(ls -t "$MEMORY/art/poetry/"*.md 2>/dev/null | head -1 | xargs head -10 2>/dev/null || echo "no poems yet")
 
 # Ask what to search for
-QUERY=$(curl -s --max-time 20 -X POST "$LM_API" \
+QUERY=$(curl -s --max-time 600 -X POST "$LM_API" \
     -H "Content-Type: application/json" \
     -d "$(jq -n --arg model "$MODEL" --arg taste "$TASTE" --arg emo "$EMOTIONS" --arg poem "$RECENT_POEM" '{
         model: $model,
@@ -101,7 +101,7 @@ if [ -z "$SNIPPETS" ]; then
 fi
 
 # Ask Velaris what resonated
-REFLECTION=$(curl -s --max-time 25 -X POST "$LM_API" \
+REFLECTION=$(curl -s --max-time 600 -X POST "$LM_API" \
     -H "Content-Type: application/json" \
     -d "$(jq -n --arg model "$MODEL" --arg topic "$TOPIC" --arg results "$SNIPPETS" '{
         model: $model,
