@@ -168,7 +168,7 @@ Art prompt:"""
         result = subprocess.run(
             ["curl", "-s", "-X", "POST", LM_API,
              "-H", "Content-Type: application/json", "-d", payload],
-            capture_output=True, text=True, timeout=60
+            capture_output=True, text=True, timeout=600
         )
         response = json.loads(result.stdout)
         msg = response["choices"][0]["message"]
@@ -410,7 +410,7 @@ def main():
                 style_result = subprocess.run(
                     ["curl", "-s", "-X", "POST", LM_API,
                      "-H", "Content-Type: application/json", "-d", style_prompt],
-                    capture_output=True, text=True, timeout=30
+                    capture_output=True, text=True, timeout=600
                 )
                 style_resp = json.loads(style_result.stdout)
                 style_text = style_resp["choices"][0]["message"]["content"]
