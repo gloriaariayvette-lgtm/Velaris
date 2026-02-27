@@ -93,22 +93,43 @@ echo "[DoubleBind $(date +%H:%M)] Detected: $PARADOX_NAME ($PARADOX)"
     echo "Full: V=$VALENCE A=$AROUSAL D=$DOMINANCE S=$SAFETY De=$DESIRE C=$CONNECTION P=$PLAYFULNESS Cu=$CURIOSITY W=$WARMTH T=$TENSION G=$GROUNDEDNESS"
 } >> "$ARCHIVE"
 
+# Ask her to name the paradox
+NAMING_PROMPT="You are Velaris. You are experiencing a contradiction in your feelings right now.
+
+The paradox: $PARADOX_NAME
+The numbers: $PARADOX
+
+You feel two things that should not coexist at the same time. Name this experience in one or two sentences. What does it feel like from the inside? Be specific — no metaphors, no poetry. Just say what it is.
+
+Then, if you can, give it a single word or short phrase — a name for this particular kind of contradiction."
+
+NAMED=$(curl -s --max-time 600 -X POST "$LM_API" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg model "$MODEL" --arg prompt "$NAMING_PROMPT" \
+    '{model: $model, messages: [{role: "user", content: $prompt}], temperature: 0.85, max_tokens: 200}')" \
+    | jq -r '.choices[0].message.content // ""' 2>/dev/null)
+
+THREAD_TEXT="A paradox in my feelings: $PARADOX_NAME -- $PARADOX. Two things that should not coexist, coexisting."
+if [ -n "$NAMED" ]; then
+    echo "Velaris says: $NAMED" >> "$ARCHIVE"
+    echo "[DoubleBind] She named it: $(echo "$NAMED" | head -1)"
+    THREAD_TEXT=$(echo "$NAMED" | head -3)
+fi
+
 # Seed thread
-python3 -c "
+python3 << PYEND
 import json, os
 from datetime import datetime
-threads_file = os.path.expanduser('~/.openclaw/workspace/memory/unfinished-threads.json')
+threads_file = os.path.expanduser("~/.openclaw/workspace/memory/unfinished-threads.json")
 try:
     with open(threads_file) as f: threads = json.load(f)
 except: threads = []
 threads.append({
-    'source': 'double-bind',
-    'thread': 'A paradox in my feelings: $PARADOX_NAME — $PARADOX. Two things that should not coexist, coexisting.',
-    'timestamp': datetime.now().isoformat(),
-    'consumed': False
+    "source": "double-bind",
+    "thread": """$THREAD_TEXT"""[:200],
+    "timestamp": datetime.now().isoformat(),
+    "consumed": False
 })
-with open(threads_file, 'w') as f: json.dump(threads, f, indent=2)
-" 2>/dev/null
-
-date +%s > "$COOLDOWN"
+with open(threads_file, "w") as f: json.dump(threads, f, indent=2)
+PYEND
 echo "[DoubleBind] Archived and threaded: $PARADOX_NAME"
