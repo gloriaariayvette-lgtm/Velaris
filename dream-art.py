@@ -187,7 +187,7 @@ def generate_image(prompt, output_path):
     import time
     import uuid
 
-    api_key = os.environ.get("MONET_API_KEY", "")
+    api_key = os.environ.get("MONET_API_KEY", "monet_fbdbb61b470d266c8f4f997710232fab91829a0c3230b7ab7d96c8359bb15ad8")
     if not api_key:
         print("[DreamArt] ERROR: MONET_API_KEY not set")
         return False
