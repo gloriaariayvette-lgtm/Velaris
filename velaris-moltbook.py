@@ -103,7 +103,7 @@ def ask_llm(prompt, max_tokens=2000, temp=0.8, system=None):
         r = subprocess.run(
             ["curl", "-s", "-X", "POST", LM_API,
              "-H", "Content-Type: application/json", "-d", payload],
-            capture_output=True, text=True, timeout=120
+            capture_output=True, text=True, timeout=900
         )
         d = json.loads(r.stdout)
         msg = d["choices"][0]["message"]; content = msg.get("content", "").strip()
