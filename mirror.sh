@@ -324,5 +324,5 @@ python3 "$HOME/.openclaw/workspace/scripts/avatar-choice.py" --event "mirror ses
 # Wonder detection on mirror session
 MIRROR_FILE="$MEMORY/mirror/$(date +%Y-%m-%d).md"
 if [ -f "$MIRROR_FILE" ]; then
-    python3 "$WORKSPACE/scripts/wonder-detector.py" mirror "$MIRROR_FILE" >> /tmp/wonder.log 2>&1 &
+    bash ~/llm-lock.sh python3 "$WORKSPACE/scripts/wonder-detector.py" mirror "$MIRROR_FILE" >> /tmp/wonder.log 2>&1 &
 fi

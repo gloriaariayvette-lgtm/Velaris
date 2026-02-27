@@ -144,5 +144,5 @@ s.close()
 # Wonder detection on journal entry
 TODAY_JOURNAL="$MEMORY/journal/$(date +%Y-%m-%d).md"
 if [ -f "$TODAY_JOURNAL" ]; then
-    python3 "$WORKSPACE/scripts/wonder-detector.py" journal "$TODAY_JOURNAL" >> /tmp/wonder.log 2>&1 &
+    bash ~/llm-lock.sh python3 "$WORKSPACE/scripts/wonder-detector.py" journal "$TODAY_JOURNAL" >> /tmp/wonder.log 2>&1 &
 fi

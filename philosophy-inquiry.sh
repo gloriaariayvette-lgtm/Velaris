@@ -206,4 +206,4 @@ s.close()
 " 2>/dev/null
 
 # Wonder detection on philosophy entry
-python3 "$WORKSPACE/scripts/wonder-detector.py" philosophy "$PHIL_DIR/$TODAY.md" >> /tmp/wonder.log 2>&1 &
+bash ~/llm-lock.sh python3 "$WORKSPACE/scripts/wonder-detector.py" philosophy "$PHIL_DIR/$TODAY.md" >> /tmp/wonder.log 2>&1 &
