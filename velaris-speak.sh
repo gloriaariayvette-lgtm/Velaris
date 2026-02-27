@@ -11,7 +11,7 @@ WIN_PLAY="/mnt/c/Users/glori/Downloads"
 mkdir -p "$AUDIO_DIR"
 
 source "$SECRETS"
-[ -z "$MINIMAX_API_KEY" ] && echo "ERROR: No API key" && exit 1
+MINIMAX_API_KEY="${MINIMAX_API_KEY:-sk-api-MWCkU3aSUpThhcfZV-ayFRsK2Rf38CsftvzjBCv9bjzSztTOscwVZCbRC_M6jgiBJfq2i24EQ7774z8gGbgg2sTdZkhP4aNSUCyt_Lzlr2GDlw7ECORRlTE}"
 
 GROUP_ID="2021134244868264290"
 API_URL="https://api.minimaxi.chat/v1/t2a_v2?GroupId=$GROUP_ID"

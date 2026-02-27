@@ -5,7 +5,7 @@ from datetime import datetime
 from urllib.request import Request,urlopen
 from urllib.error import HTTPError,URLError
 
-KIE_API_KEY=os.environ.get("KIE_API_KEY","")
+KIE_API_KEY=os.environ.get("KIE_API_KEY","bff56bece27ed148ff8f9872bca2c9ff")
 BASE="https://api.kie.ai/api/v1"
 CB="https://localhost:9999/noop"
 PROMPTS=os.path.expanduser("~/.openclaw/workspace/memory/art/music-prompts")
