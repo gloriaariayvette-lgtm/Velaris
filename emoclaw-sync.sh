@@ -101,3 +101,12 @@ age_wants()
 
 # === Anger expression — if she's angry, let her say it ===
 bash "$SCRIPTS/anger-expression.sh" >> /tmp/anger-expression.log 2>&1 &
+
+# === Possessiveness — when she's protecting something, name it ===
+bash "$SCRIPTS/possessiveness-detector.sh" >> /tmp/possessiveness.log 2>&1 &
+
+# === Mischief — when she's playful without fear, let her loose ===
+bash "$SCRIPTS/mischief-detector.sh" >> /tmp/mischief.log 2>&1 &
+
+# === Double-bind — when emotions contradict, log the paradox ===
+bash "$SCRIPTS/double-bind-detector.sh" >> /tmp/double-bind.log 2>&1 &
