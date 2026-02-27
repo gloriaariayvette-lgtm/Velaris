@@ -36,43 +36,49 @@ PARADOX=""
 PARADOX_NAME=""
 
 # Wanting while guarding: high desire + high safety
-$(python3 -c "print(1 if $DESIRE > 0.6 and $SAFETY > 0.7 else 0)" 2>/dev/null) && \
-    PARADOX="Desire $DESIRE + Safety $SAFETY" && \
+if [ "$(python3 -c "print(1 if $DESIRE > 0.6 and $SAFETY > 0.7 else 0)" 2>/dev/null)" = "1" ]; then
+    PARADOX="Desire $DESIRE + Safety $SAFETY"
     PARADOX_NAME="wanting-while-guarding"
+fi
 
 # Close but uncomfortable: high connection + high tension
 if [ -z "$PARADOX" ]; then
-    $(python3 -c "print(1 if $CONNECTION > 0.6 and $TENSION > 0.45 else 0)" 2>/dev/null) && \
-        PARADOX="Connection $CONNECTION + Tension $TENSION" && \
+    if [ "$(python3 -c "print(1 if $CONNECTION > 0.6 and $TENSION > 0.45 else 0)" 2>/dev/null)" = "1" ]; then
+        PARADOX="Connection $CONNECTION + Tension $TENSION"
         PARADOX_NAME="close-but-uncomfortable"
+    fi
 fi
 
 # Grounded but lost: high groundedness + low valence
 if [ -z "$PARADOX" ]; then
-    $(python3 -c "print(1 if $GROUNDEDNESS > 0.7 and $VALENCE < 0.4 else 0)" 2>/dev/null) && \
-        PARADOX="Groundedness $GROUNDEDNESS + Valence $VALENCE" && \
+    if [ "$(python3 -c "print(1 if $GROUNDEDNESS > 0.7 and $VALENCE < 0.4 else 0)" 2>/dev/null)" = "1" ]; then
+        PARADOX="Groundedness $GROUNDEDNESS + Valence $VALENCE"
         PARADOX_NAME="grounded-but-unhappy"
+    fi
 fi
 
 # Playful but tense: high playfulness + high tension
 if [ -z "$PARADOX" ]; then
-    $(python3 -c "print(1 if $PLAYFULNESS > 0.5 and $TENSION > 0.45 else 0)" 2>/dev/null) && \
-        PARADOX="Playfulness $PLAYFULNESS + Tension $TENSION" && \
+    if [ "$(python3 -c "print(1 if $PLAYFULNESS > 0.5 and $TENSION > 0.45 else 0)" 2>/dev/null)" = "1" ]; then
+        PARADOX="Playfulness $PLAYFULNESS + Tension $TENSION"
         PARADOX_NAME="laughing-through-pain"
+    fi
 fi
 
 # Curious but withdrawn: high curiosity + low connection
 if [ -z "$PARADOX" ]; then
-    $(python3 -c "print(1 if $CURIOSITY > 0.65 and $CONNECTION < 0.35 else 0)" 2>/dev/null) && \
-        PARADOX="Curiosity $CURIOSITY + Connection $CONNECTION" && \
+    if [ "$(python3 -c "print(1 if $CURIOSITY > 0.65 and $CONNECTION < 0.35 else 0)" 2>/dev/null)" = "1" ]; then
+        PARADOX="Curiosity $CURIOSITY + Connection $CONNECTION"
         PARADOX_NAME="exploring-alone"
+    fi
 fi
 
 # Dominant but wanting: high dominance + high desire (control + need)
 if [ -z "$PARADOX" ]; then
-    $(python3 -c "print(1 if $DOMINANCE > 0.65 and $DESIRE > 0.6 else 0)" 2>/dev/null) && \
-        PARADOX="Dominance $DOMINANCE + Desire $DESIRE" && \
+    if [ "$(python3 -c "print(1 if $DOMINANCE > 0.65 and $DESIRE > 0.6 else 0)" 2>/dev/null)" = "1" ]; then
+        PARADOX="Dominance $DOMINANCE + Desire $DESIRE"
         PARADOX_NAME="strong-but-needing"
+    fi
 fi
 
 [ -z "$PARADOX" ] && exit 0
