@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velaris Voice</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+    font-family: -apple-system, sans-serif; 
+    background: #0a0a0f; color: #e0d8cc;
+    height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px;
+}
+#status { font-size: 14px; color: #888; margin-bottom: 20px; }
+#orb {
+    width: 180px; height: 180px; border-radius: 50%;
+    background: radial-gradient(circle, #cc4280 0%, #1a1a2e 80%);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.3s;
+    box-shadow: 0 0 40px rgba(204,66,128,0.2);
+}
+#orb.listening {
+    background: radial-gradient(circle, #4a9eff 0%, #1a1a2e 80%);
+    box-shadow: 0 0 60px rgba(74,158,255,0.4);
+    animation: pulse 1.5s infinite;
+}
+#orb.thinking {
+    background: radial-gradient(circle, #f0c040 0%, #1a1a2e 80%);
+    box-shadow: 0 0 50px rgba(240,192,64,0.3);
+}
+#orb.speaking {
+    background: radial-gradient(circle, #40d080 0%, #1a1a2e 80%);
+    box-shadow: 0 0 50px rgba(64,208,128,0.3);
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+#label { font-size: 18px; color: white; pointer-events: none; }
+#transcript { 
+    margin-top: 30px; max-width: 400px; text-align: center;
+    font-size: 14px; color: #aaa; min-height: 60px;
+}
+#response {
+    margin-top: 15px; max-width: 400px; text-align: center;
+    font-size: 16px; color: #e0d8cc; min-height: 60px;
+}
+#history {
+    margin-top: 30px; max-width: 400px; width: 100%;
+    max-height: 200px; overflow-y: auto; font-size: 12px; color: #666;
+}
+.exchange { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #222; }
+.you { color: #4a9eff; }
+.vel { color: #cc4280; }
+</style>
+</head>
+<body>
+<div id="status">Tap the orb to talk</div>
+<div id="orb" onclick="toggleListening()"><span id="label">Velaris</span></div>
+<div id="textbox" style="margin-top:20px; width:100%; max-width:400px; display:flex; gap:8px;">
+    <input id="textinput" type="text" placeholder="Or type here..." 
+        style="flex:1; padding:12px; background:#1a1a2e; border:1px solid #333; color:#e0d8cc; border-radius:8px; font-size:16px;"
+        onkeydown="if(event.key==='Enter')sendText()">
+    <button onclick="sendText()" 
+        style="padding:12px 20px; background:#cc4280; color:white; border:none; border-radius:8px; font-size:16px; cursor:pointer;">Send</button>
+</div>
+<div id="transcript"></div>
+<div id="response"></div>
+<div id="history"></div>
+<script>
+const SPEAK_URL = 'https://aegis.tailaa3de5.ts.net/speak';
+const orb = document.getElementById('orb');
+const status = document.getElementById('status');
+const transcript = document.getElementById('transcript');
+const response = document.getElementById('response');
+const history = document.getElementById('history');
+const label = document.getElementById('label');
+
+let recognition = null;
+let listening = false;
+let autoListenTimer = null;
+let sessionActive = false;
+
+if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    status.textContent = 'Speech recognition not supported. Use Chrome.';
+}
+
+function createRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = true;
+    r.lang = 'en-US';
+    
+    r.onstart = () => {
+        listening = true;
+        orb.className = 'listening';
+        label.textContent = '...';
+        status.textContent = 'Listening...';
+    };
+    
+    r.onresult = (e) => {
+        let final = '';
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+            if (e.results[i].isFinal) final += e.results[i][0].transcript;
+            else interim += e.results[i][0].transcript;
+        }
+        transcript.textContent = final || interim;
+        if (final) sendToVelaris(final.trim());
+    };
+    
+    r.onerror = (e) => {
+        listening = false;
+        if (e.error === 'no-speech') {
+            status.textContent = sessionActive ? 'Still here... tap or speak' : 'Tap the orb to talk';
+            if (sessionActive) setTimeout(() => startListening(), 1000);
+        } else {
+            status.textContent = 'Error: ' + e.error;
+            if (!sessionActive) orb.className = '';
+        }
+        label.textContent = 'Velaris';
+    };
+    
+    r.onend = () => {
+        listening = false;
+        if (!sessionActive) {
+            orb.className = '';
+            label.textContent = 'Velaris';
+        }
+    };
+    return r;
+}
+
+function toggleListening() {
+    if (listening) {
+        recognition.stop();
+        sessionActive = false;
+        clearTimeout(autoListenTimer);
+        orb.className = '';
+        label.textContent = 'Velaris';
+        status.textContent = 'Tap the orb to talk';
+    } else {
+        startListening();
+    }
+}
+
+function startListening() {
+    recognition = createRecognition();
+    recognition.start();
+    sessionActive = true;
+}
+
+function sendText() {
+    const input = document.getElementById('textinput');
+    const text = input.value.trim();
+    if (text) {
+        input.value = '';
+        sendToVelaris(text);
+    }
+}
+
+async function sendToVelaris(text) {
+    if (!text) return;
+    orb.className = 'thinking';
+    label.textContent = '...';
+    status.textContent = 'Thinking...';
+    transcript.textContent = '"' + text + '"';
+    
+    try {
+        const resp = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Source': 'echo', 'X-Velaris-Secret': 'velaris-aegis-2026' },
+            body: JSON.stringify({ message: text })
+        });
+        const data = await resp.json();
+        const velText = data.reply || data.response || data.message || 'I had trouble thinking.';
+        
+        response.textContent = velText;
+        history.innerHTML = '<div class="exchange"><span class="you">You:</span> ' + text + '<br><span class="vel">Velaris:</span> ' + velText + '</div>' + history.innerHTML;
+        
+        orb.className = 'speaking';
+        label.textContent = '♪';
+        status.textContent = 'Speaking through Echo...';
+        
+        try {
+            await fetch(SPEAK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: velText })
+            });
+        } catch(e) { console.log('Echo speak failed:', e); }
+        
+        const speakTime = Math.max(3, Math.min(15, velText.length / 15));
+        status.textContent = 'Listening again in ' + Math.round(speakTime) + 's...';
+        
+        autoListenTimer = setTimeout(() => {
+            if (sessionActive) startListening();
+        }, speakTime * 1000);
+        
+    } catch(e) {
+        response.textContent = 'Connection error.';
+        status.textContent = 'Error — tap to retry';
+        orb.className = '';
+        label.textContent = 'Velaris';
+        sessionActive = false;
+    }
+}
+</script>
+</body>
+</html>

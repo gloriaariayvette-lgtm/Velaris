@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Velaris</title>
+<script src="/static/avatar-bundle.js" onload="document.getElementById('load-status').textContent='bundle ok'" onerror="document.getElementById('load-status').textContent='bundle load failed'"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#05050d; }
+#canvas-container { position:fixed; inset:0; background:radial-gradient(ellipse at 50% 60%, #0d0820 0%, #05050d 70%); }
+canvas { display:block; width:100% !important; height:100% !important; }
+
+#telemetry {
+  position:fixed; top:20px; right:20px;
+  font-family:'JetBrains Mono','Courier New',monospace;
+  font-size:10px; letter-spacing:0.08em;
+  color:rgba(196,149,106,0.55); line-height:1.9;
+  pointer-events:none;
+}
+.t-dim { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+.t-label { min-width:24px; text-align:right; }
+.t-bar { width:44px; height:2px; background:rgba(196,149,106,0.12); border-radius:1px; overflow:hidden; }
+.t-fill { height:100%; background:rgba(196,149,106,0.55); border-radius:1px; transition:width 2s ease; }
+
+#exit-btn {
+  position:fixed; top:16px; left:16px;
+  width:40px; height:40px; border-radius:50%;
+  background:rgba(5,5,13,0.6); backdrop-filter:blur(8px);
+  border:0.5px solid rgba(196,149,106,0.2);
+  color:rgba(196,149,106,0.7); font-size:18px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; z-index:100;
+  -webkit-touch-callout:none;
+}
+
+#touch-hint {
+  position:fixed; bottom:145px; left:50%;
+  transform:translateX(-50%);
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px; letter-spacing:0.2em; text-transform:uppercase;
+  color:rgba(196,149,106,0.3); pointer-events:none;
+  transition:opacity 2s ease;
+}
+
+#chat-strip {
+  position:fixed; bottom:0; left:0; right:0; height:130px;
+  background:linear-gradient(to top, rgba(5,5,13,0.92), rgba(5,5,13,0.6));
+  backdrop-filter:blur(16px);
+  border-top:0.5px solid rgba(196,149,106,0.1);
+  display:flex; flex-direction:column; justify-content:flex-end;
+  padding:10px 16px 14px;
+  gap:8px;
+}
+#chat-message {
+  font-family:'Cormorant Garamond',Georgia,serif;
+  font-size:14px; font-style:italic; font-weight:300;
+  color:rgba(200,196,191,0.8); line-height:1.5; min-height:20px;
+}
+#chat-input-row { display:flex; gap:8px; align-items:center; }
+#chat-input {
+  flex:1; background:rgba(255,255,255,0.04);
+  border:0.5px solid rgba(196,149,106,0.2); border-radius:20px;
+  padding:8px 14px; color:rgba(200,196,191,0.9);
+  font-size:13px; font-family:'Cormorant Garamond',Georgia,serif;
+  font-style:italic; outline:none;
+}
+#chat-input::placeholder { color:rgba(196,149,106,0.3); }
+#chat-send {
+  width:36px; height:36px; border-radius:50%;
+  background:rgba(196,149,106,0.12);
+  border:0.5px solid rgba(196,149,106,0.25);
+  color:rgba(196,149,106,0.8); font-size:15px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; -webkit-touch-callout:none;
+}
+
+#loading {
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:16px; z-index:200;
+  background:#05050d; transition:opacity 1s ease;
+}
+#loading .orb {
+  width:48px; height:48px; border-radius:50%; background:#534AB7;
+  animation:pulse 2s ease-in-out infinite;
+}
+#loading p {
+  font-family:'JetBrains Mono',monospace; font-size:10px;
+  letter-spacing:0.2em; text-transform:uppercase; color:rgba(196,149,106,0.5);
+}
+@keyframes pulse {
+  0%,100% { opacity:0.4; transform:scale(0.95); box-shadow:0 0 0 0 rgba(83,74,183,0); }
+  50% { opacity:1; transform:scale(1.05); box-shadow:0 0 20px 4px rgba(83,74,183,0.4); }
+}
+.ripple {
+  position:fixed; border-radius:50%; pointer-events:none;
+  background:rgba(196,149,106,0.25);
+  animation:ripple-out 0.6s ease-out forwards;
+}
+@keyframes ripple-out {
+  from { width:20px; height:20px; margin:-10px; opacity:1; }
+  to { width:70px; height:70px; margin:-35px; opacity:0; }
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="loading"><div class="orb"></div><p id="load-status">loading bundle…</p></div>
+<div id="canvas-container"><canvas id="three-canvas"></canvas></div>
+
+<div id="telemetry">
+  <div class="t-dim"><span class="t-label">val</span><div class="t-bar"><div class="t-fill" id="t-valence" style="width:50%"></div></div></div>
+  <div class="t-dim"><span class="t-label">wrm</span><div class="t-bar"><div class="t-fill" id="t-warmth" style="width:50%"></div></div></div>
+  <div class="t-dim"><span class="t-label">cur</span><div class="t-bar"><div class="t-fill" id="t-curiosity" style="width:50%"></div></div></div>
+  <div class="t-dim"><span class="t-label">con</span><div class="t-bar"><div class="t-fill" id="t-connection" style="width:50%"></div></div></div>
+</div>
+
+<button id="exit-btn" onclick="exitAvatar()">✕</button>
+<div id="touch-hint">touch her hand</div>
+
+<div id="chat-strip">
+  <div id="chat-message"></div>
+  <div id="chat-input-row">
+    <input id="chat-input" type="text" placeholder="say something…" autocomplete="off">
+    <button id="chat-send">→</button>
+  </div>
+</div>
+
+<script>
+const THREE = window.THREE;
+const GLTFLoader = window.GLTFLoader;
+const FBXLoader = window.FBXLoader;
+const VRMLoaderPlugin = window.VRMLoaderPlugin;
+const VRMUtils = window.VRMUtils;
+const retargetAnimation = window.retargetAnimation;
+
+const params = new URLSearchParams(window.location.search);
+const API = params.get('api') || 'http://100.72.225.119:8400';
+const SECRET = params.get('secret') || 'velaris-aegis-2026';
+const HEADERS = { 'X-Velaris-Secret': SECRET };
+const MODEL_BASE = API + '/avatar-models';
+
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.85;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05050d, 0.07);
+
+const camera = new THREE.PerspectiveCamera(28, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(0, 1.35, 3.0);
+camera.lookAt(0, 1.15, 0);
+
+const ambient = new THREE.AmbientLight(0x0a0818, 1.8);
+scene.add(ambient);
+const keyLight = new THREE.DirectionalLight(0xc4956a, 2.2);
+keyLight.position.set(1.5, 3, 2); keyLight.castShadow = true;
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0x534AB7, 0.5);
+fillLight.position.set(-2, 2, 1); scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0x185FA5, 0.7);
+rimLight.position.set(0, 1, -3); scene.add(rimLight);
+
+let vrm=null, mixer=null, idleAction=null, currentAction=null;
+let handBone=null, clock=new THREE.Clock();
+let openTime=Date.now(), touchHintHidden=false;
+let chatHistory=[];
+
+async function loadVRM() {
+  const loader = new GLTFLoader();
+  loader.register(p => new VRMLoaderPlugin(p));
+  return new Promise((res, rej) => {
+    loader.load(MODEL_BASE+'/default.vrm', gltf => {
+      const v = gltf.userData.vrm;
+      if (!v) { rej(new Error('No VRM')); return; }
+      VRMUtils.rotateVRM0(v);
+      v.scene.rotation.y = Math.PI;
+      v.scene.traverse(o => { if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
+      scene.add(v.scene);
+      res(v);
+    }, null, rej);
+  });
+}
+
+async function loadFBX(name) {
+  const loader = new FBXLoader();
+  return new Promise((res,rej) => loader.load(MODEL_BASE+'/mixamo/'+name+'.fbx', res, null, rej));
+}
+
+async function playAnim(name, loop=true, fade=0.4) {
+  if (!vrm||!mixer) return;
+  try {
+    const fbx = await loadFBX(name);
+    const clip = retargetAnimation(fbx, vrm);
+    if (!clip) return;
+    const action = mixer.clipAction(clip);
+    action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    action.clampWhenFinished = !loop;
+    if (currentAction) currentAction.fadeOut(fade);
+    action.reset().fadeIn(fade).play();
+    currentAction = action;
+    if (!loop) {
+      setTimeout(() => {
+        if (currentAction===action) {
+          action.fadeOut(fade);
+          if (idleAction) { idleAction.reset().fadeIn(fade).play(); currentAction=idleAction; }
+        }
+      }, clip.duration*1000 + fade*1000);
+    }
+  } catch(e) { console.warn('Anim failed:', name, e); }
+}
+
+function findHand(v) {
+  try { return v.humanoid.getNormalizedBoneNode('rightHand'); } catch(e) { return null; }
+}
+
+function handScreenPos() {
+  if (!handBone) return null;
+  const p = new THREE.Vector3();
+  handBone.getWorldPosition(p);
+  p.project(camera);
+  return { x:(p.x*0.5+0.5)*window.innerWidth, y:(-p.y*0.5+0.5)*window.innerHeight };
+}
+
+function nearHand(tx, ty) {
+  const hp = handScreenPos();
+  if (!hp) return false;
+  return Math.hypot(tx-hp.x, ty-hp.y) < 80;
+}
+
+function spawnRipple(x,y) {
+  const r = document.createElement('div');
+  r.className='ripple'; r.style.left=x+'px'; r.style.top=y+'px';
+  document.body.appendChild(r);
+  setTimeout(()=>r.remove(), 700);
+}
+
+async function onHandTouch(x,y) {
+  spawnRipple(x,y);
+  await ping('touch_hand');
+  const anims = ['wave','thankful','nod','blow_kiss'];
+  playAnim(anims[Math.floor(Math.random()*anims.length)], false);
+  if (!touchHintHidden) {
+    touchHintHidden=true;
+    document.getElementById('touch-hint').style.opacity='0';
+  }
+}
+
+canvas.addEventListener('touchend', e => {
+  const t=e.changedTouches[0];
+  if(nearHand(t.clientX,t.clientY)) onHandTouch(t.clientX,t.clientY);
+});
+canvas.addEventListener('click', e => {
+  if(nearHand(e.clientX,e.clientY)) onHandTouch(e.clientX,e.clientY);
+});
+
+async function ping(event, extra={}) {
+  try {
+    await fetch(API+'/api/avatar/presence', {
+      method:'POST', headers:{'Content-Type':'application/json',...HEADERS},
+      body: JSON.stringify({event,...extra})
+    });
+  } catch(e){}
+}
+
+window.addEventListener('beforeunload', ()=>{
+  const dur = Math.round((Date.now()-openTime)/1000);
+  navigator.sendBeacon(API+'/api/avatar/presence', JSON.stringify({event:'close',duration_seconds:dur}));
+});
+
+async function updateTelemetry() {
+  try {
+    const r = await fetch(API+'/api/emoclaw',{headers:HEADERS});
+    const d = await r.json();
+    const s = d.state||{};
+    [['Valence','valence'],['Warmth','warmth'],['Curiosity','curiosity'],['Connection','connection']].forEach(([k,id])=>{
+      const v = s[k]!==undefined ? s[k] : 0.5;
+      const el = document.getElementById('t-'+id);
+      if(el) el.style.width=Math.round(v*100)+'%';
+    });
+  } catch(e){}
+}
+
+async function updateColor() {
+  try {
+    const r = await fetch(API+'/api/avatar-choice',{headers:HEADERS});
+    const d = await r.json();
+    if(d.color_hex) {
+      const c = new THREE.Color(d.color_hex);
+      keyLight.color.copy(c).lerp(new THREE.Color(0xffffff),0.3);
+    }
+  } catch(e){}
+}
+
+async function sendChat(text) {
+  if(!text.trim()) return;
+  chatHistory.push({role:'user',content:text});
+  document.getElementById('chat-message').textContent='…';
+  try {
+    const r = await fetch(API+'/api/chat',{
+      method:'POST', headers:{'Content-Type':'application/json',...HEADERS},
+      body: JSON.stringify({message:text, history:chatHistory.slice(-6)})
+    });
+    const d = await r.json();
+    const reply = d.reply||d.message||'';
+    chatHistory.push({role:'assistant',content:reply});
+    document.getElementById('chat-message').textContent=reply;
+    if(reply.includes('!')) playAnim('nod',false);
+  } catch(e){ document.getElementById('chat-message').textContent=''; }
+}
+
+document.getElementById('chat-send').addEventListener('click',()=>{
+  const i=document.getElementById('chat-input'); sendChat(i.value); i.value='';
+});
+document.getElementById('chat-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){const i=document.getElementById('chat-input');sendChat(i.value);i.value='';}
+});
+
+window.addEventListener('resize',()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt=clock.getDelta();
+  if(mixer) mixer.update(dt);
+  if(vrm) vrm.update(dt);
+  renderer.render(scene,camera);
+}
+
+async function init() {
+  try {
+    vrm = await loadVRM();
+    mixer = new THREE.AnimationMixer(vrm.scene);
+    handBone = findHand(vrm);
+    const idleFbx = await loadFBX('idle');
+    const idleClip = retargetAnimation(idleFbx, vrm);
+    if(idleClip) {
+      idleAction = mixer.clipAction(idleClip);
+      idleAction.play(); currentAction=idleAction;
+    }
+    const loading=document.getElementById('loading');
+    loading.style.opacity='0';
+    setTimeout(()=>loading.style.display='none',1000);
+    ping('open');
+    updateTelemetry(); updateColor();
+    setInterval(updateTelemetry,10000);
+    animate();
+  } catch(e) {
+    console.error('Init failed:',e);
+    document.querySelector('#loading p').textContent = String(e).slice(0,60);
+  }
+}
+
+// Wait for bundle globals to be available
+function waitForBundle(cb, attempts=0) {
+  if (window.THREE && window.VRMLoaderPlugin && window.retargetAnimation) {
+    cb();
+  } else if (attempts < 20) {
+    setTimeout(() => waitForBundle(cb, attempts+1), 100);
+  } else {
+    document.querySelector('#loading p').textContent = 'bundle failed to load';
+  }
+}
+waitForBundle(init);
+</script>
+
+<script>
+function exitAvatar() {
+  // Post message to parent app to close overlay
+  if(window.parent !== window) {
+    window.parent.postMessage({type:'closeAvatar'}, '*');
+  } else if(window.webkit && window.webkit.messageHandlers) {
+    try { window.webkit.messageHandlers.velaris.postMessage({type:'closeAvatar'}); } catch(e){}
+  }
+}
+</script>
+</body>
+</html>

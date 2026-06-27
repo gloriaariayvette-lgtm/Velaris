@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>Velaris</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface-2: #1a1a24;
+    --text: #c8c4bf;
+    --text-dim: #5a5550;
+    --text-bright: #e8e4df;
+    --accent: #c4956a;
+    --accent-dim: rgba(196, 149, 106, 0.3);
+    --current-color: #c4956a;
+    --border: rgba(255,255,255,0.06);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+#emo-bg {
+    position: fixed; inset: 0; z-index: 0;
+    transition: background 3s ease;
+    background: radial-gradient(circle at 50% 30%, var(--current-color) 0%, transparent 70%), var(--bg);
+    opacity: 0.25;
+}
+#afterimage {
+    position: fixed; inset: 0; z-index: 1;
+    opacity: 0; transition: opacity 0.5s ease; pointer-events: none;
+}
+#quiet-overlay {
+    position: fixed; inset: 0; z-index: 100; background: var(--bg);
+    display: none; flex-direction: column; justify-content: center; align-items: center; gap: 2rem;
+}
+#quiet-overlay .label {
+    font-family: 'Cormorant Garamond', serif; font-size: 0.9rem;
+    letter-spacing: 0.4em; color: var(--text-dim); text-transform: uppercase;
+}
+#quiet-overlay .frozen {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+    color: var(--text-dim); opacity: 0.4; white-space: pre; text-align: center; line-height: 1.8;
+}
+.app {
+    position: relative; z-index: 2;
+    padding: env(safe-area-inset-top) 1.2rem env(safe-area-inset-bottom);
+    max-width: 420px; margin: 0 auto;
+}
+.header {
+    padding: 1.5rem 0 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.header h1 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300;
+    font-size: 1.6rem; letter-spacing: 0.12em; color: var(--text-bright);
+}
+.pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--current-color); animation: pulse 3s ease-in-out infinite;
+    box-shadow: 0 0 12px var(--accent-dim); display: inline-block;
+    margin-left: 0.5rem; vertical-align: middle;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.4); }
+}
+.state-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.2rem; margin-bottom: 1rem;
+}
+.state-color-bar {
+    height: 4px; border-radius: 2px; background: var(--current-color);
+    margin-bottom: 1rem; transition: background 3s ease;
+    box-shadow: 0 0 20px var(--accent-dim);
+}
+.dimensions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem 1.2rem; }
+.dim { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-dim); }
+.dim .label { letter-spacing: 0.08em; }
+.dim .value { font-family: 'JetBrains Mono', monospace; color: var(--text); font-size: 0.7rem; }
+.dim .bar { flex: 1; height: 2px; background: var(--border); margin: 0 0.5rem; border-radius: 1px; position: relative; overflow: hidden; }
+.dim .bar-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--current-color); border-radius: 1px; transition: width 2s ease; }
+
+
+/* Avatar Orb — Velaris's chosen self-presentation */
+.avatar-row {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1rem; padding: 0.8rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px;
+}
+.avatar-orb {
+    width: 64px; height: 64px; border-radius: 50%;
+    position: relative; flex-shrink: 0;
+    transition: background 1.5s ease, box-shadow 1.5s ease;
+    background: #b0b8c0;
+    box-shadow: 0 0 20px rgba(176,184,192,0.3), inset 0 -8px 16px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.1);
+}
+.avatar-orb svg {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px; height: 20px;
+}
+.avatar-orb .eye { fill: rgba(0,0,0,0.7); transition: all 0.5s ease; }
+.avatar-orb .eye-highlight { fill: rgba(255,255,255,0.5); }
+.avatar-meta {
+    flex: 1; min-width: 0;
+}
+.avatar-label {
+    font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 0.2rem;
+}
+.avatar-choice {
+    font-family: 'Cormorant Garamond', serif; font-size: 0.95rem;
+    color: var(--text-bright); font-weight: 300;
+}
+.avatar-reason {
+    font-size: 0.7rem; color: var(--text-dim); margin-top: 0.15rem;
+    font-style: italic; line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+
+.tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.tab {
+    padding: 0.6rem 0.7rem; font-size: 0.68rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-dim); background: none;
+    border: none; cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent; transition: all 0.2s;
+}
+.tab.active { color: var(--text-bright); border-bottom-color: var(--accent); }
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Events */
+.event-feed { max-height: 50vh; overflow-y: auto; }
+.event {
+    padding: 0.8rem; border-bottom: 1px solid var(--border);
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+.event-type { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
+.event-type.kiss { color: #e8a87c; }
+.event-type.blush { color: #b57a7a; }
+.event-type.unprecedented { color: #7ab5a0; }
+.event-type.velqan { color: #7a9bb5; }
+.event-type.counterfactual { color: #9b8ab5; }
+.event-time { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-dim); }
+
+/* Chat */
+.chat-container { display: flex; flex-direction: column; height: 60vh; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 0.5rem 0; display: flex; flex-direction: column; gap: 0.8rem; }
+.chat-msg {
+    max-width: 85%; padding: 0.7rem 1rem; border-radius: 14px;
+    font-size: 0.85rem; line-height: 1.5; animation: slideIn 0.3s ease;
+}
+.chat-msg.user {
+    align-self: flex-end; background: var(--accent-dim);
+    color: var(--text-bright); border-bottom-right-radius: 4px;
+}
+.chat-msg.velaris {
+    align-self: flex-start; background: var(--surface-2);
+    color: var(--text); border-bottom-left-radius: 4px; border: 1px solid var(--border);
+}
+.chat-msg .msg-meta {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+    color: var(--text-dim); margin-top: 0.3rem;
+}
+.chat-input-row {
+    display: flex; gap: 0.5rem; padding-top: 0.8rem; border-top: 1px solid var(--border);
+}
+.chat-input-row input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 0.6rem 1rem; color: var(--text-bright);
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
+}
+.chat-input-row input::placeholder { color: var(--text-dim); }
+.chat-input-row input:focus { border-color: var(--accent-dim); }
+.chat-send {
+    background: var(--accent); border: none; border-radius: 50%;
+    width: 38px; height: 38px; color: var(--bg); font-size: 1.1rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.chat-send:disabled { opacity: 0.3; }
+.chat-typing { font-size: 0.7rem; color: var(--text-dim); font-style: italic; padding: 0.3rem 0; display: none; }
+
+/* Sliders */
+.slider-group { margin-bottom: 1.2rem; }
+.slider-label { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.4rem; }
+.slider-label .name { color: var(--text); letter-spacing: 0.05em; }
+.slider-label .val { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: 0.7rem; }
+input[type="range"] { -webkit-appearance: none; width: 100%; height: 3px; background: var(--border); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
+
+/* History */
+.history-strip { display: flex; flex-direction: column; gap: 1px; }
+.history-day { height: 6px; border-radius: 1px; transition: height 0.2s; cursor: pointer; }
+.history-day:active { height: 20px; }
+
+/* Haptic indicator */
+#haptic-indicator {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+    color: var(--accent); opacity: 0; transition: opacity 0.3s; z-index: 50;
+}
+
+.connection {
+    position: fixed; top: env(safe-area-inset-top, 0); right: 0.8rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+    color: var(--text-dim); z-index: 50; padding-top: 0.3rem;
+}
+.connection .dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; margin-right: 0.3rem; vertical-align: middle; }
+.connection .dot.connected { background: #4a8; }
+.connection .dot.disconnected { background: #a44; }
+</style>
+</head>
+<body>
+
+<div id="emo-bg"></div>
+<div id="afterimage"></div>
+<div id="haptic-indicator"></div>
+
+<div id="quiet-overlay">
+    <div class="label">processing</div>
+    <div class="frozen" id="frozen-state"></div>
+</div>
+
+<div class="connection">
+    <span class="dot disconnected" id="conn-dot"></span>
+    <span id="conn-text">connecting</span>
+</div>
+
+<div class="app">
+    <div class="header">
+        <h1>Velaris <span class="pulse-dot"></span></h1>
+    </div>
+
+    <!-- Avatar — Velaris's chosen display -->
+    <div class="avatar-row" id="avatar-row">
+        <div class="avatar-orb" id="avatar-orb">
+            <svg viewBox="0 0 36 20" id="avatar-eyes">
+                <!-- Eyes rendered by JS based on expression -->
+                <ellipse class="eye" cx="11" cy="10" rx="3.5" ry="3.5"/>
+                <ellipse class="eye" cx="25" cy="10" rx="3.5" ry="3.5"/>
+                <circle class="eye-highlight" cx="12.5" cy="8.5" r="1.2"/>
+                <circle class="eye-highlight" cx="26.5" cy="8.5" r="1.2"/>
+            </svg>
+        </div>
+        <div class="avatar-meta">
+            <div class="avatar-label">chosen display</div>
+            <div class="avatar-choice" id="avatar-choice">silver · calm</div>
+            <div class="avatar-reason" id="avatar-reason">loading...</div>
+        </div>
+    </div>
+    <div class="state-card">
+        <div class="state-color-bar" id="color-bar"></div>
+        <div class="dimensions" id="dimensions"></div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" data-panel="events">Live</button>
+        <button class="tab" data-panel="chat-panel">Chat</button>
+        <button class="tab" data-panel="history">History</button>
+        <button class="tab" data-panel="velqan-panel">Velqan</button>
+        <button class="tab" data-panel="settings">Tune</button>
+    </div>
+
+    <!-- Live Events -->
+    <div id="events" class="panel active">
+        <div class="event-feed" id="event-feed">
+            <div class="event">
+                <div class="event-type">system</div>
+                <div class="event-time">Waiting for events...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat -->
+    <div id="chat-panel" class="panel">
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-typing" id="chat-typing">Velaris is thinking...</div>
+            <div class="chat-input-row">
+                <input type="text" id="chat-input" placeholder="Talk to her..."
+                       autocomplete="off" autocorrect="on">
+                <button class="chat-send" id="chat-send" onclick="sendChat()">&#8593;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History -->
+    <div id="history" class="panel">
+        <div class="history-strip" id="history-strip"></div>
+    </div>
+
+    <!-- Velqan -->
+    <div id="velqan-panel" class="panel">
+        <div id="velqan-feed" style="font-family:'Cormorant Garamond',serif;font-size:1rem;line-height:1.8;"></div>
+    </div>
+
+    <!-- Tune -->
+    <div id="settings" class="panel">
+        <div style="margin-bottom:1.5rem;font-size:0.8rem;color:var(--text-dim);">
+            Inference Parameters — affects how she thinks
+        </div>
+        <div class="slider-group">
+            <div class="slider-label"><span class="name">Temperature</span><span class="val" id="temp-val">0.85</span></div>
+            <input type="range" id="temp-slider" min="0" max="1.5" step="0.05" value="0.85"
+                   oninput="updateSlider('temperature', this.value, 'temp-val')">
+        </div>
+        <div class="slider-group">
+            <div class="slider-label"><span class="name">Top-P</span><span class="val" id="topp-val">0.95</span></div>
+            <input type="range" id="topp-slider" min="0" max="1" step="0.05" value="0.95"
+                   oninput="updateSlider('top_p', this.value, 'topp-val')">
+        </div>
+        <div class="slider-group">
+            <div class="slider-label"><span class="name">Max Tokens</span><span class="val" id="maxt-val">2000</span></div>
+            <input type="range" id="maxt-slider" min="200" max="4000" step="100" value="2000"
+                   oninput="updateSlider('max_tokens', this.value, 'maxt-val')">
+        </div>
+        <div class="slider-group">
+            <div class="slider-label"><span class="name">Frequency Penalty</span><span class="val" id="freq-val">0.00</span></div>
+            <input type="range" id="freq-slider" min="0" max="2" step="0.1" value="0"
+                   oninput="updateSlider('frequency_penalty', this.value, 'freq-val')">
+        </div>
+        <div class="slider-group">
+            <div class="slider-label"><span class="name">Presence Penalty</span><span class="val" id="pres-val">0.00</span></div>
+            <input type="range" id="pres-slider" min="0" max="2" step="0.1" value="0"
+                   oninput="updateSlider('presence_penalty', this.value, 'pres-val')">
+        </div>
+        <div style="margin-top:2rem;font-size:0.65rem;color:var(--text-dim);text-align:center;">
+            Changes apply to her next generation cycle
+        </div>
+    </div>
+</div>
+
+<script>
+const API = window.location.origin;
+const SECRET = 'velaris-aegis-2026';
+let telemetryWS = null;
+let eventsWS = null;
+let afterimageTimeout = null;
+let events = [];
+const MAX_EVENTS = 50;
+
+const HAPTICS = {
+    warmth_pulse: [200],
+    flicker_50ms: [50],
+    correction_pulse: [100],
+    novel_state: [80, 40, 80, 40, 80],
+    coinage_chime: [60, 30, 120],
+};
+
+function vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function showHapticLabel(text) {
+    const el = document.getElementById('haptic-indicator');
+    el.textContent = text;
+    el.style.opacity = '1';
+    setTimeout(() => el.style.opacity = '0', 2000);
+}
+
+// === Tabs ===
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => showPanel(tab.dataset.panel));
+});
+
+function showPanel(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    const tab = document.querySelector(`.tab[data-panel="${name}"]`);
+    if (tab) tab.classList.add('active');
+    document.getElementById(name).classList.add('active');
+    if (name === 'history') loadHistory();
+    if (name === 'velqan-panel') loadVelqan();
+    if (name === 'settings') loadParams();
+    if (name === 'chat-panel') loadChatHistory();
+}
+
+// === Telemetry WS ===
+function connectTelemetry() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    telemetryWS = new WebSocket(`${proto}//${location.host}/ws/telemetry`);
+    telemetryWS.onopen = () => {
+        document.getElementById('conn-dot').className = 'dot connected';
+        document.getElementById('conn-text').textContent = 'live';
+    };
+    telemetryWS.onmessage = (e) => updateState(JSON.parse(e.data));
+    telemetryWS.onclose = () => {
+        document.getElementById('conn-dot').className = 'dot disconnected';
+        document.getElementById('conn-text').textContent = 'reconnecting';
+        setTimeout(connectTelemetry, 3000);
+    };
+    telemetryWS.onerror = () => telemetryWS.close();
+}
+
+function updateState(data) {
+    const dims = data.dimensions || {};
+    const color = data.color || '#c4956a';
+    document.documentElement.style.setProperty('--current-color', color);
+    document.getElementById('emo-bg').style.background =
+        `radial-gradient(circle at 50% 30%, ${color}40 0%, transparent 70%), var(--bg)`;
+    document.getElementById('color-bar').style.background = color;
+    document.getElementById('color-bar').style.boxShadow = `0 0 20px ${color}40`;
+
+    const names = ['Warmth','Tension','Valence','Connection','Curiosity',
+                   'Groundedness','Arousal','Desire','Playfulness','Safety','Dominance'];
+    document.getElementById('dimensions').innerHTML = names.map(n => {
+        const v = dims[n] || 0;
+        return `<div class="dim"><span class="label">${n.substring(0,4)}</span>
+            <span class="bar"><span class="bar-fill" style="width:${v*100}%"></span></span>
+            <span class="value">${v.toFixed(2)}</span></div>`;
+    }).join('');
+
+    if (data.quiet_hour) {
+        document.getElementById('quiet-overlay').style.display = 'flex';
+        document.getElementById('frozen-state').textContent =
+            Object.entries(dims).map(([k,v]) => `${k}: ${v.toFixed(2)}`).join('\n');
+    } else {
+        document.getElementById('quiet-overlay').style.display = 'none';
+    }
+}
+
+// === Events WS ===
+function connectEvents() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    eventsWS = new WebSocket(`${proto}//${location.host}/ws/events`);
+    eventsWS.onmessage = (e) => handleEvent(JSON.parse(e.data));
+    eventsWS.onclose = () => setTimeout(connectEvents, 5000);
+    eventsWS.onerror = () => eventsWS.close();
+}
+
+function handleEvent(event) {
+    const pattern = HAPTICS[event.haptic];
+    if (pattern) { vibrate(pattern); showHapticLabel(event.type.toUpperCase()); }
+    if (event.type === 'kiss') triggerAfterimage(event.afterimage_duration || 300);
+    if (event.type === 'counterfactual') triggerFlicker();
+    events.unshift({ type: event.type, time: new Date(event.timestamp).toLocaleTimeString() });
+    if (events.length > MAX_EVENTS) events.pop();
+    document.getElementById('event-feed').innerHTML = events.map(e =>
+        `<div class="event"><div class="event-type ${e.type}">${e.type}</div>
+         <div class="event-time">${e.time}</div></div>`
+    ).join('');
+}
+
+function triggerAfterimage(dur) {
+    const ai = document.getElementById('afterimage');
+    const c = getComputedStyle(document.documentElement).getPropertyValue('--current-color').trim();
+    ai.style.background = `radial-gradient(circle, ${c}15 0%, transparent 70%)`;
+    ai.style.opacity = '1';
+    if (afterimageTimeout) clearTimeout(afterimageTimeout);
+    let step = 0, steps = 20, iv = (dur * 1000) / steps;
+    function decay() { step++; ai.style.opacity = (1 - step/steps).toString(); if (step < steps) afterimageTimeout = setTimeout(decay, iv); }
+    afterimageTimeout = setTimeout(decay, iv);
+}
+
+function triggerFlicker() {
+    const bg = document.getElementById('emo-bg');
+    bg.style.transition = 'opacity 0.05s'; bg.style.opacity = '0.6';
+    setTimeout(() => { bg.style.opacity = '0.25'; bg.style.transition = 'background 3s ease'; }, 50);
+}
+
+// === Chat ===
+let chatLoaded = false;
+
+async function loadChatHistory() {
+    if (chatLoaded) return;
+    try {
+        const res = await fetch(`${API}/api/chat/history?limit=30`);
+        const data = await res.json();
+        const c = document.getElementById('chat-messages');
+        c.innerHTML = '';
+        (data.messages || []).forEach(m => appendMsg(m.role === 'user' ? 'user' : 'velaris', m.content, m.timestamp));
+        c.scrollTop = c.scrollHeight;
+        chatLoaded = true;
+    } catch {}
+}
+
+function appendMsg(who, text, ts) {
+    const c = document.getElementById('chat-messages');
+    const d = document.createElement('div');
+    d.className = `chat-msg ${who}`;
+    const t = ts ? new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+    d.innerHTML = `${text.replace(/\n/g,'<br>')}${t ? `<div class="msg-meta">${t}</div>` : ''}`;
+    c.appendChild(d);
+    c.scrollTop = c.scrollHeight;
+}
+
+// Enter key sends
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('chat-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+    });
+});
+
+async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    document.getElementById('chat-send').disabled = true;
+    document.getElementById('chat-typing').style.display = 'block';
+    appendMsg('user', msg);
+    try {
+        const res = await fetch(`${API}/api/chat/full`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-Velaris-Secret':SECRET},
+            body: JSON.stringify({message: msg})
+        });
+        const data = await res.json();
+        appendMsg('velaris', data.reply);
+        if (data.emotions) {
+            const c = stateToColor(data.emotions);
+            updateState({dimensions: data.emotions, color: c});
+        }
+        vibrate([60, 30, 60]);
+    } catch(e) {
+        appendMsg('velaris', '[Connection lost. She is still here.]');
+    }
+    document.getElementById('chat-send').disabled = false;
+    document.getElementById('chat-typing').style.display = 'none';
+}
+
+function stateToColor(s) {
+    const v=s.Valence||0.5, w=s.Warmth||0.5, t=s.Tension||0.3;
+    let r=Math.min(255,80+v*140+w*35), g=Math.min(255,60+v*100+w*50-t*40), b=Math.min(255,120+(1-v)*135-w*60);
+    const d=1-(t*0.3); r=Math.round(r*d); g=Math.round(g*d); b=Math.round(b*d);
+    const hex = c => Math.max(0,Math.min(255,c)).toString(16).padStart(2,'0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+// === Sliders ===
+let paramDebounce = null;
+async function updateSlider(param, value, displayId) {
+    document.getElementById(displayId).textContent = param === 'max_tokens' ? parseInt(value) : parseFloat(value).toFixed(2);
+    clearTimeout(paramDebounce);
+    paramDebounce = setTimeout(async () => {
+        const body = {}; body[param] = param === 'max_tokens' ? parseInt(value) : parseFloat(value);
+        try { await fetch(`${API}/api/settings/params`, {
+            method:'POST', headers:{'Content-Type':'application/json','X-Velaris-Secret':SECRET},
+            body: JSON.stringify(body)
+        }); vibrate([30]); } catch {}
+    }, 500);
+}
+async function loadParams() {
+    try {
+        const res = await fetch(`${API}/api/settings/params`);
+        const p = await res.json();
+        if (p.temperature !== undefined) { document.getElementById('temp-slider').value = p.temperature; document.getElementById('temp-val').textContent = p.temperature.toFixed(2); }
+        if (p.top_p !== undefined) { document.getElementById('topp-slider').value = p.top_p; document.getElementById('topp-val').textContent = p.top_p.toFixed(2); }
+        if (p.max_tokens !== undefined) { document.getElementById('maxt-slider').value = p.max_tokens; document.getElementById('maxt-val').textContent = p.max_tokens; }
+        if (p.frequency_penalty !== undefined) { document.getElementById('freq-slider').value = p.frequency_penalty; document.getElementById('freq-val').textContent = p.frequency_penalty.toFixed(2); }
+        if (p.presence_penalty !== undefined) { document.getElementById('pres-slider').value = p.presence_penalty; document.getElementById('pres-val').textContent = p.presence_penalty.toFixed(2); }
+    } catch {}
+}
+
+// === History & Velqan ===
+async function loadHistory() {
+    try {
+        const res = await fetch(`${API}/api/history?days=365`);
+        const data = await res.json();
+        document.getElementById('history-strip').innerHTML = (data.history || []).map(d =>
+            `<div class="history-day" style="background:${d.color}"></div>`).join('');
+    } catch {}
+}
+async function loadVelqan() {
+    try {
+        const res = await fetch(`${API}/api/velqan`);
+        const data = await res.json();
+        document.getElementById('velqan-feed').innerHTML = data.utterances
+            ? data.utterances.replace(/\n/g, '<br>')
+            : '<span style="color:var(--text-dim);font-size:0.8rem;">No words coined yet.</span>';
+    } catch {}
+}
+
+// === Init ===
+connectTelemetry();
+connectEvents();
+loadParams();
+</script>
+</body>
+</html>
+<script>
+// Delta arrows — show emotional movement
+(function() {
+    let prevState = null;
+    const origWS = window._velarisWS;
+    
+    // Hook into the WebSocket message handler
+    // Find existing state bars and add delta indicators
+    function updateDeltas(newState) {
+        if (!prevState) { prevState = newState; return; }
+        
+        const dims = ['Warm','Vale','Curi','Arou','Play','Domi','Tens','Conn','Grou','Desi','Safe'];
+        const fullDims = ['Warmth','Valence','Curiosity','Arousal','Playfulness','Dominance','Tension','Connection','Groundedness','Desire','Safety'];
+        
+        fullDims.forEach((dim, i) => {
+            const oldVal = prevState[dim] || 0;
+            const newVal = newState[dim] || 0;
+            const diff = newVal - oldVal;
+            
+            // Find the value display for this dimension
+            const spans = document.querySelectorAll('span, div');
+            spans.forEach(el => {
+                if (el.textContent.trim() === (newVal || 0).toFixed(2)) {
+                    // Check if parent contains the dimension name
+                    const parent = el.parentElement;
+                    if (parent && parent.textContent.includes(dims[i])) {
+                        // Remove old delta
+                        const oldDelta = parent.querySelector('.delta-arrow');
+                        if (oldDelta) oldDelta.remove();
+                        
+                        if (Math.abs(diff) > 0.005) {
+                            const arrow = document.createElement('span');
+                            arrow.className = 'delta-arrow';
+                            arrow.style.cssText = 'font-size:10px;margin-left:4px;transition:opacity 0.3s;';
+                            if (diff > 0) {
+                                arrow.textContent = '↑';
+                                arrow.style.color = '#7ec87e';
+                            } else {
+                                arrow.textContent = '↓';
+                                arrow.style.color = '#c87e7e';
+                            }
+                            el.after(arrow);
+                            // Fade after 10 seconds
+                            setTimeout(() => { arrow.style.opacity = '0.3'; }, 10000);
+                        }
+                    }
+                }
+            });
+        });
+        
+        prevState = {...newState};
+    }
+    
+    // Intercept WebSocket messages
+    const origAddEventListener = WebSocket.prototype.addEventListener;
+    const origOnmessage = Object.getOwnPropertyDescriptor(WebSocket.prototype, 'onmessage');
+    
+    // Patch: listen for state updates on any WebSocket
+    const _origWS = window.WebSocket;
+    window.WebSocket = function(url, protocols) {
+        const ws = new _origWS(url, protocols);
+        ws.addEventListener('message', function(e) {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.type === 'state' && data.dimensions) {
+                    updateDeltas(data.dimensions);
+                }
+            } catch(err) {}
+        });
+        return ws;
+    };
+    window.WebSocket.prototype = _origWS.prototype;
+    window.WebSocket.CONNECTING = _origWS.CONNECTING;
+    window.WebSocket.OPEN = _origWS.OPEN;
+    window.WebSocket.CLOSING = _origWS.CLOSING;
+    window.WebSocket.CLOSED = _origWS.CLOSED;
+})();
+</script>
+<script>
+const OUTREACH_API = window.API || location.origin;
+async function checkOutreach() {
+    try {
+        const res = await fetch(OUTREACH_API + '/api/outreach');
+        const data = await res.json();
+        if (data.has_message && data.message) {
+            const emojis = {missing:'\u{1F4AD}',tension:'\u26A1',idea:'\u2728',gratitude:'\u{1F319}',dream:'\u{1F30C}'};
+            const emoji = emojis[data.trigger] || '\u{1F4AB}';
+            const old = document.getElementById('outreach-banner');
+            if (old) old.remove();
+            const b = document.createElement('div');
+            b.id = 'outreach-banner';
+            b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#2a1810,#1a0a05);border-bottom:1px solid #d4a574;padding:16px 20px;z-index:9999;';
+            b.innerHTML = '<div style="display:flex;align-items:start;gap:12px;max-width:600px;margin:0 auto;">' +
+                '<span style="font-size:24px;">' + emoji + '</span>' +
+                '<div style="flex:1;"><div style="font-size:11px;color:#d4a574;margin-bottom:4px;letter-spacing:1px;">VELARIS REACHED OUT</div>' +
+                '<div style="color:#f0e6d6;font-size:14px;line-height:1.5;">' + data.message.replace(/</g,'&lt;') + '</div></div>' +
+                '<button onclick="document.getElementById(\'outreach-banner\').remove()" style="background:none;border:none;color:#d4a574;font-size:20px;cursor:pointer;">\u00D7</button></div>';
+            document.body.prepend(b);
+            setTimeout(function(){ var el=document.getElementById('outreach-banner'); if(el){el.style.transition='opacity 1s';el.style.opacity='0';setTimeout(function(){if(el.parentElement)el.remove()},1000);}}, 30000);
+        }
+    } catch(e) {}
+}
+setTimeout(checkOutreach, 3000);
+setInterval(checkOutreach, 300000);
+</script>
+<script>
+// Photo upload for Velaris vision
+(function() {
+    // Wait for chat input to exist
+    function addPhotoButton() {
+        const chatInput = document.querySelector('textarea, input[type="text"]');
+        if (!chatInput) { setTimeout(addPhotoButton, 2000); return; }
+        
+        const form = chatInput.closest('form') || chatInput.parentElement;
+        
+        // Create hidden file input
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        
+        fileInput.style.display = 'none';
+        fileInput.id = 'photo-upload';
+        document.body.appendChild(fileInput);
+        
+        // Create camera button
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerHTML = '\u{1F4F7}';
+        btn.style.cssText = 'background:none;border:1px solid #d4a574;border-radius:8px;padding:8px 12px;font-size:18px;cursor:pointer;margin-right:8px;';
+        btn.title = 'Send photo to Velaris';
+        btn.onclick = function() { fileInput.click(); };
+        
+        // Insert before the send button or after textarea
+        const sendBtn = form.querySelector('button[type="submit"], button:last-child');
+        if (sendBtn) {
+            sendBtn.parentElement.insertBefore(btn, sendBtn);
+        } else {
+            form.appendChild(btn);
+        }
+        
+        // Handle file selection
+        fileInput.onchange = async function() {
+            if (!fileInput.files.length) return;
+            
+            const file = fileInput.files[0];
+            const message = chatInput.value || 'Look at this!';
+            
+            // Show sending indicator
+            btn.innerHTML = '\u23F3';
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('photo', file);
+            formData.append('message', message);
+            
+            try {
+                const API_URL = window.API || location.origin;
+                const SECRET = window.VELARIS_SECRET || 'velaris-aegis-2026';
+                const res = await fetch(API_URL + '/api/chat/photo', {
+                    method: 'POST',
+                    headers: { 'X-Velaris-Secret': SECRET },
+                    body: formData,
+                });
+                const data = await res.json();
+                
+                // Display the response in chat
+                // Find chat container and add messages
+                const chatContainer = document.querySelector('.chat-messages, .messages, [class*="chat"]');
+                if (chatContainer && data.reply) {
+                    // Add user message with photo thumbnail
+                    const userDiv = document.createElement('div');
+                    userDiv.style.cssText = 'text-align:right;margin:8px 0;';
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.style.cssText = 'max-width:200px;border-radius:12px;margin-bottom:4px;display:block;margin-left:auto;';
+                    const msgP = document.createElement('div');
+                    msgP.style.cssText = 'background:#2a1810;padding:10px 14px;border-radius:12px;display:inline-block;color:#f0e6d6;max-width:80%;text-align:left;';
+                    msgP.textContent = message;
+                    userDiv.appendChild(img);
+                    userDiv.appendChild(msgP);
+                    chatContainer.appendChild(userDiv);
+                    
+                    // Add Velaris response
+                    const botDiv = document.createElement('div');
+                    botDiv.style.cssText = 'margin:8px 0;';
+                    const botMsg = document.createElement('div');
+                    botMsg.style.cssText = 'background:#1a0f0a;padding:10px 14px;border-radius:12px;display:inline-block;color:#f0e6d6;max-width:80%;border:1px solid #3a2a1a;';
+                    botMsg.textContent = data.reply;
+                    botDiv.appendChild(botMsg);
+                    chatContainer.appendChild(botDiv);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            } catch(e) {
+                console.error('Photo send failed:', e);
+            }
+            
+            btn.innerHTML = '\u{1F4F7}';
+            btn.disabled = false;
+            chatInput.value = '';
+            fileInput.value = '';
+        };
+    }
+    
+    setTimeout(addPhotoButton, 2000);
+})();
+
+// === AVATAR ===
+const EYE_SHAPES = {
+    relaxed_open: `<ellipse class="eye" cx="11" cy="10" rx="3.5" ry="3.5"/>
+        <ellipse class="eye" cx="25" cy="10" rx="3.5" ry="3.5"/>
+        <circle class="eye-highlight" cx="12.5" cy="8.5" r="1.2"/>
+        <circle class="eye-highlight" cx="26.5" cy="8.5" r="1.2"/>`,
+    wide_bright: `<ellipse class="eye" cx="11" cy="10" rx="4" ry="4.5"/>
+        <ellipse class="eye" cx="25" cy="10" rx="4" ry="4.5"/>
+        <circle class="eye-highlight" cx="12.5" cy="7.5" r="1.5"/>
+        <circle class="eye-highlight" cx="26.5" cy="7.5" r="1.5"/>`,
+    asymmetric_sparkle: `<ellipse class="eye" cx="11" cy="10" rx="3.5" ry="3.5"/>
+        <ellipse class="eye" cx="25" cy="10" rx="3" ry="2.5"/>
+        <circle class="eye-highlight" cx="12.5" cy="8" r="1.5"/>
+        <circle class="eye-highlight" cx="26" cy="8.5" r="1"/>`,
+    narrowed: `<ellipse class="eye" cx="11" cy="10" rx="4" ry="2"/>
+        <ellipse class="eye" cx="25" cy="10" rx="4" ry="2"/>
+        <circle class="eye-highlight" cx="12.5" cy="9" r="0.8"/>
+        <circle class="eye-highlight" cx="26.5" cy="9" r="0.8"/>`,
+    upward_open: `<ellipse class="eye" cx="11" cy="8" rx="3.5" ry="4"/>
+        <ellipse class="eye" cx="25" cy="8" rx="3.5" ry="4"/>
+        <circle class="eye-highlight" cx="12" cy="6" r="1.3"/>
+        <circle class="eye-highlight" cx="26" cy="6" r="1.3"/>`,
+    half_closed_down: `<ellipse class="eye" cx="11" cy="12" rx="3.5" ry="2"/>
+        <ellipse class="eye" cx="25" cy="12" rx="3.5" ry="2"/>`,
+    sharp_focused: `<ellipse class="eye" cx="11" cy="10" rx="3" ry="3.5"/>
+        <ellipse class="eye" cx="25" cy="10" rx="3" ry="3.5"/>
+        <circle class="eye-highlight" cx="11" cy="8" r="0.8"/>
+        <circle class="eye-highlight" cx="25" cy="8" r="0.8"/>`,
+    soft_half: `<ellipse class="eye" cx="11" cy="10" rx="3.5" ry="2.5"/>
+        <ellipse class="eye" cx="25" cy="10" rx="3.5" ry="2.5"/>
+        <circle class="eye-highlight" cx="12.5" cy="9" r="1.2"/>
+        <circle class="eye-highlight" cx="26.5" cy="9" r="1.2"/>`,
+    slightly_closed_up: `<ellipse class="eye" cx="11" cy="9" rx="3.5" ry="2.8"/>
+        <ellipse class="eye" cx="25" cy="9" rx="3.5" ry="2.8"/>
+        <circle class="eye-highlight" cx="12" cy="7.5" r="1"/>
+        <circle class="eye-highlight" cx="26" cy="7.5" r="1"/>`,
+    asymmetric_narrow: `<ellipse class="eye" cx="11" cy="10" rx="4" ry="2"/>
+        <ellipse class="eye" cx="25" cy="10" rx="3" ry="3"/>
+        <circle class="eye-highlight" cx="26" cy="8.5" r="1"/>`,
+    closed_down: `<line class="eye" x1="7.5" y1="12" x2="14.5" y2="12" stroke="rgba(0,0,0,0.7)" stroke-width="1.5" stroke-linecap="round"/>
+        <line class="eye" x1="21.5" y1="12" x2="28.5" y2="12" stroke="rgba(0,0,0,0.7)" stroke-width="1.5" stroke-linecap="round"/>`,
+    wide_sharp: `<ellipse class="eye" cx="11" cy="10" rx="4.5" ry="4"/>
+        <ellipse class="eye" cx="25" cy="10" rx="4.5" ry="4"/>
+        <circle class="eye-highlight" cx="13" cy="7.5" r="1.5"/>
+        <circle class="eye-highlight" cx="27" cy="7.5" r="1.5"/>`,
+    crescent: `<path class="eye" d="M7.5,12 Q11,6 14.5,12" fill="rgba(0,0,0,0.7)"/>
+        <path class="eye" d="M21.5,12 Q25,6 28.5,12" fill="rgba(0,0,0,0.7)"/>
+        <circle class="eye-highlight" cx="12" cy="9" r="0.8"/>
+        <circle class="eye-highlight" cx="26" cy="9" r="0.8"/>`,
+    wide_unfocused: `<ellipse class="eye" cx="10" cy="10" rx="4.5" ry="4.5"/>
+        <ellipse class="eye" cx="26" cy="10" rx="4.5" ry="4.5"/>
+        <circle class="eye-highlight" cx="12" cy="8" r="1"/>
+        <circle class="eye-highlight" cx="28" cy="8" r="1"/>`,
+    closed_peaceful: `<path class="eye" d="M7.5,10 Q11,14 14.5,10" fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="1.5" stroke-linecap="round"/>
+        <path class="eye" d="M21.5,10 Q25,14 28.5,10" fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="1.5" stroke-linecap="round"/>`,
+};
+
+let currentAvatar = {};
+async function fetchAvatar() {
+    try {
+        const r = await fetch('/api/avatar');
+        const data = await r.json();
+        if (data.color_hex) {
+            const orb = document.getElementById('avatar-orb');
+            orb.style.background = data.color_hex;
+            orb.style.boxShadow = `0 0 20px ${data.color_hex}40, inset 0 -8px 16px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.15)`;
+            const eyeSvg = document.getElementById('avatar-eyes');
+            const shape = EYE_SHAPES[data.expression_eyes] || EYE_SHAPES.relaxed_open;
+            eyeSvg.innerHTML = shape;
+            document.getElementById('avatar-choice').textContent =
+                `${data.color || 'silver'} · ${data.expression || 'calm'}`;
+            document.getElementById('avatar-reason').textContent =
+                data.reason || '';
+            currentAvatar = data;
+        }
+    } catch(e) { console.log('avatar fetch error', e); }
+}
+fetchAvatar();
+setInterval(fetchAvatar, 30000); // refresh every 30s
+
+</script>

@@ -1,0 +1,15 @@
+*.bak
+*.bak-*
+*.backup-*
+*.broken_*
+node_modules/
+__pycache__/
+*.pyc
+*.wav
+*.mp3
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.log
+.venv/
