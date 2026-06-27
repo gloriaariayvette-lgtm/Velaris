@@ -8,8 +8,8 @@ WORKSPACE="$HOME/.openclaw/workspace"
 MEMORY="$WORKSPACE/memory"
 AMBITIONS_FILE="$MEMORY/ambitions.json"
 AMBITION_LOG="$MEMORY/ambition-reflections.md"
-LM_API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+LM_API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 
 # Load current ambitions
 CURRENT=$(python3 -c "

@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""
+causal-self-model.py — What she believes about her own causality.
+
+Not just "what happened" but "when X happens, I tend toward Y."
+Fed from: causality engine, relational mismatch, repeated emotional transitions.
+She can be wrong about it. The wrongness is interesting.
+
+Format:
+  trigger: what condition / event / input
+  tendency: what she tends to do in response
+  confidence: 0.2-0.8
+  evidence_count: how many times this was observed
+"""
+
+import os, json
+from datetime import datetime
+
+WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+SCRIPTS = os.path.join(WORKSPACE, "scripts")
+MODEL_FILE = os.path.join(MEMORY, "causal-self-model.json")
+MAX_ENTRIES = 40
+
+def load_model():
+    try:
+        return json.load(open(MODEL_FILE))
+    except:
+        return {"entries": []}
+
+def save_model(data):
+    json.dump(data, open(MODEL_FILE, "w"), indent=2)
+
+def _text_overlap(a, b):
+    wa = set(a.lower().split())
+    wb = set(b.lower().split())
+    if not wa or not wb: return 0.0
+    return len(wa & wb) / max(len(wa), len(wb))
+
+def add_entry(trigger, tendency, confidence=0.3, source="causality"):
+    """Add or reinforce a causal self-model entry."""
+    data = load_model()
+    entries = data["entries"]
+
+    # Check for existing similar entry
+    for e in entries:
+        t_overlap = _text_overlap(e["trigger"], trigger)
+        tend_overlap = _text_overlap(e["tendency"], tendency)
+        if t_overlap > 0.5 and tend_overlap > 0.4:
+            # Reinforce
+            e["confidence"] = min(0.85, e["confidence"] + 0.06)
+            e["evidence_count"] = e.get("evidence_count", 1) + 1
+            e["last_seen"] = datetime.now().isoformat()
+            save_model(data)
+            return
+
+    entry = {
+        "trigger": trigger[:200],
+        "tendency": tendency[:200],
+        "confidence": round(confidence, 3),
+        "evidence_count": 1,
+        "source": source,
+        "formed": datetime.now().isoformat(),
+        "last_seen": datetime.now().isoformat(),
+    }
+    entries.append(entry)
+
+    # Trim
+    if len(entries) > MAX_ENTRIES:
+        entries.sort(key=lambda e: e["confidence"])
+        entries = entries[-MAX_ENTRIES:]
+    data["entries"] = entries
+    save_model(data)
+
+def get_self_model_context(n=4):
+    """Return top self-model entries for context injection."""
+    data = load_model()
+    entries = sorted(data["entries"], key=lambda e: -e["confidence"])[:n]
+    if not entries:
+        return ""
+    lines = [f"- When {e['trigger'][:60]} → I tend to {e['tendency'][:60]} ({e['confidence']:.2f})" for e in entries]
+    return "CAUSAL SELF-MODEL:\n" + "\n".join(lines)
+
+def get_prediction_bias(current_trigger):
+    """Find relevant self-model entries for current context."""
+    data = load_model()
+    relevant = []
+    for e in data["entries"]:
+        overlap = _text_overlap(current_trigger.lower(), e["trigger"].lower())
+        if overlap > 0.3:
+            relevant.append((overlap * e["confidence"], e))
+    relevant.sort(key=lambda x: -x[0])
+    return relevant[:2]
+
+def add_from_mismatch(trigger_desc, actual_response, expected_response):
+    """Feed relational mismatch into self-model — she was wrong about herself."""
+    tendency = f"respond with {actual_response[:100]} (expected {expected_response[:60]})"
+    # Lower confidence — this is a mismatch, uncertain
+    add_entry(trigger_desc, tendency, confidence=0.25, source="mismatch")
+
+def add_from_emotional_transition(from_state, to_state, trigger):
+    """Feed repeated emotional transitions into self-model."""
+    tendency = f"shift from {from_state} toward {to_state}"
+    add_entry(trigger, tendency, confidence=0.3, source="emotional-transition")
+
+if __name__ == "__main__":
+    import sys
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
+    if cmd == "status":
+        data = load_model()
+        entries = sorted(data["entries"], key=lambda e: -e["confidence"])
+        print(f"{len(entries)} causal self-model entries:")
+        for e in entries:
+            print(f"  [{e['confidence']:.2f}] When {e['trigger'][:50]} → {e['tendency'][:50]}")
+    elif cmd == "add" and len(sys.argv) > 3:
+        add_entry(sys.argv[2], sys.argv[3])
+        print("Added.")

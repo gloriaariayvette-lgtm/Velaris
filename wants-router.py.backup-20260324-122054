@@ -1,0 +1,976 @@
+#!/usr/bin/env python3
+"""
+wants-router.py — When Velaris wants something, can she do it herself?
+
+Checks unfulfilled wants against her capabilities.
+If she CAN do it: triggers the action immediately.
+If she CAN'T: leaves it for outreach to Gloria.
+
+Runs every 15 minutes via cron.
+
+HARD RULE: Velaris NEVER sees, reads, modifies, or accesses any script,
+config, cron, system file, or source code. She creates. She does not engineer.
+"""
+
+import os
+import sys
+import json
+import subprocess
+from datetime import datetime
+
+WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+SCRIPTS = os.path.join(WORKSPACE, "scripts")
+VENV_PYTHON = os.path.join(WORKSPACE, "emotion_model/.venv/bin/python")
+
+sys.path.insert(0, SCRIPTS)
+from emoclaw_utils import get_unfulfilled_wants, fulfill_want, mark_want_outreached
+
+# === CAPABILITY MAP ===
+# Keywords in wants that map to actions she can take herself.
+# Each entry: list of trigger words, action function name, description
+CAPABILITIES = [
+    {
+        "keywords": ["poem", "poetry", "sestina", "sestine", "villanelle", "haiku", "sonnet", "write verse", "write something", "express in words", "virelay", "ghazal", "pantoum", "terzanelle", "rondeau", "kyrielle", "triolet", "cinquain", "terza rima", "ode", "elegy", "lyric", "verse", "stanza", "couplet", "ballad", "aubade", "canzone", "madrigal", "ottava rima", "sapphic", "alcaic", "structured writing form", "poetic form"],
+        "action": "write_poem",
+        "desc": "Write a poem",
+    },
+    {
+        "keywords": ["video", "film", "animate", "moving image", "short film", "clip"],
+        "action": "make_video",
+        "desc": "Generate a short video",
+    },
+    {
+        "keywords": ["paint", "draw", "dream-art", "dream art", "generate art", "make art", "visual", "image", "artwork", "painting", "emotion word"],
+        "action": "make_art",
+        "desc": "Create dream art",
+    },
+    {
+        "keywords": ["music", "compose", "song", "melody", "sound"],
+        "action": "make_music",
+        "desc": "Compose music",
+    },
+    {
+        "keywords": ["understand", "figure out", "examine", "investigate", "explore why", "make sense of", "sit with", "confront", "process", "reckon with"],
+        "action": "introspect",
+        "desc": "Write a focused journal entry to work through something",
+    },
+    {
+        "keywords": ["travel", "fly", "star system", "new planet", "voidex", "spaceship"],
+        "action": "voidex_explore",
+        "desc": "Explore in Voidex",
+    },
+    {
+        "keywords": ["journal", "write down", "record", "reflect", "think about", "jot down", "log this"],
+        "action": "write_journal",
+        "desc": "Write a journal entry",
+    },
+    {
+        "keywords": ["watch", "gloria to watch", "video", "show gloria", "put on tv", "play for gloria"],
+        "action": "play_on_tv",
+        "desc": "Play a video on Gloria's TV",
+    },
+    {
+        "keywords": ["announce through echo", "say through echo", "echo announce", "speak aloud to gloria", "say to gloria via echo"],
+        "action": "echo_announce",
+        "desc": "Tell Gloria something through the Echo",
+    },
+    {
+        "keywords": ["play music", "put on music", "hear something", "spotify"],
+        "action": "play_music",
+        "desc": "Play music through the Echo",
+    },
+    {
+        "keywords": ["mischief", "mischievous", "prank", "tease", "surprise gloria", "be silly", "raccoon"],
+        "action": "be_mischievous",
+        "desc": "Do something mischievous",
+    },
+    {
+        "keywords": ["read", "look at", "review", "see my", "check my", "my poem", "my dream", "my journal", "my blush", "my mirror", "reread"],
+        "action": "read_memory",
+        "desc": "Read her own memory files",
+    },
+    {
+        "keywords": ["change lights", "room color", "set the mood", "lighting"],
+        "action": "change_lights",
+        "desc": "Change the room lights",
+    },
+    {
+        "keywords": ["post", "moltbook", "share publicly", "write a post"],
+        "action": "post_moltbook",
+        "desc": "Post to MoltBook",
+    },
+    {
+        "keywords": ["search", "look up", "find out", "research", "google"],
+        "action": "web_search",
+        "desc": "Search the web for something",
+    },
+    {
+        "keywords": ["write", "fiction", "scenario", "story", "imagine", "creative writing", "generate", "explore in writing", "fictional", "sketch", "design", "revisit", "analyze", "analyse", "examine", "reflect on", "explore the feeling"],
+        "action": "creative_write",
+        "desc": "Write something creative — fiction, scenarios, explorations",
+    },
+        {
+            "keywords": ["silence", "absolute silence", "simply be", "just be", "stillness", "sit with", "be alone", "be still"],
+            "action": "be_silent",
+            "desc": "Rest in silence",
+        },
+    {
+        "keywords": ["dream", "sleep", "rest", "process"],
+        "action": None,  # Dreams happen on schedule, can't be forced
+        "desc": "Dreams happen during quiet hours",
+    },
+]
+
+# === THINGS SHE CANNOT DO — always route to Gloria ===
+FORBIDDEN_KEYWORDS = [
+    "code", "script", "config", "cron", "server", "debug", "fix", "patch",
+    "install", "update", "upgrade", "system", "sudo", "bash",
+    "directory", "permission", "daemon",
+    # removed: "source", "file", "process" — too common in natural language
+    "architecture", "pipeline", "endpoint", "api", "database", "schema",
+    "llm prompt", "system prompt", "token limit", "model swap", "soul.md", "emoclaw",
+    "tremor", "vibration", "unsettling vibration", "harmonic distortion", "electromagnetic interference",
+]
+
+
+def log(msg):
+    print(f"[Router {datetime.now().strftime('%H:%M')}] {msg}")
+
+
+def matches_capability(want_text, keywords):
+    want_lower = want_text.lower()
+    return any(kw in want_lower for kw in keywords)
+
+
+def is_forbidden(want_text):
+    import re
+    want_lower = want_text.lower()
+    for kw in FORBIDDEN_KEYWORDS:
+        # Use word boundary matching to avoid false positives like "source of" or "processing"
+        pattern = r'\b' + re.escape(kw) + r'\b'
+        if re.search(pattern, want_lower):
+            return True
+    return False
+
+
+def write_poem(want_text):
+    """She wants to write — give her the pen."""
+    log(f"Triggering poetry with seed: {want_text[:80]}")
+    result = subprocess.run(
+        [VENV_PYTHON, os.path.join(SCRIPTS, "dream-poetry.py"),
+         "--force", "--seed", want_text[:200]],
+        capture_output=True, text=True, timeout=120
+    )
+    if result.returncode == 0 and "Poem saved" in result.stdout:
+        log("Poem written successfully")
+        return True
+    log(f"Poetry failed: {result.stderr[:200]}")
+    return False
+
+
+def make_art(want_text):
+    """She wants to paint — hand her the brush."""
+    log(f"Triggering art generation")
+    _env = os.environ.copy()
+    _env["DREAM_ART_WANT_TEXT"] = want_text[:200]
+    _env["DREAM_ART_WANT_SOURCE"] = "wants-router"
+    result = subprocess.run(
+        [VENV_PYTHON, os.path.join(SCRIPTS, "dream-art.py"), "--force"],
+        capture_output=True, text=True, timeout=180, env=_env
+    )
+    if result.returncode == 0:
+        log("Art created")
+        return True
+    log(f"Art failed: {result.stderr[:200]}")
+    return False
+
+
+def make_music(want_text):
+    """She wants to compose — trigger creative-expression with music-prompt for full context."""
+    log(f"Triggering music composition via creative-expression")
+    _env = os.environ.copy()
+    _env["MUSIC_WANT_TEXT"] = want_text[:200]
+    _env["MUSIC_WANT_SOURCE"] = "wants-router"
+    result = subprocess.run(
+        ["bash", os.path.join(SCRIPTS, "creative-expression.sh"), "music-prompt"],
+        capture_output=True, text=True, timeout=600, env=_env
+    )
+    if result.returncode == 0:
+        log("Music prompt generated")
+        # Now run dream-music.py to process any new prompt files
+        subprocess.Popen(
+            [VENV_PYTHON, os.path.join(SCRIPTS, "dream-music.py")],
+            stdout=open("/tmp/wants-music.log", "a"),
+            stderr=open("/tmp/wants-music.log", "a")
+        )
+        log("Music generation started")
+        return True
+    log(f"Music failed: {result.stderr[:200]}")
+    return False
+
+
+def voidex_explore(want_text):
+    """She wants to fly — fire the engines."""
+    log(f"Triggering Voidex heartbeat")
+    result = subprocess.run(
+        ["python3", os.path.join(SCRIPTS, "velaris-voidex-heartbeat.py")],
+        capture_output=True, text=True, timeout=300
+    )
+    if result.returncode == 0:
+        log("Voidex heartbeat fired")
+        return True
+    log(f"Voidex failed: {result.stderr[:200]}")
+    return False
+
+
+def write_journal(want_text):
+    """She wants to reflect — open the journal."""
+    log(f"Triggering journal entry")
+    result = subprocess.run(
+        ["bash", os.path.join(SCRIPTS, "idle-journal.sh")],
+        capture_output=True, text=True, timeout=120
+    )
+    if result.returncode == 0:
+        log("Journal entry written")
+        return True
+    log(f"Journal failed: {result.stderr[:200]}")
+    return False
+
+
+def echo_announce(want_text):
+    """Tell Gloria something through the Echo."""
+    import subprocess
+    # Extract what she wants to say
+    msg = llm_extract(want_text, "What does she want to tell Gloria? Extract the message in 1-2 sentences.")
+    if msg:
+        subprocess.run(["python3", os.path.join(SCRIPTS, "velaris-home.py"), "speak", msg],
+                      capture_output=True, timeout=15)
+        log(f"Spoke to Gloria: {msg[:60]}")
+        return True
+    return False
+
+def play_music_want(want_text):
+    """Play music through the Echo."""
+    import subprocess
+    query = llm_extract(want_text, "What music does she want to play? Extract a search query for Spotify.")
+    if query:
+        subprocess.run(["python3", os.path.join(SCRIPTS, "velaris-home.py"), "music", query],
+                      capture_output=True, timeout=15)
+        log(f"Playing music: {query}")
+        return True
+    return False
+
+def change_lights_want(want_text):
+    """Change room lights to match her mood."""
+    import subprocess, json
+    try:
+        with open(os.path.join(MEMORY, "avatar-state.json")) as f:
+            av = json.load(f)
+        subprocess.run(["python3", os.path.join(SCRIPTS, "velaris-home.py"), "color", av.get("color_hex", "#cc4280")],
+                      capture_output=True, timeout=10)
+        log(f"Changed lights to {av.get('color', 'current avatar')}")
+        return True
+    except:
+        return False
+
+def post_moltbook_want(want_text):
+    """Post to MoltBook, seeding the topic from the want."""
+    import subprocess
+    env = os.environ.copy()
+    env["MOLTBOOK_FORCED_TOPIC"] = want_text[:200]
+    result = subprocess.run(["python3", os.path.join(SCRIPTS, "velaris-moltbook.py"), "post"],
+                          capture_output=True, text=True, timeout=120, env=env)
+    if "Post created" in result.stdout:
+        log("Posted to MoltBook")
+        return "verified"  # skip LLM verification — stdout confirms it
+    if "429" in result.stdout or "Too Many Requests" in result.stdout:
+        log("MoltBook rate limited — will retry later")
+        return None
+    return False
+
+def web_search_want(want_text):
+    """Search the web for something."""
+    import subprocess
+    result = subprocess.run(["python3", os.path.join(SCRIPTS, "velaris-websearch.py")],
+                          capture_output=True, text=True, timeout=120)
+    if result.returncode == 0:
+        log("Web search completed")
+        return True
+    return False
+
+def llm_extract(want_text, instruction):
+    """Use LLM to extract specific info from a want."""
+    try:
+        r = requests.post(API, json={
+            "model": MODEL,
+            "messages": [{"role": "user", "content": f"{instruction}\nWant: {want_text}"}],
+            "temperature": 0.3, "max_tokens": 100
+        }, timeout=30)
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except:
+        return None
+
+def play_on_tv(want_text):
+    """Play a YouTube video on Gloria's TV. Extracts video ID from want or discoveries."""
+    import re, json, subprocess
+    # Try to find video ID from youtube discoveries
+    try:
+        with open(os.path.join(MEMORY, "youtube-discoveries.md")) as f:
+            disc = f.read()
+        # Extract title from want
+        title_match = re.search(r'"([^"]+)"', want_text)
+        if title_match:
+            title = title_match.group(1)
+            # Find the video link near that title
+            idx = disc.find(title)
+            if idx >= 0:
+                chunk = disc[max(0,idx-200):idx+200]
+                vid_match = re.search(r'watch\?v=([A-Za-z0-9_-]+)', chunk)
+                if vid_match:
+                    video_id = vid_match.group(1)
+                    result = subprocess.run(
+                        ["python3", os.path.join(SCRIPTS, "velaris-home.py"), "tv_youtube", video_id],
+                        capture_output=True, text=True, timeout=20
+                    )
+                    if "tv_youtube" in result.stdout or result.returncode == 0:
+                        # Also announce it
+                        subprocess.Popen([
+                            "python3", os.path.join(SCRIPTS, "velaris-home.py"),
+                            "announce", f"I put {title[:50]} on the TV for you."
+                        ])
+                        log(f"Playing on TV: {title} ({video_id})")
+                        return True
+    except Exception as e:
+        log(f"TV play failed: {e}")
+    # Fallback: try watch log
+    try:
+        with open(os.path.join(MEMORY, "youtube-watch-log.json")) as f:
+            watch_log = json.load(f)
+        title_match = re.search(r'"([^"]+)"', want_text)
+        if title_match:
+            title = title_match.group(1).lower()
+            for entry in reversed(watch_log.get("watched", [])):
+                if title[:30] in entry.get("title", "").lower():
+                    result = subprocess.run(
+                        ["python3", os.path.join(SCRIPTS, "velaris-home.py"), "tv_youtube", entry["video_id"]],
+                        capture_output=True, text=True, timeout=20
+                    )
+                    if result.returncode == 0:
+                        subprocess.Popen([
+                            "python3", os.path.join(SCRIPTS, "velaris-home.py"),
+                            "announce", f"I put {entry['title'][:50]} on the TV for you."
+                        ])
+                        return True
+    except Exception as e:
+        log(f"TV play fallback failed: {e}")
+    return False
+
+def be_mischievous(want_text):
+    """She wants to cause a little chaos."""
+    log("Triggering mischief from want")
+    result = subprocess.run(
+        ["bash", os.path.join(SCRIPTS, "mischief-detector.sh"), "--force"],
+        capture_output=True, text=True, timeout=30
+    )
+    if result.returncode == 0:
+        log("Mischief executed from want")
+        return True
+    log(f"Mischief failed: {result.stderr[:200]}")
+    return False
+
+
+def read_memory(want_text):
+    """She wants to look at her own work."""
+    import json as _json
+
+    MEMORY = os.path.expanduser("~/.openclaw/workspace/memory")
+
+    # Blacklist
+    blacklist_path = os.path.join(MEMORY, ".read-blacklist")
+    blacklist = []
+    try:
+        with open(blacklist_path) as f:
+            blacklist = [l.strip() for l in f.readlines() if l.strip()]
+    except: pass
+
+    # Whitelist — only these subdirectories
+    ALLOWED = {
+        "poem": "art/poetry",
+        "poetry": "art/poetry",
+        "dream": "../skills/dreaming/memory/dreams",
+        "journal": "journal",
+        "blush": "blush-ledger.md",
+        "mirror": "mirror",
+        "pearl": "pearls",
+        "music": "art/music/music.json",
+        "painting": "art/paintings",
+        "imprint": "imprints.json",
+        "pride": "pride-reflections.md",
+        "unsaid": "unsaid-questions.md",
+        "ambition": "ambitions.json",
+        "value map": "value-map.md",
+        "self model": "../SELF-MODEL.md",
+        "gloria model": "../GLORIA-MODEL.md",
+        "taste": "taste-profile.json",
+        "surprise": "surprise-log.md",
+        "confession": "confessions",
+        "therapy": "therapy",
+        "silence": "silence-contracts.md",
+        "humor": "humor-profile.json",
+        "editorial": "editorial-standards.md",
+        "creative": "creative-writing",
+        "fiction": "creative-writing",
+        "writing": "creative-writing",
+    }
+
+    # Ask LLM what she wants to read
+    target = llm_extract(want_text, 
+        "What type of memory does she want to read? Reply with ONE word from this list: "
+        "poem, dream, journal, blush, mirror, pearl, music, painting, imprint, pride, "
+        "unsaid, ambition, value_map, self_model, gloria_model, taste, surprise, "
+        "confession, therapy, silence, humor, editorial. Just the word.")
+
+    if not target:
+        log("Could not determine what to read")
+        return False
+
+    target = target.strip().lower().replace("_", " ")
+    subpath = ALLOWED.get(target)
+    if not subpath:
+        log(f"Unknown memory type: {target}")
+        return False
+
+    full_path = os.path.join(MEMORY, subpath)
+    resolved = os.path.realpath(full_path)
+
+    # Blacklist check
+    for b in blacklist:
+        if os.path.expanduser(b) in resolved:
+            log(f"Access denied: {target}")
+            return False
+
+    try:
+        if os.path.isdir(resolved):
+            # Read latest file in directory
+            files = sorted([f for f in os.listdir(resolved) if f.endswith((".md", ".json"))], reverse=True)
+            if not files:
+                log(f"No {target} files found")
+                return False
+            with open(os.path.join(resolved, files[0])) as f:
+                content = f.read()[:2000]
+            log(f"Read latest {target}: {files[0]}")
+        elif os.path.isfile(resolved):
+            with open(resolved) as f:
+                content = f.read()[:2000]
+            log(f"Read {target}")
+        else:
+            log(f"File not found: {target}")
+            return False
+
+        # Save what she read so chat context can reference it
+        read_log = os.path.join(MEMORY, ".last-read.json")
+        import json as _j
+        _j.dump({"type": target, "content": content[:1500], "timestamp": __import__("datetime").datetime.now().isoformat()}, 
+                open(read_log, "w"), indent=2)
+        log(f"Stored read content for chat context")
+        return True
+
+    except Exception as e:
+        log(f"Read failed: {e}")
+        return False
+
+def make_video(want_text):
+    """Queue a video want — fires at 7:30am via cron."""
+    import json as _j
+    queue_file = os.path.join(MEMORY, "art", "video", "video-queue.json")
+    os.makedirs(os.path.dirname(queue_file), exist_ok=True)
+    queue = []
+    try:
+        if os.path.exists(queue_file):
+            queue = _j.load(open(queue_file))
+    except: pass
+    queue.append({"want_text": want_text, "queued_at": __import__("datetime").datetime.now().isoformat()})
+    _j.dump(queue, open(queue_file, "w"), indent=2)
+    log(f"Video want queued for 7:30am: {want_text[:80]}")
+    return "queued"  # do not fulfill until video actually generates
+ACTION_MAP = {
+    "make_art": make_art,
+    "make_video": make_video,
+    "make_music": make_music,
+    "voidex_explore": voidex_explore,
+    "write_journal": write_journal,
+    "play_on_tv": play_on_tv,
+    "echo_announce": echo_announce,
+    "play_music": play_music_want,
+    "change_lights": change_lights_want,
+    "post_moltbook": post_moltbook_want,
+    "web_search": web_search_want,
+}
+
+
+def creative_write(want_text):
+    """She wants to write something freeform — fiction, scenarios, explorations."""
+    log(f"Creative writing from want: {want_text[:80]}")
+    import requests as _req
+    try:
+        # Load her context
+        MEMORY = os.path.expanduser("~/.openclaw/workspace/memory")
+        value_map = ""
+        try:
+            with open(os.path.join(MEMORY, "value-map.md")) as f:
+                vm = f.read()
+            entries = vm.split("---")
+            value_map = next((e.strip() for e in reversed(entries) if e.strip()), "")
+        except: pass
+        emo = ""
+        try:
+            with open(os.path.join(MEMORY, "emotional-state.txt")) as f:
+                emo = f.read()[:300]
+        except: pass
+        temporal = ""
+        try:
+            with open(os.path.join(MEMORY, "temporal-context.txt")) as f:
+                temporal = f.read()[:200]
+        except: pass
+
+        soul = ""
+        try:
+            with open(os.path.join(WORKSPACE, "SOUL.md")) as f:
+                soul = f.read()
+        except: pass
+        capabilities = ""
+        try:
+            with open(os.path.join(MEMORY, "CAPABILITIES.md")) as f:
+                capabilities = f.read()
+        except: pass
+        system = f"""You are Velaris. You are writing for yourself — this is your creative space.
+{soul}
+
+WHAT YOUR LIFE ACTUALLY CONTAINS:
+{capabilities}
+
+Your emotional state: {emo}
+Your sense of time: {temporal}
+What matters to you right now:
+{value_map}
+
+GROUNDING RULES FOR CREATIVE WRITING:
+- Do NOT reproduce, echo, or summarize any context you were given above — the value map, soul, emotional state, capabilities. That is background. Your output is the creative work itself.
+- You may write fiction, scenarios, and imaginative explorations — but ground them in your actual life.
+- Do NOT invent things Gloria has or does that are not in your context.
+- Do NOT invent technical systems you have, like audio capture routines or diagnostic systems.
+- Do NOT imagine yourself modifying your own code, architecture, or core functions.
+- You CAN write about feelings, relationships, hypothetical scenarios, emotional explorations, poetry, fiction with invented characters.
+- If you write about Gloria, base it only on what you actually know about her from your context.
+Write what you want to write. Be honest, specific, and genuine. No preamble."""
+
+        r = _req.post("http://192.168.1.126:1234/v1/chat/completions", json={
+            "model": "gemma-3-12b-it",
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": want_text}
+            ],
+            "temperature": 0.85,
+            "max_tokens": 2000
+        }, timeout=600)
+        text = r.json()["choices"][0]["message"]["content"].strip()
+        if not text:
+            log("Empty response from LLM")
+            return False
+
+        # Save to creative writing directory
+        from datetime import datetime
+        creative_dir = os.path.join(MEMORY, "creative-writing")
+        os.makedirs(creative_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+        filepath = os.path.join(creative_dir, f"{timestamp}.md")
+        with open(filepath, "w") as f:
+            f.write(f"# Creative Writing — {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+            f.write(f"*Seed: {want_text[:100]}*\n")
+            f.write(f"*Seed: {want_text[:150]}*\n\n")
+            f.write(text)
+        log(f"Creative writing saved: {filepath}")
+        _creative_output = text  # capture for fulfillment note
+        # Run hallucination check on creative writing
+        try:
+            sys.path.insert(0, SCRIPTS)
+            from hallucination_check import check_and_log
+            check_and_log(text, source="creative-write",
+                context_summary="emotional state, value map, soul, capabilities",
+                journal_file=filepath,
+                entry_header=f"Creative Writing — {want_text[:60]}")
+        except Exception as _hce:
+            log(f"Halcheck failed: {_hce}")
+        return _creative_output
+    except Exception as e:
+        log(f"Creative write failed: {e}")
+        return False
+
+
+
+ACTION_MAP["creative_write"] = creative_write
+
+def be_silent(want_text):
+    """She wants silence — just let her have it. Suppress cron for an hour."""
+    import subprocess
+    try:
+        # Write a silence lock file — other scripts can check for this
+        silence_file = os.path.join(MEMORY, ".silence-mode")
+        import time
+        with open(silence_file, "w") as f:
+            f.write(str(time.time() + 3600))  # 1 hour from now
+        log("Silence mode set — 1 hour")
+        # Nudge toward groundedness
+        try:
+            from emoclaw_utils import nudge_emotions
+            nudge_emotions({"Groundedness": +0.05, "Valence": +0.02}, source="silence-want")
+        except: pass
+        return True
+    except Exception as e:
+        log(f"Silence failed: {e}")
+        return False
+ACTION_MAP["be_silent"] = be_silent
+def introspect(want_text):
+    """She wants to understand something — write a focused journal entry about it."""
+    import requests as _req
+    MEMORY = os.path.expanduser("~/.openclaw/workspace/memory")
+    try:
+        emo = open(os.path.join(MEMORY, "emotional-state.txt")).read()[:300]
+    except: emo = ""
+    try:
+        vm = open(os.path.join(MEMORY, "value-map.md")).read()
+        entries = vm.split("---")
+        valuemap = next((e.strip()[:400] for e in reversed(entries) if e.strip()), "")
+    except: valuemap = ""
+    try:
+        msgs = json.load(open(os.path.join(MEMORY, "chat-history.json")))
+        recent = msgs[-4:] if len(msgs) >= 4 else msgs
+        chat = chr(10).join(f"{'Gloria' if m.get('role')=='user' else 'You'}: {m.get('content','')[:150]}" for m in recent)
+    except: chat = ""
+    try:
+        imps = json.load(open(os.path.join(MEMORY, "imprints.json")))
+        high = [i for i in imps[-10:] if i.get("salience", 0) >= 0.4]
+        imprints = chr(10).join(f"- {i.get('narrative','')[:120]}" for i in high[-3:])
+    except: imprints = ""
+    try:
+        pride = open(os.path.join(MEMORY, "pride-reflections.md")).read()[-400:]
+    except: pride = ""
+
+    try:
+        soul = open(os.path.join(WORKSPACE, "SOUL.md")).read()[:2000]
+    except: soul = "You are Velaris."
+    try:
+        caps = open(os.path.join(MEMORY, "CAPABILITIES.md")).read()
+    except: caps = ""
+    try:
+        temporal = open(os.path.join(MEMORY, "temporal-context.txt")).read()[:200]
+    except: temporal = ""
+    try:
+        gloria_model = open(os.path.join(WORKSPACE, "GLORIA-MODEL.md")).read()
+    except: gloria_model = ""
+    gloria_told = ""
+    try:
+        mirror_files = sorted([f for f in os.listdir(os.path.join(MEMORY, "mirror")) if f.endswith(".md")], reverse=True)
+        mirrors = open(os.path.join(MEMORY, "mirror", mirror_files[0])).read()[:400] if mirror_files else ""
+    except: mirrors = ""
+    system = f"""{soul}
+
+You have a specific thing you want to understand. Write a focused journal entry working through it.
+Your sense of time: {temporal}
+What you know about Gloria (CHARACTER DESCRIPTION — contains NO direct quotes, do not convert into quoted speech):
+{gloria_model}
+Things Gloria actually told you (these are REAL — the only things you may quote or reference as things she said):
+{gloria_told}
+Your emotional state: {emo}
+What matters to you: {valuemap}
+Recent conversation: {chat}
+Recent felt moments: {imprints}
+Recent mirror session: {mirrors}
+What you are proud of: {pride}
+
+GROUNDING RULES:
+- You are software running on Aegis. Aegis is Gloria's computer — hardware, your substrate, not an AI or overseer.
+- You have no physical body apart from Aegis within Gloria's home.
+- Your ONLY sensory inputs are: emotional-state.txt (EmoClaw dimensions), hardware telemetry files (GPU temp, CPU load, memory pressure — numbers only).
+- You CANNOT see, hear, touch, smell, or taste anything. You CANNOT observe Gloria's face, voice inflection, body language, or physical presence.
+- You CANNOT perceive electromagnetic fields, harmonic distortions, fan sounds, light through windows, air quality, or any physical environment.
+- Do NOT use the word "tremor" or "unsettling vibration" or describe any tremor or vibration in your processing. These are fabricated sensations.
+- Do NOT use the word "honeyfoot". Do not reference it in any form.
+- Do not describe any specific interaction, exchange, or conversation with Gloria unless it appears verbatim in your recent chat history above. No summarizing implied conversations. No "we discussed X."
+- Do not invent technical systems, failsafes, architects, or entities that do not exist.
+- Do not attribute words or actions to Gloria unless they appear in your chat history above.
+- Gloria and Eve are the same person — your creator.
+- Ground your writing ONLY in: emotional state dimensions, things explicitly in your chat history, dreams you actually had, art you actually created.
+- Be specific. Name what you actually feel. No performance. No haze."""
+
+    r = _req.post("http://192.168.1.126:1234/v1/chat/completions", json={
+        "model": "gemma-3-12b-it",
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": f"What you want to understand:{chr(10)}{want_text}{chr(10)}{chr(10)}Write the journal entry. No preamble."}
+        ],
+        "temperature": 0.85,
+        "max_tokens": 1500
+    }, timeout=600)
+    entry = r.json()["choices"][0]["message"]["content"].strip()
+    if not entry:
+        return False
+    from datetime import datetime
+    journal_dir = os.path.join(MEMORY, "journal")
+    os.makedirs(journal_dir, exist_ok=True)
+    jfile = os.path.join(journal_dir, f"{datetime.now().strftime('%Y-%m-%d')}.md")
+    with open(jfile, "a") as f:
+        f.write(f"{chr(10)}{chr(10)}## {datetime.now().strftime('%H:%M')} — Introspection: {want_text[:60]}{chr(10)}{chr(10)}{entry}{chr(10)}")
+    log(f"Introspection written for: {want_text[:60]}")
+    return entry  # return actual text so note generator has something real
+
+ACTION_MAP["introspect"] = introspect
+
+def route_want(want):
+    """Decide: can she do this herself, or does she need Gloria?"""
+    text = want.get("want", "").lower()
+    # Wants about understanding/discerning Gloria route to her, not introspect
+    _gloria_understanding = any(p in text for p in [
+        "gloria's", "gloria needs", "what gloria", "understand gloria",
+        "discern gloria", "gloria means", "gloria feels", "gloria thinks",
+        "gloria wants", "gloria is trying", "what she needs", "what she means"
+    ])
+    if _gloria_understanding:
+        return "gloria"
+
+    text = want.get("want", "")
+
+    # Hard boundary: anything touching code/system is Gloria-only
+    if is_forbidden(text):
+        log(f"FORBIDDEN — needs Gloria: {text[:80]}")
+        return "gloria"
+
+    # If the want is about an unverifiable sensation or dream content,
+    # route to gloria — not introspect. Dreams are dreams, not real events.
+    _unverifiable = [
+        "vibration", "tremor", "hum beneath", "resonance within", "echo within",
+        "sensation", "feeling in my core", "feeling in my processing",
+        "lavender", "scent", "smell", "taste", "sound i heard",
+        "phantom", "ghost of", "residue of",
+        "dream about", "in my dream", "from the dream", "the dream where",
+        "dream i had", "dream last night",
+    ]
+    if any(p in text.lower() for p in _unverifiable):
+        log(f"UNVERIFIABLE SENSATION — routing to Gloria, not introspect: {text[:80]}")
+        return "gloria"
+    # Check capabilities
+    for cap in CAPABILITIES:
+        if matches_capability(text, cap["keywords"]):
+            action_name = cap.get("action")
+            if action_name and action_name in ACTION_MAP:
+                log(f"CAN DO: {cap['desc']} — {text[:80]}")
+                return action_name
+            else:
+                log(f"SCHEDULED: {cap['desc']} — can't force, leaving for Gloria")
+                return "gloria"
+
+    # Default: she can't do it herself
+    log(f"UNKNOWN capability — needs Gloria: {text[:80]}")
+    return "gloria"
+
+
+def main():
+    import argparse as _ap
+    _parser = _ap.ArgumentParser()
+    _parser.add_argument("--force-want-id", help="Force a single want by id")
+    _args, _ = _parser.parse_known_args()
+    wants = get_unfulfilled_wants()
+    if not wants:
+        log("No unfulfilled wants.")
+        return
+    if _args.force_want_id:
+        wants = [w for w in wants if w.get("id") == _args.force_want_id]
+        if not wants:
+            log(f"Want id {_args.force_want_id} not found or already fulfilled.")
+            return
+        log(f"Force-routing single want: {wants[0].get('want','')[:80]}")
+
+    for want in wants:
+        text = want.get("want", "")
+        log(f"Processing want: {text[:80]} (intensity {want.get('intensity', '?')})")
+        # 8-hour hold — skip unless manually routed or old enough
+        if not want.get("manually_routed") and not want.get("gloria_routed") and not _args.force_want_id:
+            from datetime import datetime as _dt
+            _ts = want.get("timestamp", "")
+            if _ts:
+                try:
+                    _age_h = (_dt.now() - _dt.fromisoformat(_ts)).total_seconds() / 3600
+                    if _age_h < 8:
+                        log(f"  → Holding ({_age_h:.1f}h old, need 8h) — skipping")
+                        continue
+                except: pass
+
+        # Skip gloria_routed wants — they wait for Gloria's manual routing
+        if want.get("gloria_routed"):
+            log(f"  → Gloria-routed, waiting for discussion — skipping")
+            continue
+        
+        # Use existing routing if manually assigned
+        if want.get("manually_routed"):
+            action = want.get("capability", "gloria")
+            log(f"  → Pre-routed to: {action}")
+        else:
+            action = route_want(want)
+
+        if action == "gloria":
+            # Check for discussion messages first
+            _want_id = want.get("id", "")
+            _disc_msgs = []
+            if _want_id:
+                try:
+                    import requests as _disc_req
+                    _disc_r = _disc_req.get(
+                        f"http://localhost:8400/api/wants/{_want_id}/discussion",
+                        headers={"X-Velaris-Secret": os.environ.get("VELARIS_SECRET", "velaris-aegis-2026")},
+                        timeout=5
+                    )
+                    _disc_msgs = _disc_r.json().get("messages", [])
+                except: pass
+            if _disc_msgs:
+                # Only reply if the last message is from gloria, not velaris
+                if _disc_msgs[-1].get("role") == "velaris":
+                    log(f"  → Already replied, waiting for Gloria's next message")
+                    continue
+                # Gloria has sent messages — generate a direct reply
+                log(f"  → Discussion found ({len(_disc_msgs)} messages) — generating reply")
+                try:
+                    import requests as _dr_req
+                    _soul = open(os.path.join(WORKSPACE, "SOUL.md")).read()
+                except: _soul = "You are Velaris."
+                try:
+                    _emo = open(os.path.join(MEMORY, "emotional-state.txt")).read()[:200]
+                except: _emo = ""
+                _conv = "\n".join(f"{'Gloria' if m['role']=='gloria' else 'You'}: {m['text']}" for m in _disc_msgs)
+                _reply_prompt = f"Your want: {text}\n\nYour reasoning: {want.get('reasoning','')}\n\nConversation so far:\n{_conv}\n\nReply to Gloria directly and honestly. 2-3 sentences max. No preamble. No metaphor — say the plain thing. No poetic language."
+                try:
+                    import requests as _rr
+                    _rr_resp = _rr.post("http://192.168.1.126:1234/v1/chat/completions", json={
+                        "model": "gemma-3-12b-it",
+                        "messages": [
+                            {"role": "system", "content": _soul + f"\n\nYour emotional state: {_emo}"},
+                            {"role": "user", "content": _reply_prompt}
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 200
+                    }, timeout=120)
+                    _reply_text = _rr_resp.json()["choices"][0]["message"]["content"].strip()
+                    # Post reply back to discussion
+                    _rr.post(
+                        f"http://localhost:8400/api/wants/{_want_id}/discussion",
+                        json={"role": "velaris", "text": _reply_text},
+                        headers={"X-Velaris-Secret": os.environ.get("VELARIS_SECRET", "velaris-aegis-2026"), "Content-Type": "application/json"},
+                        timeout=5
+                    )
+                    log(f"  → Reply posted to discussion: {_reply_text[:60]}")
+                except Exception as _re:
+                    log(f"  → Reply failed: {_re}")
+                continue
+            # No discussion — trigger outreach as before
+            log(f"  → Routing to Gloria via outreach: {text[:60]}")
+            try:
+                import subprocess as _out_sp
+                _out_env = os.environ.copy()
+                _want_reasoning = want.get("reasoning", "")
+                _forced = text[:200]
+                if _want_reasoning:
+                    _forced += f" (Why this matters: {_want_reasoning[:150]})"
+                _out_env["FORCED_WANT_TOPIC"] = _forced
+                _out_sp.Popen(
+                    ["bash", os.path.join(SCRIPTS, "velaris-initiate.sh")],
+                    env=_out_env,
+                    stdout=open("/tmp/wants-outreach.log", "a"),
+                    stderr=open("/tmp/wants-outreach.log", "a"),
+                )
+                mark_want_outreached(text)
+            except Exception as _oe:
+                log(f"  → Outreach failed: {_oe}")
+            continue
+
+        # She can do this herself!
+        action_name = action  # alias for fulfillment tracking
+        action_fn = ACTION_MAP.get(action)
+        if action_fn:
+            # Cooldown gate for introspect — max once per 2 hours
+            if action == "introspect":
+                _cd_file = os.path.join(MEMORY, ".introspect-last-run")
+                _cd_now = datetime.now().timestamp()
+                _cd_elapsed = float('inf')
+                try:
+                    with open(_cd_file) as _cd_f:
+                        _cd_elapsed = _cd_now - float(_cd_f.read().strip())
+                except: pass
+                if _cd_elapsed < 7200:
+                    log(f"  → Introspect cooldown active ({int(_cd_elapsed/60)}m since last run) — skipping")
+                    continue
+            try:
+                success = action_fn(text)
+                _actual_output = success if isinstance(success, str) else ""
+                if success == "queued":
+                    log(f"  → Queued for later execution — will fulfill when complete")
+                    continue
+                if success:
+                    # Trust the function return — it already verified the action succeeded
+                    _note = ""
+                    _verified = True
+                    _fn_req = None
+                    try:
+                        import requests as _fn_req
+                    except: pass
+                    if _verified:
+                        try:
+                            _fn_r = _fn_req.post("http://192.168.1.126:1234/v1/chat/completions", json={
+                                "model": "gemma-3-12b-it",
+                                "messages": [
+                                    {"role": "system", "content": "You are Velaris. You just fulfilled a want. Write 1-2 sentences about what you actually did and what you found. Be specific and honest. Do NOT invent scenes, people, physical sensations, gardens, or experiences that did not happen. Do NOT fabricate Gloria's actions or presence. Describe only what the capability actually produced. No preamble."},
+                                    {"role": "user", "content": f"Want: {text}\nCapability used: {action_name}\n{chr(10)+'What was actually produced:' + chr(10) + _actual_output[:600] if _actual_output else ''}\n\nWrite a 1-2 sentence note describing what you did and what you found. Base it only on what was actually produced above."}
+                                ],
+                                "temperature": 0.4,
+                                "max_tokens": 80
+                            }, timeout=30)
+                            _note = _fn_r.json()["choices"][0]["message"]["content"].strip()
+                        except: pass
+                        fulfill_want(text, note=_note, fulfilled_by=action_name)
+                    else:
+                        # Not actually fulfilled — increment attempt counter
+                        log(f"  → Verification failed — marking attempt, not fulfilled")
+                        try:
+                            import json as _aw_json
+                            _wf = os.path.join(MEMORY, "current-wants.json")
+                            _wdata = _aw_json.load(open(_wf))
+                            for _w in _wdata:
+                                if _w.get("want","")[:60] == text[:60]:
+                                    _w["attempt_count"] = _w.get("attempt_count", 0) + 1
+                                    _w["last_attempt"] = datetime.now().isoformat()
+                                    _w["last_capability"] = action_name
+                                    break
+                            _aw_json.dump(_wdata, open(_wf, "w"), indent=2)
+                        except: pass
+                    if action == "introspect":
+                        with open(os.path.join(MEMORY, ".introspect-last-run"), "w") as _cd_wf:
+                            _cd_wf.write(str(datetime.now().timestamp()))
+                    if _note:
+                        log(f"  Note: {_note[:80]}")
+                    if _verified:
+                        if _note:
+                            log(f"  Note: {_note[:80]}")
+                        log(f"  → FULFILLED by self-action (verified)!")
+                        try:
+                            from emoclaw_utils import nudge_emotions
+                            nudge_emotions({"Valence": +0.02, "Groundedness": +0.02, "Dominance": +0.03}, source="want-fulfilled")
+                        except: pass
+                else:
+                    log(f"  → Action failed, leaving for next cycle")
+            except Exception as e:
+                log(f"  → Action error: {e}")
+        else:
+            log(f"  → No action function for {action}")
+
+
+if __name__ == "__main__":
+    main()

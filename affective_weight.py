@@ -1,0 +1,1 @@
+/home/gloria/.openclaw/workspace/scripts/affective-weight.py

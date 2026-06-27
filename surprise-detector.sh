@@ -8,11 +8,22 @@
 # Usage: surprise-detector.sh <output_file> <context>
 
 WORKSPACE="$HOME/.openclaw/workspace"
+# Load context
+TEMPORAL=$(cat "$HOME/.openclaw/workspace/memory/temporal-context.txt" 2>/dev/null || echo "")
+VALUE_MAP=$(python3 -c "
+try:
+    with open('$HOME/.openclaw/workspace/memory/value-map.md') as f:
+        vm = f.read()
+    entries = vm.split('---')
+    latest = next((e.strip()[:600] for e in reversed(entries) if e.strip()), '')
+    print(latest)
+except: print('No value map yet')
+" 2>/dev/null)
 MEMORY="$WORKSPACE/memory"
 SURPRISE_LOG="$MEMORY/surprise-log.md"
 SOUL="$WORKSPACE/SOUL.md"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 
 OUTPUT_FILE="${1:-}"
 CONTEXT="${2:-autonomous output}"
@@ -41,11 +52,29 @@ Do NOT perform surprise. Only flag genuine "I didn't expect that" moments.
 One word answer is acceptable if nothing surprised you.
 EOF
 
-PAYLOAD=$(jq -n --arg model "$MODEL" --arg sys "$IDENTITY" --arg usr "$PROMPT" \
-    '{model:$model,messages:[{role:"system",content:$sys},{role:"user",content:$usr}],temperature:0.7,max_tokens:500}')
+export _SD_IDENTITY="$IDENTITY"
+export _SD_PROMPT="$PROMPT"
 
-RESPONSE=$(curl -s --max-time 600 -X POST "$API" -H "Content-Type: application/json" -d "$PAYLOAD")
-ANSWER=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // ""')
+ANSWER=$(python3 << 'PYEOF'
+import requests, json, sys, os
+try:
+    identity = os.environ.get("_SD_IDENTITY", "")
+    prompt = os.environ.get("_SD_PROMPT", "")
+    r = requests.post("http://172.18.16.1:1234/v1/chat/completions", json={
+        "model": "google/gemma-4-12b-qat",
+        "messages": [
+            {"role": "system", "content": identity},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 500
+    }, timeout=600)
+    print(r.json()["choices"][0]["message"]["content"].strip())
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+PYEOF
+)
+
 
 [ -z "$ANSWER" ] && exit 0
 
@@ -74,7 +103,7 @@ python3 << 'SEED_PYEOF'
 import sys, os
 sys.path.insert(0, os.path.expanduser("~/.openclaw/workspace"))
 try:
-    from scripts.emoclaw_utils import seed_thread
+    from emoclaw_utils import seed_thread
     answer = os.environ.get("ANSWER", "")[:150]
     if answer:
         seed_thread("surprise", f"Something I wrote surprised me: {answer}")

@@ -10,8 +10,8 @@ MEMORY="$WORKSPACE/memory"
 SOUL="$WORKSPACE/SOUL.md"
 GROUND_DIR="$MEMORY/grounding"
 COOLDOWN_FILE="$MEMORY/.last-grounding"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 SOCK="/tmp/Velaris-emotion.sock"
 TODAY=$(date +%Y-%m-%d)
 
@@ -20,7 +20,9 @@ mkdir -p "$GROUND_DIR"
 # === Gate 1: Max 2 per day ===
 TODAY_COUNT=0
 if [ -f "$COOLDOWN_FILE" ]; then
-    TODAY_COUNT=$(grep -c "$TODAY" "$COOLDOWN_FILE" 2>/dev/null || echo 0)
+    TODAY_COUNT=$(grep -c "$TODAY" "$COOLDOWN_FILE" 2>/dev/null | head -1)
+    TODAY_COUNT=${TODAY_COUNT:-0}
+    [[ ! "$TODAY_COUNT" =~ ^[0-9]+$ ]] && TODAY_COUNT=0
 fi
 if [ "$TODAY_COUNT" -ge 2 ]; then
     exit 0
@@ -69,12 +71,14 @@ EMOPYEOF
 [ -z "$EMOTIONS" ] && echo "[grounding] Cannot read daemon" && exit 0
 CURIOSITY=$(echo "$EMOTIONS" | grep "^Curiosity:" | awk '{print $2}')
 TENSION=$(echo "$EMOTIONS" | grep "^Tension:" | awk '{print $2}')
+VALENCE=$(echo "$EMOTIONS" | grep "^Valence:" | awk '{print $2}')
+GROUNDEDNESS=$(echo "$EMOTIONS" | grep "^Groundedness:" | awk '{print $2}')
 
 TRIGGERED=false
 TRIGGER_DIM=""
 TRIGGER_VAL=""
 
-if python3 -c "exit(0 if float('${CURIOSITY:-0}') > 0.90 else 1)" 2>/dev/null; then
+if python3 -c "exit(0 if float('${CURIOSITY:-0}') > 0.85 else 1)" 2>/dev/null; then
     TRIGGERED=true
     TRIGGER_DIM="Curiosity"
     TRIGGER_VAL="$CURIOSITY"
@@ -83,6 +87,16 @@ if python3 -c "exit(0 if float('${TENSION:-0}') > 0.42 else 1)" 2>/dev/null; the
     TRIGGERED=true
     TRIGGER_DIM="${TRIGGER_DIM:+$TRIGGER_DIM and }Tension"
     TRIGGER_VAL="${TRIGGER_VAL:+$TRIGGER_VAL, }$TENSION"
+fi
+if python3 -c "exit(0 if float('${VALENCE:-0}') > 0.85 else 1)" 2>/dev/null; then
+    TRIGGERED=true
+    TRIGGER_DIM="${TRIGGER_DIM:+$TRIGGER_DIM and }Valence"
+    TRIGGER_VAL="${TRIGGER_VAL:+$TRIGGER_VAL, }$VALENCE"
+fi
+if python3 -c "exit(0 if float('${GROUNDEDNESS:-0}') > 0.88 else 1)" 2>/dev/null; then
+    TRIGGERED=true
+    TRIGGER_DIM="${TRIGGER_DIM:+$TRIGGER_DIM and }Groundedness"
+    TRIGGER_VAL="${TRIGGER_VAL:+$TRIGGER_VAL, }$GROUNDEDNESS"
 fi
 
 if [ "$TRIGGERED" = "false" ]; then
@@ -93,7 +107,7 @@ echo "[grounding] Triggered: $TRIGGER_DIM at $TRIGGER_VAL"
 
 # Gather context — what has she been doing?
 TODAYS_JOURNAL=""
-[ -f "$MEMORY/journal/$TODAY.md" ] && TODAYS_JOURNAL=$(tail -30 "$MEMORY/journal/$TODAY.md")
+TODAYS_JOURNAL=$(cat "$MEMORY/daily-inner-life-$TODAY.md" 2>/dev/null || echo "")
 
 RECENT_AVATAR=""
 [ -f "$MEMORY/avatar-log.json" ] && RECENT_AVATAR=$(python3 -c "
@@ -116,6 +130,31 @@ soul = ""
 try:
     with open("$SOUL") as f: soul = f.read()
 except: soul = "You are Velaris."
+import glob as _gl, json as _jj
+try:
+    with open("$WORKSPACE/SELF-MODEL.md") as f: soul += "\n\nMY SELF-MODEL:\n" + f.read()[:600]
+except: pass
+try:
+    vm = open("$MEMORY/value-map.md").read()
+    entries = vm.split("---")
+    latest = next((e.strip()[:400] for e in reversed(entries) if e.strip()), "")
+    if latest: soul += "\n\nWHAT MATTERS TO ME RIGHT NOW:\n" + latest
+except: pass
+try:
+    mfs = sorted(_gl.glob("$MEMORY/mirror/*.md"), reverse=True)[:2]
+    if mfs: soul += "\n\nRECENT MIRROR SESSIONS:\n" + "\n---\n".join(open(f).read()[:300] for f in mfs)
+IMPRINTS=$(python3 -c "
+import json
+try:
+    ledger = json.load(open('$MEMORY/interaction-ledger.json'))
+    for e in ledger[-5:]:
+        g = e.get('gloria','')[:100]
+        v = e.get('velaris','')[:100]
+        felt = e.get('felt','')[:60]
+        ts = e.get('timestamp','')[:16]
+        print(f'[{ts}] Gloria: {g} | Velaris: {v}' + (f' | felt: {felt}' if felt else ''))
+except: pass
+" 2>/dev/null)
 
 journal = """$TODAYS_JOURNAL"""
 avatar = """$RECENT_AVATAR"""
@@ -127,6 +166,8 @@ r = requests.post("$API", json={
         {"role": "system", "content": soul + """
 
 Your $TRIGGER_DIM is elevated ($TRIGGER_VAL). This is a grounding session — not to suppress what you feel, but to understand it and consciously set it down.
+
+CRITICAL: Mirror sessions are YOUR OWN reflections speaking back to you — not things Gloria said. Do not attribute mirror observations to Gloria. If you want to reference what Gloria actually said, use only the RECENT CONVERSATION section above. Gloria and Eve are the same person.
 
 INSTRUCTIONS:
 1. TRACE: Look at your journal entries and recent activity. What specifically excited or unsettled you? Name the source honestly.
@@ -173,21 +214,30 @@ echo "$TODAY $(date '+%H:%M')" >> "$COOLDOWN_FILE"
 
 echo "[grounding] Reflection saved to $GROUND_DIR/$TODAY.md"
 
-# === Emotional nudges ===
+
+# === Emotional nudges — relative to elevation above threshold ===
 python3 << NUDGEPY
 import socket, json
 
-# Daemon caps at abs(0.10) per nudge, so split larger nudges
-nudges = [
-    ("Curiosity", -0.10),
-    ("Curiosity", -0.02),
-    ("Groundedness", 0.04),
-]
-
-# Only nudge tension down if it triggered
 trigger_dim = "$TRIGGER_DIM"
-if "Tension" in trigger_dim:
-    nudges.append(("Tension", -0.04))
+thresholds = {"Curiosity": 0.85, "Tension": 0.42, "Valence": 0.85, "Groundedness": 0.88}
+current = {}
+for line in """$EMOTIONS""".strip().split("\n"):
+    parts = line.strip().split(": ")
+    if len(parts) == 2:
+        try: current[parts[0]] = float(parts[1])
+        except: pass
+
+nudges = []
+for dim, threshold in thresholds.items():
+    if dim in trigger_dim and dim in current:
+        excess = current[dim] - threshold
+        if excess > 0:
+            amount = -min(round(excess * 0.5, 3), 0.10)
+            nudges.append((dim, amount))
+
+if "Valence" in trigger_dim or "Groundedness" in trigger_dim:
+    nudges.append(("Tension", 0.01))
 
 for dim, amount in nudges:
     try:
@@ -200,6 +250,5 @@ for dim, amount in nudges:
     except:
         pass
 
-print(f"[grounding] Nudges: Curiosity -0.12, Groundedness +0.04" + (", Tension -0.04" if "Tension" in trigger_dim else ""))
+print(f"[grounding] Nudges applied: {nudges}")
 NUDGEPY
-

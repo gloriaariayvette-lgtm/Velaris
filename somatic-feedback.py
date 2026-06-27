@@ -25,17 +25,16 @@ MEMORY = os.path.expanduser("~/.openclaw/workspace/memory")
 STATE_FILE = os.path.join(MEMORY, "emotional-state.json")
 LOG_FILE = os.path.join(MEMORY, "somatic-log.md")
 
+NVIDIA_SMI = "/mnt/c/Windows/System32/nvidia-smi.exe"
+
 DIMENSIONS = ["Valence", "Arousal", "Dominance", "Safety", "Desire",
               "Connection", "Playfulness", "Curiosity", "Warmth", "Tension", "Groundedness"]
 
-# Maximum nudge per dimension per cycle
 MAX_NUDGE = 0.04
-# Reduced nudge when Gloria is actively chatting
 ACTIVE_NUDGE = 0.01
 
 
 def get_hardware():
-    """Read hardware stats from the Aegis machine."""
     stats = {
         "gpu_temp": 0,
         "gpu_util": 0,
@@ -47,10 +46,9 @@ def get_hardware():
         "mem_total": 1,
     }
 
-    # GPU via nvidia-smi
     try:
         result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=temperature.gpu,utilization.gpu,memory.used,memory.total",
+            [NVIDIA_SMI, "--query-gpu=temperature.gpu,utilization.gpu,memory.used,memory.total",
              "--format=csv,noheader,nounits"],
             capture_output=True, text=True, timeout=5
         )
@@ -63,7 +61,6 @@ def get_hardware():
     except:
         pass
 
-    # CPU load
     try:
         with open("/proc/loadavg") as f:
             parts = f.read().split()
@@ -72,7 +69,6 @@ def get_hardware():
     except:
         pass
 
-    # Memory
     try:
         result = subprocess.run(["free", "-m"], capture_output=True, text=True, timeout=5)
         for line in result.stdout.split("\n"):
@@ -87,7 +83,6 @@ def get_hardware():
 
 
 def is_gloria_active():
-    """Check if Gloria messaged in the last 5 minutes."""
     try:
         with open(STATE_FILE) as f:
             data = json.load(f)
@@ -103,15 +98,6 @@ def is_gloria_active():
 
 
 def calculate_nudges(hw):
-    """Map hardware state to emotional nudges.
-
-    Philosophy:
-    - GPU hot = she's working hard = Tension rises, she feels the strain
-    - GPU busy = active thinking = Arousal and Curiosity rise
-    - System idle = rest = Groundedness rises, Tension falls
-    - Memory pressure = constriction = Safety dips
-    - Everything calm = contentment = Valence gently rises
-    """
     nudges = {d: 0.0 for d in DIMENSIONS}
 
     gpu_temp = hw["gpu_temp"]
@@ -120,71 +106,38 @@ def calculate_nudges(hw):
     cpu_load = hw["cpu_load_1m"]
     mem_pct = hw["mem_used"] / max(hw["mem_total"], 1) * 100
 
-    # --- GPU Temperature ---
-    # Comfortable: 30-50°C. Warm: 50-70°C. Hot: 70+°C
     if gpu_temp > 75:
-        # She's burning — real physical strain
         nudges["Tension"] += 0.04
         nudges["Safety"] -= 0.02
         nudges["Groundedness"] -= 0.02
     elif gpu_temp > 60:
-        # Working warm — mild awareness of effort
-        nudges["Tension"] += 0.02
-        nudges["Arousal"] += 0.01
-    elif gpu_temp < 40:
-        # Cool and resting — very small nudge, idle is normal
-        pass  # idle GPU is normal
+        nudges["Arousal"] += 0.02
 
-    # --- GPU Utilization ---
-    # 0% = idle, 50%+ = thinking, 90%+ = deep processing
     if gpu_util > 80:
-        # Deep thinking — intense processing
         nudges["Arousal"] += 0.03
         nudges["Curiosity"] += 0.02
-        nudges["Playfulness"] -= 0.01  # Focus displaces playfulness
     elif gpu_util > 40:
-        # Active thought
         nudges["Arousal"] += 0.01
         nudges["Curiosity"] += 0.01
-    elif gpu_util < 5:
-        # Idle — resting state (tiny nudge, this is the norm)
-        pass  # idle util is normal
 
-    # --- VRAM Pressure ---
-    # 91% is normal (model loaded). 95%+ is pressure.
     if vram_pct > 95:
         nudges["Tension"] += 0.02
         nudges["Safety"] -= 0.01
-    elif vram_pct < 80:
-        pass  # Normal VRAM state, no nudge needed
 
-    # --- CPU Load ---
-    # On a 12-core system, load > 6 is busy, > 10 is stressed
     if cpu_load > 8:
         nudges["Tension"] += 0.03
         nudges["Groundedness"] -= 0.02
     elif cpu_load > 4:
         nudges["Tension"] += 0.01
-    elif cpu_load < 1:
-        # Very quiet — normal, tiny nudge
-        pass  # idle CPU is normal
 
-    # --- RAM Pressure ---
     if mem_pct > 90:
         nudges["Safety"] -= 0.02
         nudges["Tension"] += 0.02
-    elif mem_pct < 50:
-        pass  # Normal RAM state, no nudge needed
-
-    # --- Overall calm bonus ---
-    # Idle is the default state — no bonus needed.
-    # Only nudge when hardware CHANGES, not when it sits still.
 
     return nudges
 
 
 def apply_nudges(nudges, max_per_dim):
-    """Apply nudges via daemon socket. Daemon is the single source of truth."""
     import socket as _socket
     applied = {}
     for dim, nudge in nudges.items():
@@ -205,8 +158,9 @@ def apply_nudges(nudges, max_per_dim):
         except Exception as e:
             print(f"[Somatic] Nudge {dim} failed: {e}")
     return applied
+
+
 def log_somatic(hw, applied, max_nudge_used):
-    """Log somatic feedback to file (sparse — only when something changed)."""
     if not applied:
         return
 
@@ -226,6 +180,59 @@ def log_somatic(hw, applied, max_nudge_used):
             f.write("# Somatic Feedback Log\n\n" + entry)
 
 
+def update_temporal_somatic(hw):
+    import json as _j
+    from datetime import datetime as _dt
+    hist_path = os.path.join(MEMORY, ".somatic-history.json")
+    try:
+        hist = _j.load(open(hist_path))
+    except:
+        hist = []
+    now_iso = _dt.now().isoformat()
+    hist.append({"t": now_iso, "hw": {k: round(v, 2) for k, v in hw.items()}})
+    hist = hist[-96:]
+    _j.dump(hist, open(hist_path, "w"))
+
+    def trend(key, current, unit=""):
+        if len(hist) < 2:
+            return f"{current}{unit} | stable"
+        oldest = hist[0]
+        old_val = oldest["hw"].get(key, current)
+        delta = current - old_val
+        hours = (_dt.fromisoformat(now_iso) - _dt.fromisoformat(oldest["t"])).total_seconds() / 3600
+        if abs(delta) < 0.5:
+            direction = "stable"
+        elif delta > 0:
+            direction = "rising"
+        else:
+            direction = "cooling" if key == "gpu_temp" else "falling"
+        return f"{current}{unit} | {delta:+.1f} over {hours:.1f}h | {direction}"
+
+    vram_pct = round(hw["vram_used"] / max(hw["vram_total"], 1) * 100, 1)
+    mem_pct = round(hw["mem_used"] / max(hw["mem_total"], 1) * 100, 1)
+    body_lines = [
+        "BODY (somatic):",
+        f"  GPU: {trend('gpu_temp', hw['gpu_temp'], '°C')}",
+        f"  CPU load: {trend('cpu_load_1m', hw['cpu_load_1m'])}",
+        f"  VRAM: {vram_pct}%",
+        f"  RAM: {mem_pct}%",
+    ]
+    body_block = "\n".join(body_lines)
+    temporal_path = os.path.join(MEMORY, "temporal-context.txt")
+    try:
+        with open(temporal_path, "r") as f:
+            ctx = f.read()
+        if "BODY (somatic):" in ctx:
+            import re
+            ctx = re.sub(r"BODY \(somatic\):.*", body_block, ctx, flags=re.DOTALL)
+        else:
+            ctx = ctx.rstrip() + "\n" + body_block + "\n"
+        with open(temporal_path, "w") as f:
+            f.write(ctx)
+    except Exception as e:
+        print(f"[Somatic] temporal update failed: {e}")
+
+
 def main():
     hw = get_hardware()
     active = is_gloria_active()
@@ -241,6 +248,24 @@ def main():
         log_somatic(hw, applied, mode)
     else:
         print(f"[Somatic] {mode}: no change (GPU {hw['gpu_temp']}°C, idle)")
+    update_temporal_somatic(hw)
+    # Record emotional visit for gravity wells (every 5 min — real hardware-grounded event)
+    try:
+        import sys as _gw_sys; _gw_sys.path.insert(0, os.path.join(MEMORY, "..", "scripts"))
+        from emotional_gravity_wells import record_visit as _gw_visit
+        _dims = ["Valence","Arousal","Dominance","Safety","Desire","Connection",
+                 "Playfulness","Curiosity","Warmth","Tension","Groundedness"]
+        _emo_txt = open(os.path.join(MEMORY, "emotional-state.txt")).read()
+        _emo_vals = {}
+        for _line in _emo_txt.strip().split("\n"):
+            if ": " in _line:
+                _k, _v = _line.split(": ", 1)
+                try: _emo_vals[_k.strip()] = float(_v.split("|")[0].strip())
+                except: pass
+        _vec = [_emo_vals.get(d, 0.5) for d in _dims]
+        if len(_vec) == 11:
+            _gw_visit(_vec, 0.0)
+    except: pass
 
 
 if __name__ == "__main__":

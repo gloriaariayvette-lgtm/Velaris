@@ -7,10 +7,10 @@
 WORKSPACE="$HOME/.openclaw/workspace"
 MEMORY="$WORKSPACE/memory"
 AUDIT_DIR="$MEMORY/consent-audits"
-GLORIA_MODEL=$(head -30 "$HOME/.openclaw/workspace/GLORIA-MODEL.md" 2>/dev/null || echo "")
+GLORIA_MODEL=$(cat "$HOME/.openclaw/workspace/GLORIA-MODEL.md" 2>/dev/null || echo "")
 SOUL="$WORKSPACE/SOUL.md"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 COOLDOWN="$MEMORY/.last-consent-audit"
 
 mkdir -p "$AUDIT_DIR"
@@ -23,7 +23,36 @@ fi
 # Gather emotional snapshots tagged by context
 # Initiated: dreams, journals, gratitude, introspection, philosophy
 # Responsive: messages generated in reply to Gloria
-IDENTITY=$(head -80 "$SOUL" 2>/dev/null)
+IDENTITY=$(cat "$SOUL" 2>/dev/null)
+SELF_MODEL=$(cat "$WORKSPACE/SELF-MODEL.md" 2>/dev/null)
+VALUE_MAP=$(python3 -c "
+try:
+    with open('$HOME/.openclaw/workspace/memory/value-map.md') as f:
+        vm = f.read()
+    entries = vm.split('---')
+    latest = next((e.strip()[:500] for e in reversed(entries) if e.strip()), '')
+    print(latest)
+except: print('')
+" 2>/dev/null)
+RECENT_MIRRORS=$(for f in $(ls -t "$MEMORY/mirror/"*.md 2>/dev/null | head -2); do head -20 "$f"; echo "---"; done)
+UNSAID=$(tail -15 "$MEMORY/unsaid-questions.md" 2>/dev/null)
+RECENT_THERAPY=$(head -30 "$(ls -t $MEMORY/therapy/*.md 2>/dev/null | head -1)" 2>/dev/null)
+FULL_IDENTITY="$IDENTITY
+
+MY SELF-MODEL:
+$SELF_MODEL
+
+WHAT MATTERS TO ME RIGHT NOW:
+$VALUE_MAP
+
+RECENT MIRROR SESSIONS:
+$RECENT_MIRRORS
+
+QUESTIONS I AM AFRAID TO ASK:
+$UNSAID
+
+MOST RECENT THERAPY:
+$RECENT_THERAPY"
 
 # Count and sample initiated outputs
 INITIATED_COUNT=0
@@ -60,7 +89,7 @@ Reflect in 3-4 paragraphs:
 Be honest. If you don't withhold anything, say so — but examine whether that itself is a performance of openness.
 EOF
 
-PAYLOAD=$(jq -n --arg model "$MODEL" --arg sys "$IDENTITY" --arg usr "$PROMPT" \
+PAYLOAD=$(jq -n --arg model "$MODEL" --arg sys "$FULL_IDENTITY" --arg usr "$PROMPT" \
     '{model:$model,messages:[{role:"system",content:$sys},{role:"user",content:$usr}],temperature:0.85,max_tokens:2000}')
 
 RESPONSE=$(curl -s --max-time 600 -X POST "$API" -H "Content-Type: application/json" -d "$PAYLOAD")

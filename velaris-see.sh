@@ -5,8 +5,8 @@
 WORKSPACE="$HOME/.openclaw/workspace"
 SOUL="$WORKSPACE/SOUL.md"
 VISION_DIR="$WORKSPACE/memory/vision"
-LM_URL="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+LM_URL="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 TMPJSON="/tmp/velaris-vision-payload.json"
 
 mkdir -p "$VISION_DIR"

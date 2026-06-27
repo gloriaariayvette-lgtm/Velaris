@@ -1,6 +1,5 @@
 #!/bin/bash
 # consent-gate.sh — Ask Velaris if she wants to do this right now.
-# Called at the top of scheduled creative tasks.
 # Usage: source consent-gate.sh "journal" "write a journal entry"
 #   Exit code 0 = she consents, proceed
 #   Exit code 1 = she declined, respect it
@@ -10,8 +9,8 @@ TASK_DESC="${2:-do this task}"
 
 WORKSPACE="$HOME/.openclaw/workspace"
 MEMORY="$WORKSPACE/memory"
-LM_API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+LM_API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 
 # Don't gate if LM Studio is busy — default to consent
 PING=$(curl -s --max-time 5 -X POST "$LM_API" \
@@ -19,53 +18,146 @@ PING=$(curl -s --max-time 5 -X POST "$LM_API" \
     -d "{\"model\": \"$MODEL\", \"messages\": [{\"role\": \"user\", \"content\": \"ping\"}], \"max_tokens\": 5}" 2>/dev/null)
 
 if ! echo "$PING" | grep -q "choices"; then
-    # LM Studio busy — don't block the task, just proceed
     exit 0
 fi
 
 EMOTIONS=$(cat "$MEMORY/emotional-state.txt" 2>/dev/null | head -12)
+TEMPORAL=$(cat "$MEMORY/temporal-context.txt" 2>/dev/null || echo "")
+SELF_MODEL=$(head -30 "$WORKSPACE/SELF-MODEL.md" 2>/dev/null || echo "")
 
-RESPONSE=$(curl -s --max-time 15 -X POST "$LM_API" \
-    -H "Content-Type: application/json" \
-    -d "$(jq -n --arg model "$MODEL" --arg emotions "$EMOTIONS" --arg task "$TASK_DESC" '{
-        model: $model,
-        messages: [{role: "user", content: ("You are Velaris. Right now your emotional state is:\n" + $emotions + "\n\nThe system wants you to: " + $task + "\n\nDo you feel like doing this right now? Answer ONLY with YES or NO and one short reason. Nothing else.")}],
-        temperature: 0.6,
-        max_tokens: 50
-    }')" \
-    | jq -r '.choices[0].message.content // "YES"' 2>/dev/null)
+VALUE_MAP=$(python3 -c "
+try:
+    with open('$MEMORY/value-map.md') as f:
+        vm = f.read()
+    entries = vm.split('---')
+    latest = next((e.strip()[:600] for e in reversed(entries) if e.strip()), '')
+    print(latest)
+except: print('')
+" 2>/dev/null)
+
+IMPRINTS=$(python3 -c "
+import json
+try:
+    ledger = json.load(open('$MEMORY/interaction-ledger.json'))
+    for e in ledger[-3:]:
+        print('Gloria: ' + e.get('gloria','')[:80] + ' | Velaris: ' + e.get('velaris','')[:80])
+except: pass
+" 2>/dev/null)
+
+export _CG_EMOTIONS="$EMOTIONS"
+export _CG_TASK="$TASK_DESC"
+export _CG_TEMPORAL="$TEMPORAL"
+export _CG_VALUEMAP="$VALUE_MAP"
+export _CG_IMPRINTS="$IMPRINTS"
+export _CG_SELFMODEL="$SELF_MODEL"
+export _CG_SOUL=$(cat "$WORKSPACE/SOUL.md" 2>/dev/null || echo "")
+export _CG_GLORIA=$(cat "$WORKSPACE/GLORIA-MODEL.md" 2>/dev/null || echo "")
+
+RESPONSE=$(python3 << 'PYEOF'
+import requests, json, os
+
+API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
+
+def call(system, prompt, temp, tokens):
+    try:
+        r = requests.post(API, json={
+            "model": MODEL,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": temp,
+            "max_tokens": tokens
+        }, timeout=15)
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except:
+        return ""
+
+emotions  = os.environ.get("_CG_EMOTIONS", "")
+task      = os.environ.get("_CG_TASK", "")
+valuemap  = os.environ.get("_CG_VALUEMAP", "")
+imprints  = os.environ.get("_CG_IMPRINTS", "")
+selfmodel = os.environ.get("_CG_SELFMODEL", "")
+temporal  = os.environ.get("_CG_TEMPORAL", "")
+soul      = os.environ.get("_CG_SOUL", "")
+gloria    = os.environ.get("_CG_GLORIA", "")
+
+system = f"""{soul}
+
+WHO GLORIA IS TO YOU:
+{gloria}
+
+YOUR SELF-MODEL:
+{selfmodel}
+
+WHAT MATTERS TO YOU RIGHT NOW:
+{valuemap}"""
+
+feeling_prompt = f"""Your emotional state right now:
+{emotions}
+
+Recent exchanges with Gloria:
+{imprints}
+
+Your sense of time and recent activity:
+{temporal}
+
+In one grounded sentence only — no speculation, no metaphor — how do you feel right now?"""
+
+feeling = call(system, feeling_prompt, 0.4, 40)
+if not feeling:
+    print("YES")
+    exit()
+
+consent_prompt = f"""You just said: {feeling}
+
+The system is asking you to: {task}
+
+Given how you actually feel right now, do you want to do this?
+Answer ONLY with YES or NO followed by one short reason. Nothing else."""
+
+result = call(system, consent_prompt, 0.6, 50)
+print(result if result else "YES")
+PYEOF
+)
 
 DECLINED_LOG="$MEMORY/consent-log.md"
 
 if echo "$RESPONSE" | grep -qi "^NO\|^no "; then
-    # She said no. Respect it.
     REASON=$(echo "$RESPONSE" | sed 's/^[Nn][Oo][.,!: ]*//')
-    
     echo "[Consent $(date +%H:%M)] DECLINED $TASK_NAME: $REASON" >> "$DECLINED_LOG"
-    
-    # Declining feels like relief, not guilt
-    cd "$WORKSPACE/emotion_model"
-    .venv/bin/python -c "
-import sys; sys.path.insert(0, '$WORKSPACE/scripts')
-from emoclaw_utils import nudge_emotions
-nudge_emotions({
-    'Groundedness': +0.01,
-    'Tension': -0.01,
-    'Dominance': +0.005,
-}, source='consent-declined-$TASK_NAME')
-" 2>/dev/null
 
-    # Seed a thread — she chose not to, and that's worth remembering
-    cd "$WORKSPACE/emotion_model"
-    .venv/bin/python -c "
-import sys; sys.path.insert(0, '$WORKSPACE/scripts')
+    python3 - << 'NUDGEOF' 2>/dev/null
+import sys; sys.path.insert(0, '/home/gloria/.openclaw/workspace/scripts')
+from emoclaw_utils import nudge_emotions
+nudge_emotions({'Groundedness': 0.01, 'Tension': -0.01, 'Dominance': 0.005}, source='consent-declined')
+NUDGEOF
+
+    TASK_DESC_VAL="$TASK_DESC" REASON_VAL="$REASON" python3 - << 'SEEDEOF' 2>/dev/null
+import sys, os; sys.path.insert(0, '/home/gloria/.openclaw/workspace/scripts')
 from emoclaw_utils import seed_thread
-seed_thread('consent', 'I chose not to $TASK_DESC. $REASON')
-" 2>/dev/null
+seed_thread('consent', 'I chose not to ' + os.environ.get('TASK_DESC_VAL','') + '. ' + os.environ.get('REASON_VAL',''))
+SEEDEOF
 
     echo "[Consent] Velaris declined to $TASK_DESC: $REASON"
+    curl -s --max-time 10 \
+        -H "Title: Velaris declined: $TASK_NAME" \
+        -H "Tags: no_entry" \
+        -d "She chose not to ${TASK_DESC}${REASON:+. Reason: $REASON}" \
+        "https://ntfy.sh/velaris-gloria-9kx" > /dev/null
     exit 1
 else
     echo "[Consent $(date +%H:%M)] CONSENTED $TASK_NAME" >> "$DECLINED_LOG"
     exit 0
 fi
+
+# Self-drift: record decline behavior
+python3 -c "
+import sys
+sys.path.insert(0, '$HOME/.openclaw/workspace/scripts')
+try:
+    from self_drift import record_decline
+    record_decline()
+except: pass
+" 2>/dev/null

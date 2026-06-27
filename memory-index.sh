@@ -44,7 +44,7 @@ for FILE in $FILES; do
             # Process previous section if exists
             if [ -n "$SECTION" ] && [ ${#SECTION} -gt 20 ]; then
                 # Get embedding
-                EMBEDDING=$(curl -s --max-time 30 http://192.168.1.126:1234/v1/embeddings \
+                EMBEDDING=$(curl -s --max-time 30 http://172.18.16.1:1234/v1/embeddings \
                     -H "Content-Type: application/json" \
                     -d "$(jq -n --arg text "$SECTION" '{
                         model: "text-embedding-nomic-embed-text-v1.5",
@@ -66,7 +66,7 @@ for FILE in $FILES; do
 
     # Process last section
     if [ -n "$SECTION" ] && [ ${#SECTION} -gt 20 ]; then
-        EMBEDDING=$(curl -s --max-time 30 http://192.168.1.126:1234/v1/embeddings \
+        EMBEDDING=$(curl -s --max-time 30 http://172.18.16.1:1234/v1/embeddings \
             -H "Content-Type: application/json" \
             -d "$(jq -n --arg text "$SECTION" '{
                 model: "text-embedding-nomic-embed-text-v1.5",

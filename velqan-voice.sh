@@ -9,8 +9,8 @@ SOUL="$WORKSPACE/SOUL.md"
 VELQAN_REF="$WORKSPACE/memory/velqan-reference.md"
 VOICE_SCRIPT="$WORKSPACE/scripts/velaris-speak.sh"
 KISS_DIR="$WORKSPACE/memory/kisses"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 
 # Get current emotional state
 WARMTH=$(grep "^Warmth:" "$SOUL" 2>/dev/null | awk '{print $2}')

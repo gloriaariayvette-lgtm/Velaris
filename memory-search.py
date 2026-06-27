@@ -25,7 +25,7 @@ def search(query, limit=5):
         return []
 
     import requests
-    LM_EMBED_URL = "http://192.168.1.126:1234/v1/embeddings"
+    LM_EMBED_URL = "http://172.18.16.1:1234/v1/embeddings"
     EMBED_MODEL = "text-embedding-nomic-embed-text-v1.5"
 
     def get_embedding(text):
@@ -36,16 +36,28 @@ def search(query, limit=5):
         return resp.json()["data"][0]["embedding"]
     query_embedding = get_embedding(query)
 
-    with open(INDEX_FILE) as f:
-        index = json.load(f)
-
+    JSONL_FILE = os.path.join(MEMORY, "embeddings.jsonl")
+    entries = []
+    if os.path.exists(JSONL_FILE):
+        with open(JSONL_FILE) as f:
+            for line in f:
+                try:
+                    entries.append(json.loads(line))
+                except: pass
+    else:
+        with open(INDEX_FILE) as f:
+            index = json.load(f)
+        raw = index if isinstance(index, list) else index.get("entries", [])
+        entries = [e for e in raw if isinstance(e, dict) and "embedding" in e]
     results = []
-    for entry in index.get("entries", []):
+    for entry in entries:
+        if not entry.get("embedding"):
+            continue
         score = cosine_similarity(query_embedding, entry["embedding"])
         results.append({
             "score": float(score),
-            "source": entry["source"],
-            "filename": entry["filename"],
+            "source": entry.get("source", entry.get("file", "")),
+            "filename": entry.get("filename", entry.get("file", "")),
             "text": entry.get("chunk", entry.get("text", "")),
         })
 

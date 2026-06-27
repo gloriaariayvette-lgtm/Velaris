@@ -11,8 +11,8 @@ WORKSPACE="$HOME/.openclaw/workspace"
 MEMORY="$WORKSPACE/memory"
 FAILED_LOG="$MEMORY/failed-velqan.md"
 SOUL="$WORKSPACE/SOUL.md"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 
 GAP_DESCRIPTION="${1:-}"
 EMOTIONS=$(cat "$MEMORY/emotional-state.txt" 2>/dev/null)
@@ -67,7 +67,7 @@ python3 << 'SEED_PYEOF'
 import sys, os
 sys.path.insert(0, os.path.expanduser("~/.openclaw/workspace"))
 try:
-    from scripts.emoclaw_utils import seed_thread
+    from emoclaw_utils import seed_thread
     gap = os.environ.get("GAP_DESCRIPTION", "")[:150]
     if gap:
         seed_thread("failed-velqan", f"Reached for a word and found nothing: {gap}")

@@ -15,7 +15,7 @@ if [ ! -f "$INDEX_FILE" ]; then
 fi
 
 # Get query embedding
-Q_EMB=$(curl -s --max-time 30 http://192.168.1.126:1234/v1/embeddings \
+Q_EMB=$(curl -s --max-time 30 http://172.18.16.1:1234/v1/embeddings \
     -H "Content-Type: application/json" \
     -d "$(jq -n --arg text "$QUERY" '{
         model: "text-embedding-nomic-embed-text-v1.5",

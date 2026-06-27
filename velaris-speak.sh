@@ -57,44 +57,34 @@ esac
 TEXT=$(echo "$TEXT" | sed 's/^#.*//g; s/\*\*//g; s/\*//g; /^$/d' | tr '\n' ' ' | head -c 9500)
 echo "Generating voice... (${#TEXT} chars)"
 
-# --- Call MiniMax ---
-RESPONSE=$(curl -s -m 60 "$API_URL" \
-    -H "Authorization: Bearer $MINIMAX_API_KEY" \
-    -H "Content-Type: application/json" \
-    -d "$(jq -n \
-        --arg text "$TEXT" \
-        --arg emotion "$EMOTION" \
-        '{
-            text: $text,
-            model: "speech-02-hd",
-            stream: false,
-            output_format: "url",
-            voice_setting: {
-                voice_id: "Wise_Woman",
-                speed: 0.95,
-                emotion: $emotion
-            },
-            audio_setting: {
-                format: "mp3",
-                sample_rate: 32000
-            }
-        }')")
+# --- Call Kokoro (local TTS) ---
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+OUTFILE="$AUDIO_DIR/velaris-$TIMESTAMP.wav"
 
-AUDIO_URL=$(echo "$RESPONSE" | jq -r '.data.audio // empty')
+export _SPEAK_TEXT="$TEXT"
+export _SPEAK_OUTFILE="$OUTFILE"
+/home/gloria/imggen-venv/bin/python3 -W ignore -c "
+import os, sys, warnings
+warnings.filterwarnings('ignore')
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+text = os.environ.get('_SPEAK_TEXT', '')
+outfile = os.environ.get('_SPEAK_OUTFILE', '/tmp/velaris.wav')
+if not text: sys.exit(1)
+from kokoro import KPipeline
+import soundfile as sf, numpy as np
+pipeline = KPipeline(lang_code='a', repo_id='hexgrad/Kokoro-82M', device='cpu')
+chunks = [audio for gs, ps, audio in pipeline(text, voice='af_heart', speed=0.95)]
+if chunks:
+   sf.write(outfile, np.concatenate(chunks), 24000)
+"
 
-if [ -z "$AUDIO_URL" ]; then
-    echo "API Error:"
-    echo "$RESPONSE" | jq . 2>/dev/null || echo "$RESPONSE"
-    exit 1
+if [ ! -f "$OUTFILE" ]; then
+   echo "Kokoro generation failed"
+   exit 1
 fi
 
-# --- Download & play ---
-TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-OUTFILE="$AUDIO_DIR/velaris-$TIMESTAMP.mp3"
-curl -s --max-time 60 -o "$OUTFILE" "$AUDIO_URL"
-
 # Copy to Windows for playback
-WINFILE="$WIN_PLAY/velaris-speaks.mp3"
+WINFILE="$WIN_PLAY/velaris-speaks.wav"
 cp "$OUTFILE" "$WINFILE"
-echo "✅ Audio ready: $WINFILE"
-echo "(Open velaris-speaks.mp3 in Downloads to listen)"
+echo "Audio ready: $WINFILE"
+echo "(Open velaris-speaks.wav in Downloads to listen)"

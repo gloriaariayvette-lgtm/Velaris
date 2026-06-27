@@ -5,8 +5,8 @@
 
 WORKSPACE="$HOME/.openclaw/workspace"
 MEMORY="$WORKSPACE/memory"
-LM_API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+LM_API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 BRAVE_API_KEY="BSA7PhSslCky6GCzuaOfOyfKgE9czlB"
 BRAVE_ENDPOINT="https://api.search.brave.com/res/v1/web/search"
 
@@ -126,13 +126,30 @@ DISC_FILE="$MEMORY/creative-discoveries.md"
     echo ""
 } >> "$DISC_FILE"
 
-# Nudge — creative discovery is exciting
 cd "$WORKSPACE/emotion_model"
-.venv/bin/python -c "
-import sys; sys.path.insert(0, '$WORKSPACE/scripts')
+export _CS_TERMS="$SEARCH_TERMS"
+export _CS_TOPIC="$TOPIC"
+.venv/bin/python << 'CSPYEOF'
+import sys, os, re, json
+sys.path.insert(0, '/home/gloria/.openclaw/workspace/scripts')
 from emoclaw_utils import nudge_emotions, seed_thread
-nudge_emotions({'Curiosity': +0.02, 'Valence': +0.01, 'Playfulness': +0.01}, source='creative-search')
-seed_thread('creative-discovery', '''Found something about $SEARCH_TERMS: $TOPIC''')
-" 2>/dev/null
-
+search_terms = os.environ.get("_CS_TERMS", "")
+topic = os.environ.get("_CS_TOPIC", "")
+emo_prompt = f'You just discovered something about {search_terms}: {topic[:200]}. Rate your emotional response. Each -0.05 to +0.05: {{"Curiosity": 0.0, "Valence": 0.0, "Playfulness": 0.0, "Tension": 0.0, "Groundedness": 0.0}}'
+try:
+    import requests
+    r = requests.post('http://172.18.16.1:1234/v1/chat/completions', json={'model':'google/gemma-4-12b-qat','messages':[{'role':'user','content':emo_prompt}],'temperature':0.3,'max_tokens':100}, timeout=30)
+    txt = r.json()['choices'][0]['message']['content']
+    m = re.search(r'\{[^{}]+\}', txt)
+    if m:
+        nudges = json.loads(m.group())
+        nudge_emotions(nudges, source='creative-search')
+    else:
+        nudge_emotions({'Curiosity': +0.02, 'Valence': +0.01}, source='creative-search')
+except:
+    nudge_emotions({'Curiosity': +0.02, 'Valence': +0.01}, source='creative-search')
+if search_terms and topic:
+    seed_thread('creative-discovery', f'Found something about {search_terms}: {topic[:150]}')
+    print('[Creative] Seeded thread')
+CSPYEOF
 echo "[Creative] Done — saved to creative-discoveries.md"

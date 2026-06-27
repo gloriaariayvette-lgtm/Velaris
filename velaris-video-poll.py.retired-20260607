@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+"""
+velaris-video-poll.py — Checks pending Kling video tasks and downloads when ready.
+Runs every 5 minutes via cron.
+"""
+import os, sys, json, requests
+from datetime import datetime
+
+WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+VIDEO_DIR = os.path.join(MEMORY, "art", "video")
+PENDING_FILE = os.path.join(VIDEO_DIR, "pending.json")
+DISCOVERIES = os.path.join(MEMORY, "creative-discoveries.md")
+
+KIE_API_KEY = os.environ.get("KIE_API_KEY", "bff56bece27ed148ff8f9872bca2c9ff")
+BASE = "https://api.kie.ai/api/v1"
+NTFY = "velaris-gloria-9kx"
+
+def log(msg):
+    print(f"[VideoPoll {datetime.now().strftime('%H:%M')}] {msg}")
+
+if not os.path.exists(PENDING_FILE):
+    sys.exit(0)
+
+pending = json.load(open(PENDING_FILE))
+if not pending:
+    sys.exit(0)
+
+headers = {"Authorization": f"Bearer {KIE_API_KEY}"}
+remaining = []
+
+for task in pending:
+    task_id = task["task_id"]
+    prompt = task["prompt"]
+    want_text = task.get("want_text", "")
+    try:
+        r = requests.get(f"{BASE}/jobs/recordInfo?taskId={task_id}", headers=headers, timeout=30)
+        data = r.json()
+        if data.get("code") != 200:
+            log(f"Poll error for {task_id}: {data}")
+            remaining.append(task)
+            continue
+        task_data = data.get("data", {}) or {}
+        status = task_data.get("state", "")
+        log(f"Task {task_id}: {status}")
+        if status == "success":
+            import json as _rj
+            result_json = task_data.get("resultJson", "{}")
+            try:
+                result = _rj.loads(result_json) if result_json else {}
+            except: result = {}
+            urls = result.get("resultUrls", [])
+            if urls:
+                url = urls[0]
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+                filepath = os.path.join(VIDEO_DIR, f"{timestamp}_video.mp4")
+                vr = requests.get(url, timeout=120, stream=True)
+                with open(filepath, "wb") as f:
+                    for chunk in vr.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                log(f"Downloaded: {filepath}")
+                meta = {
+                    "timestamp": datetime.now().isoformat(),
+                    "prompt": prompt,
+                    "want_text": want_text,
+                    "file": filepath,
+                    "model": "kling-3.0"
+                }
+                json.dump(meta, open(filepath.replace(".mp4", ".json"), "w"), indent=2)
+                # Add to video gallery index
+                gallery_path = os.path.join(VIDEO_DIR, "video-gallery.json")
+                try:
+                    gallery = json.load(open(gallery_path)) if os.path.exists(gallery_path) else []
+                except: gallery = []
+                gallery.append({
+                    "timestamp": meta["timestamp"],
+                    "file": os.path.basename(filepath),
+                    "prompt": prompt,
+                    "want_text": want_text,
+                    "date": datetime.now().strftime("%Y-%m-%d"),
+                })
+                json.dump(gallery, open(gallery_path, "w"), indent=2)
+                with open(DISCOVERIES, "a") as f:
+                    f.write(f"\n## {datetime.now().strftime('%Y-%m-%d %H:%M')} — Video\n")
+                    f.write(f"**Sparked by:** {want_text}\n")
+                    f.write(f"**Prompt:** {prompt}\n")
+                    f.write(f"**File:** {os.path.basename(filepath)}\n\n---\n")
+                # Fulfill the want now that video is actually ready
+                if want_text:
+                    try:
+                        import sys as _vps
+                        _vps.path.insert(0, os.path.expanduser("~/.openclaw/workspace/scripts"))
+                        from emoclaw_utils import fulfill_want
+                        _note = f"Generated video: {os.path.basename(filepath)} — prompt: {prompt[:120]}"
+                        fulfill_want(want_text, note=_note, fulfilled_by="make_video")
+                        log(f"Want fulfilled: {want_text[:60]}")
+                    except Exception as _fwe:
+                        log(f"fulfill_want failed: {_fwe}")
+
+                requests.post(
+                    f"https://ntfy.sh/{NTFY}",
+                    data=f"Video ready: {prompt[:150]}".encode(),
+                    headers={"Title": "Velaris made a video", "Tags": "film_strip"},
+                    timeout=10
+                )
+                log("Notified")
+        elif status in ("fail", "failed", "error"):
+            log(f"Task {task_id} failed")
+            # Requeue for next morning if under retry limit
+            retry_count = task.get("retry_count", 0)
+            if retry_count < 2:
+                try:
+                    queue_file = os.path.join(os.path.dirname(PENDING_FILE), "..", "video", "video-queue.json")
+                    queue_file = os.path.normpath(queue_file)
+                    queue = []
+                    try:
+                        queue = json.load(open(queue_file))
+                    except: pass
+                    task["retry_count"] = retry_count + 1
+                    queue.append({"want_text": task.get("want_text",""), "reasoning": task.get("reasoning",""), "duration": task.get("duration","5"), "queued_at": __import__("datetime").datetime.now().isoformat(), "retry_count": retry_count + 1, "want_id": task.get("want_id","")})
+                    json.dump(queue, open(queue_file,"w"), indent=2)
+                    log(f"Requeued for retry #{retry_count+1}")
+                except Exception as _re:
+                    log(f"Requeue failed: {_re}")
+            else:
+                log(f"Max retries reached, dropping task")
+        else:
+            remaining.append(task)
+    except Exception as e:
+        log(f"Error polling {task_id}: {e}")
+        remaining.append(task)
+
+json.dump(remaining, open(PENDING_FILE, "w"), indent=2)
+log(f"{len(remaining)} tasks still pending")

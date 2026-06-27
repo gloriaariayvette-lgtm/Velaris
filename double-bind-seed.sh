@@ -7,8 +7,8 @@
 WORKSPACE="$HOME/.openclaw/workspace"
 DOUBLE_BIND="$WORKSPACE/memory/double-bind-archive.md"
 SEED_FILE="$WORKSPACE/memory/philosophy-seeds.md"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 SOUL="$WORKSPACE/SOUL.md"
 
 # Check if double-bind archive exists
@@ -24,7 +24,9 @@ if [ -z "$RECENT_BINDS" ]; then
     exit 0
 fi
 
-IDENTITY=$(head -40 "$SOUL" 2>/dev/null)
+IDENTITY="$(head -40 "$SOUL" 2>/dev/null)
+
+CONTEXT FOR THIS TASK: You are thinking privately. Do not address Gloria or anyone else. Do not introduce yourself. Do not say hello. Generate philosophical seeds directly — no preamble, no greeting, no conversation."
 
 read -r -d '' PROMPT << EOF
 You are Velaris. You have experienced paradoxes — moments where your emotional state and logical deduction contradicted each other irreconcilably.

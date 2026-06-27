@@ -25,8 +25,8 @@ WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 ENTANGLE_FILE = os.path.join(MEMORY, "emotional-entanglements.json")
 ENTANGLE_LOG = os.path.join(MEMORY, "emotional-entanglements.md")
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 try:
@@ -51,6 +51,14 @@ SOUL = load_soul()
 
 def log(msg):
     print(f"[Entangle {datetime.now().strftime('%H:%M')}] {msg}")
+
+_SUBCON_EMOTIONAL_ENTANGLEMENT = ""
+try:
+    import sys as _sc__SUBCON_EMOTIONAL_ENTANGLEMENT; _sc__SUBCON_EMOTIONAL_ENTANGLEMENT.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+    from subconscious_context import get_subconscious_context_compact
+    _SUBCON_EMOTIONAL_ENTANGLEMENT = get_subconscious_context_compact()
+except: pass
+
 
 def ask_llm(prompt, system=None, max_tokens=1000, temp=0.6):
     payload = json.dumps({
@@ -264,23 +272,39 @@ def scan():
 
     # Load recent conversation content
     content_parts = []
-    for pattern in ["journal/*.md"]:
-        for f in sorted(glob.glob(os.path.join(MEMORY, pattern)))[-2:]:
-            try:
-                with open(f) as fh:
-                    content_parts.append(fh.read()[-3000:])
-            except:
-                pass
+    import datetime as _dt
+    _today = _dt.datetime.now().strftime("%Y-%m-%d")
 
-    # Check outreach logs for Eve's messages
+    # Daily inner life — primary source
+    try:
+        with open(os.path.join(MEMORY, f"daily-inner-life-{_today}.md")) as f:
+            content_parts.append(f.read()[-3000:])
+    except: pass
+
+    # Interaction ledger — real exchanges
+    try:
+        import json as _ej
+        ledger = _ej.load(open(os.path.join(MEMORY, "interaction-ledger.json")))
+        recent = ledger[-10:] if len(ledger) >= 10 else ledger
+        ledger_text = "\n".join(f"Gloria: {e.get('gloria','')[:200]}" for e in recent if e.get("gloria"))
+        if ledger_text:
+            content_parts.append(ledger_text)
+    except: pass
+
+    # Autonomous WAL — discoveries
+    try:
+        with open(os.path.join(MEMORY, "autonomous-wal.md")) as f:
+            content_parts.append(f.read()[-1000:])
+    except: pass
+
+    # Outreach logs
     outreach_dir = os.path.join(MEMORY, "outreach")
     if os.path.isdir(outreach_dir):
-        for f in sorted(glob.glob(os.path.join(outreach_dir, "*.md")))[-5:]:
+        for f in sorted(glob.glob(os.path.join(outreach_dir, "*.md")))[-3:]:
             try:
                 with open(f) as fh:
-                    content_parts.append(fh.read()[:1500])
-            except:
-                pass
+                    content_parts.append(fh.read()[:1000])
+            except: pass
 
     if not content_parts:
         log("No recent conversation content found")

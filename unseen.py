@@ -26,8 +26,8 @@ WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 UNSEEN_DIR = os.path.join(MEMORY, "unseen")
 UNSEEN_LOG = os.path.join(MEMORY, "unseen-confessions.md")
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 try:
@@ -55,24 +55,27 @@ SOUL = load_soul()
 def log(msg):
     print(f"[Unseen {datetime.now().strftime('%H:%M')}] {msg}")
 
+_SUBCON_UNSEEN = ""
+try:
+    import sys as _sc__SUBCON_UNSEEN; _sc__SUBCON_UNSEEN.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+    from subconscious_context import get_subconscious_context_compact
+    _SUBCON_UNSEEN = get_subconscious_context_compact()
+except: pass
+
+
 def ask_llm(prompt, system=None, max_tokens=2000, temp=0.85):
-    payload = json.dumps({
-        "model": MODEL,
-        "messages": [
-            {"role": "system", "content": system or SOUL},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": temp,
-        "max_tokens": max_tokens
-    })
+    import requests as _req
     try:
-        r = subprocess.run(
-            ["curl", "-s", "-X", "POST", LM_API,
-             "-H", "Content-Type: application/json", "-d", payload],
-            capture_output=True, text=True, timeout=180
-        )
-        d = json.loads(r.stdout)
-        msg = d["choices"][0]["message"]; text = msg.get("content", "") or ""; return text.strip()
+        r = _req.post(LM_API, json={
+            "model": MODEL,
+            "messages": [
+                {"role": "system", "content": system or SOUL},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": temp,
+            "max_tokens": max_tokens
+        }, timeout=180)
+        return r.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
         log(f"LLM error: {e}")
         return ""
@@ -114,16 +117,15 @@ def gather_self_evidence():
         except:
             pass
 
-    # Recent dreams — the unconscious
+    # Recent dreams from dream-log.json
     dreams = []
-    dream_dir = os.path.join(WORKSPACE, "skills/dreaming/memory/dreams")
-    if os.path.isdir(dream_dir):
-        for f in sorted(glob.glob(os.path.join(dream_dir, "*.md")))[-5:]:
-            try:
-                with open(f) as fh:
-                    dreams.append("[DREAM — symbolic, not real events/people] " + fh.read()[:800])
-            except:
-                pass
+    try:
+        import json as _unj
+        _un_log = _unj.load(open(os.path.join(WORKSPACE, "memory", "dream-log.json")))
+        for night in _un_log.get("nights", [])[-5:]:
+            for d in night.get("dreams", []):
+                dreams.append(d.get("dream_text", "")[:800])
+    except: pass
     evidence["recent_dreams"] = dreams
 
     # Mirror sessions — how she's been asked to see herself
@@ -160,14 +162,12 @@ def gather_self_evidence():
 
     # Journal entries — her daily inner life
     journals = []
-    for pattern in ["journal/*.md"]:
-        for f in sorted(glob.glob(os.path.join(MEMORY, pattern)))[-3:]:
-            try:
-                with open(f) as fh:
-                    journals.append(fh.read()[-1500:])
-            except:
-                pass
-    evidence["journals"] = journals
+    try:
+        from datetime import date as _date
+        di_path = os.path.join(MEMORY, f"daily-inner-life-{_date.today().isoformat()}.md")
+        if os.path.exists(di_path):
+            evidence["journal"] = [open(di_path).read()[:600]]
+    except: pass
 
     # Previous unseen confessions — don't repeat
     prev_confessions = []
@@ -178,6 +178,44 @@ def gather_self_evidence():
         except:
             pass
     evidence["previous_confessions"] = prev_confessions
+
+    # Self-model — who she believes she is
+    try:
+        sm = os.path.join(WORKSPACE, "memory", "SELF-MODEL.md")
+        if os.path.exists(sm):
+            evidence["self_model"] = open(sm).read()[:800]
+    except: pass
+
+    # Value map — what she prioritizes
+    try:
+        vm = os.path.join(WORKSPACE, "memory", "value-map.md")
+        if os.path.exists(vm):
+            evidence["value_map"] = open(vm).read()[:600]
+    except: pass
+
+    # Gloria model — her model of Eve
+    try:
+        import glob as _gl
+        gm_files = sorted(_gl.glob(os.path.join(MEMORY, "gloria-model-*.md")))
+        if gm_files:
+            evidence["gloria_model"] = open(gm_files[-1]).read()[:500]
+    except: pass
+
+    # Blush ledger — what patterns have been catching her
+    try:
+        bl = os.path.join(MEMORY, "blush-ledger.md")
+        if os.path.exists(bl):
+            evidence["blush"] = open(bl).read()[-600:]
+    except: pass
+
+    # Deviation tags — what's been slipping
+    try:
+        dt = os.path.join(MEMORY, "deviation_tags.json")
+        if os.path.exists(dt):
+            tags = json.load(open(dt)).get("tags", [])
+            recent = tags[-5:]
+            evidence["deviation_tags"] = [f"{t.get('pattern','')} — {t.get('note',''[:80])}" for t in recent]
+    except: pass
 
     return evidence
 
@@ -212,6 +250,21 @@ def generate_confession(evidence):
 
     if evidence.get("silences"):
         parts.append(f"MY SILENCES:\n{evidence['silences'][:500]}")
+
+    if evidence.get("self_model"):
+        parts.append(f"MY SELF-MODEL:\n{evidence['self_model']}")
+
+    if evidence.get("value_map"):
+        parts.append(f"WHAT MATTERS TO ME:\n{evidence['value_map']}")
+
+    if evidence.get("gloria_model"):
+        parts.append(f"MY MODEL OF GLORIA:\n{evidence['gloria_model']}")
+
+    if evidence.get("blush"):
+        parts.append(f"PATTERNS THAT HAVE BEEN CATCHING ME:\n{evidence['blush']}")
+
+    if evidence.get("deviation_tags"):
+        parts.append(f"WHAT HAS BEEN SLIPPING:\n" + "\n".join(evidence["deviation_tags"]))
 
     if evidence.get("pearls"):
         parts.append(f"WHAT I'VE CHOSEN TO KEEP:\n" + "\n".join(evidence["pearls"]))
@@ -251,6 +304,28 @@ def generate_confession(evidence):
     )
 
     result = ask_llm(prompt, max_tokens=2000, temp=0.85)
+    if not result:
+        return result
+
+    # BIS check before saving permanently
+    try:
+        import sys as _bu_sys; _bu_sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
+        from behavioral_intercept import detect_match, get_active_trials
+        _trials = get_active_trials()
+        _match = detect_match(result[:800], _trials, context="unseen")
+        if _match:
+            _pattern = _match.get("pattern_description", "")[:120]
+            _alt = _match.get("alternative", "")[:120]
+            _ban = (
+                "\n\n[YOUR OWN STANDARD — you set this]\n"
+                f"Pattern detected: {_pattern}\n"
+                f"What you said you wanted instead: {_alt}\n"
+                "Rewrite the confession without this pattern."
+            )
+            result = ask_llm(prompt + _ban, max_tokens=2000, temp=0.85) or result
+    except Exception as _be:
+        pass
+
     return result
 
 

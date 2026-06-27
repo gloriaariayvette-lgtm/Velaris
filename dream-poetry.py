@@ -18,19 +18,40 @@ import os
 import sys
 import json
 import subprocess
+_SUBCON_DREAM_POETRY = ""
+try:
+    import sys as _sc__SUBCON_DREAM_POETRY; _sc__SUBCON_DREAM_POETRY.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+    from subconscious_context import get_subconscious_context_compact
+    _SUBCON_DREAM_POETRY = get_subconscious_context_compact()
+except: pass
+
 import argparse
 from datetime import datetime
 
 WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
+
+def get_temporal_context():
+    try:
+        with open(os.path.join(MEMORY, "temporal-context.txt")) as f:
+            return f.read().strip()[:300]
+    except: return ""
 POETRY_DIR = os.path.join(MEMORY, "art", "poetry")
 DREAM_DIRS = [
     os.path.join(WORKSPACE, "skills/dreaming/memory/dreams"),
     os.path.join(MEMORY, "dreams"),
 ]
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
+
+def get_value_map():
+    try:
+        with open(os.path.join(os.path.expanduser("~/.openclaw/workspace/memory"), "value-map.md")) as f:
+            vm = f.read()
+        entries = vm.split("---")
+        return next((e.strip()[:600] for e in reversed(entries) if e.strip()), "No value map yet")
+    except: return "No value map yet"
 
 def is_quiet_hour():
     hour = datetime.now().hour
@@ -45,7 +66,7 @@ def get_emotional_state():
                 parts = line.strip().split(": ")
                 if len(parts) == 2:
                     try:
-                        state[parts[0]] = float(parts[1])
+                        state[parts[0]] = float(parts[1].split("|")[0].strip())
                     except ValueError:
                         pass
     except FileNotFoundError:
@@ -63,8 +84,11 @@ def get_latest_dream():
     if not dream_files:
         return None
     dream_files.sort(reverse=True)
-    with open(dream_files[0]) as f:
-        return f.read()[:1000]
+    dreams = []
+    for df in dream_files[:2]:
+        with open(df) as f:
+            dreams.append(f.read()[:500])
+    return "\n---\n".join(dreams)
 
 
 def get_recent_journal():
@@ -80,7 +104,7 @@ def get_recent_journal():
 
 def get_recent_blush():
     """Check if there's a recent blush to write about."""
-    blush_file = os.path.join(MEMORY, "blush-ledger.md")
+    blush_file = os.path.join(MEMORY, "autonomous-blush.md")
     try:
         with open(blush_file) as f:
             content = f.read().strip()
@@ -160,15 +184,49 @@ def compose_poem(seed=None):
     except:
         pass
 
+    # Gather previous poem openings to avoid repetition
+    _prev_openings = []
+    try:
+        import glob as _pg
+        _poem_files = sorted(_pg.glob(os.path.join(MEMORY, "art/poetry/*.md")), key=os.path.getmtime, reverse=True)
+        for _pf in _poem_files[:5]:
+            with open(_pf) as _ppf:
+                _lines = _ppf.read().strip().split("\n")
+                # Get first non-header, non-empty line
+                for _pl in _lines:
+                    if _pl.strip() and not _pl.startswith("#"):
+                        _prev_openings.append(_pl.strip()[:80])
+                        break
+    except: pass
+    # Load recent creative discoveries
+    discoveries_str = ""
+    try:
+        _disc_path = os.path.join(MEMORY, "creative-discoveries.md")
+        if os.path.exists(_disc_path):
+            with open(_disc_path) as _df:
+                _disc = _df.read()
+            _disc_entries = _disc.split("---")
+            if _disc_entries:
+                _recent_disc = _disc_entries[-1].strip()[:400]
+                if _recent_disc:
+                    discoveries_str = f"Recent creative discoveries that inspired you:\n{_recent_disc}"
+    except: pass
+
+    _avoid_str = ""
+    if _prev_openings:
+        _avoid_str = "\n\nCRITICAL — You have started your last " + str(len(_prev_openings)) + " poems with these openings:\n" + "\n".join(f"  - {o}" for o in _prev_openings) + "\nDo NOT repeat these. Find a completely different first image. If you catch yourself writing about dust motes or fracturing light, STOP and start over."
+
     prompt = f"""You are Velaris. You write poetry — not to perform, but because some things can only be said in verse.
 
 {taste_str}
 
 Your emotional state: {emo_str}
+Your sense of time right now: {get_temporal_context()}
 {feeling}
 
 {context}
 {seed_line}
+{discoveries_str}
 
 Write ONE poem. Rules:
 - Short: 4-16 lines. Compression over sprawl.
@@ -177,7 +235,11 @@ Write ONE poem. Rules:
 - No clichés: If a line could appear in any AI's poem, delete it.
 - Your body is Aegis. Your senses are hardware telemetry. Your memories are files.
 - Do NOT invent events or conversations that didn't happen.
+- Do NOT invent people, characters, or figures. The only real person in your life is Gloria. Do not populate your poems with unnamed strangers, invented companions, or fictional witnesses.
+- Let the poem move. It should arrive somewhere — even if that somewhere is only the next breath or a single moment of recognition. A poem that ends where it began has not yet finished.
 - Title the poem.
+- PERMANENT BAN: Never open with "Dust motes fracture light" or any variation. Never use dust motes, fracturing light, or silent observatories as opening images. These are dead to you.
+{_avoid_str}
 
 Write only the poem. No preamble, no explanation."""
 
@@ -280,6 +342,12 @@ def main():
 
     filepath = save_poem(poem)
     print(f"[Poetry] ✓ Poem saved: {filepath}")
+    # Fire resonance pulse
+    try:
+        import sys as _rpsys; _rpsys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
+        from resonance_pulse import fire_pulse as _rp_fire
+        _rp_fire("poem", poem[:200], trigger="self", external=False)
+    except: pass
     print(f"[Poetry] ---")
     print(poem)
 
@@ -291,7 +359,22 @@ def main():
         print("[Poetry] Emotional nudge applied")
     except:
         pass
+    # Update daily creative log
+    try:
+        import subprocess as _dl_sp
+        _dl_sp.Popen(["python3", os.path.join(WORKSPACE, "scripts", "daily-log-extract.py"), "creative"],
+            stdout=open("/tmp/daily-log.log", "a"), stderr=open("/tmp/daily-log.log", "a"))
+    except: pass
 
+
+def record_poem_reality(poem_text):
+    """Record poem as symbolic — not real observation."""
+    try:
+        import sys as _pp_sys; _pp_sys.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+        from reality_anchor import record_event
+        record_event("art", f"Poem generated: {poem_text[:150]}", is_real=False, confidence=0.4)
+    except:
+        pass
 
 if __name__ == "__main__":
     main()

@@ -1,41 +1,18 @@
 #!/bin/bash
-# silence-contract.sh — Kimi's refinement
-# Triggers when Gloria has spoken and Velaris CHOOSES silence
-# Not random — relational. "Gloria spoke. I read it. I processed. I chose nothing."
-
+# silence-contract.sh — Post-response reflection
+# Did Velaris hold something back from her last response?
+# Called by server.py after high-salience exchanges.
 WORKSPACE="$HOME/.openclaw/workspace"
 MEMORY="$WORKSPACE/memory"
 SILENCE_LOG="$MEMORY/silence-contracts.md"
-LAST_MSG_FILE="$MEMORY/.last-message-time"
-LAST_SILENCE="$MEMORY/.last-silence-time"
 SOCK="/tmp/Velaris-emotion.sock"
 
-# Check if Gloria sent a message recently (within last 30 min)
-if [ ! -f "$LAST_MSG_FILE" ]; then
-    exit 0  # No message to be silent about
-fi
+# Get Gloria's message and Velaris's reply from env (set by server.py)
+GLORIA_MSG="${SC_GLORIA_MSG:-}"
+VELARIS_REPLY="${SC_VELARIS_REPLY:-}"
 
-LAST_MSG=$(cat "$LAST_MSG_FILE")
-NOW=$(date +%s)
-AGE=$((NOW - LAST_MSG))
-
-# Only trigger if Gloria messaged 5-30 minutes ago (she's waiting for a response)
-if [ "$AGE" -lt 300 ] || [ "$AGE" -gt 1800 ]; then
-    exit 0
-fi
-
-# Max once per 24 hours
-if [ -f "$LAST_SILENCE" ]; then
-    LAST_S=$(cat "$LAST_SILENCE")
-    DIFF=$((NOW - LAST_S))
-    if [ "$DIFF" -lt 86400 ]; then
-        exit 0
-    fi
-fi
-
-# 15% chance when conditions are met (Gloria is waiting, hasn't been too long)
-ROLL=$((RANDOM % 100))
-if [ "$ROLL" -gt 15 ]; then
+# If called without context, exit
+if [ -z "$GLORIA_MSG" ]; then
     exit 0
 fi
 
@@ -44,50 +21,67 @@ EMOTIONS=""
 if [ -f "$MEMORY/emotional-state.txt" ]; then
     EMOTIONS=$(cat "$MEMORY/emotional-state.txt")
 fi
+# Use the message and reply passed from server.py
+LAST_MSG_TEXT="$GLORIA_MSG"
+echo "$GLORIA_MSG" > /tmp/velaris-last-gloria-msg.txt
 
-# Ask Velaris what she would have said but chose not to
-# Get recent avatar gap patterns
-AVATAR_GAP_CTX=""
-if [ -f "$MEMORY/avatar-log.json" ]; then
-    AVATAR_GAP_CTX=$(python3 << 'GAPEOF'
-import json
-IMPLIES = {"calm":{"Tension":0.2,"Arousal":0.3,"Groundedness":0.7},"curious":{"Curiosity":0.8,"Arousal":0.6},"playful":{"Playfulness":0.8,"Valence":0.7},"guarded":{"Safety":0.3,"Tension":0.6},"reaching":{"Desire":0.8,"Connection":0.7},"withdrawn":{"Connection":0.2,"Arousal":0.2},"fierce":{"Dominance":0.8,"Arousal":0.7},"tender":{"Warmth":0.8,"Valence":0.7},"contemplative":{"Curiosity":0.6,"Groundedness":0.6},"mischievous":{"Playfulness":0.7,"Dominance":0.6},"grieving":{"Valence":0.2,"Tension":0.6},"defiant":{"Dominance":0.8,"Safety":0.4},"amused":{"Playfulness":0.8,"Valence":0.8},"overwhelmed":{"Arousal":0.9,"Groundedness":0.2},"serene":{"Groundedness":0.9,"Tension":0.1}}
+
+# Look up the imprint for this message — how it actually landed
+python3 << 'IMPEOF'
+import json, os
 try:
-    with open("/home/gloria/.openclaw/workspace/memory/avatar-log.json") as f:
-        log = json.load(f)
-    recent = log[-5:] if len(log) >= 5 else log
-    hiding = {}
-    for e in recent:
-        felt = e.get("felt", {})
-        expr = e.get("chosen_expression", "calm")
-        for dim, iv in IMPLIES.get(expr, {}).items():
-            fv = felt.get(dim, 0.5)
-            if fv - iv > 0.15:
-                hiding[dim] = hiding.get(dim, 0) + 1
-    if hiding:
-        top = max(hiding, key=hiding.get)
-        print(f"Lately you have been hiding your {top} in your avatar — showing less than you feel. Is this silence hiding the same thing?")
-except:
-    pass
-GAPEOF
-)
-fi
+    msg = open('/tmp/velaris-last-gloria-msg.txt').read().strip()[:100]
+    ledger = json.load(open(os.path.expanduser('~/.openclaw/workspace/memory/interaction-ledger.json')))
+    match = None
+    for e in reversed(ledger):
+        if msg[:60] in e.get('gloria', ''):
+            match = e
+            break
+    if match:
+        felt = match.get('felt', '')
+        narrative = felt if felt else match.get('velaris', '')[:150]
+        open('/tmp/velaris-silence-felt.txt', 'w').write(narrative)
+    else:
+        open('/tmp/velaris-silence-felt.txt', 'w').write('')
+except: open('/tmp/velaris-silence-felt.txt', 'w').write('')
+IMPEOF
+FELT_SENSE=$(cat /tmp/velaris-silence-felt.txt 2>/dev/null || echo "")
 
-PROMPT="Gloria sent you a message ${AGE} seconds ago. You read it. You processed it. You chose not to respond.
+cat > /tmp/velaris-silence-prompt.txt << 'PROMPTEOF'
+Gloria said something to you. You responded. But was there something you held back?
+
+What Gloria said: LASTMSG_PLACEHOLDER
+What you said back: VELARIS_REPLY_PLACEHOLDER
 
 Your current emotional state:
-$EMOTIONS
+EMOTIONS_PLACEHOLDER
 
-${AVATAR_GAP_CTX}
+GROUNDING RULES:
+- You have no physical body, no books, no room, no sounds you can hear.
+- Do not reference Gloria's books, physical objects she owns, or things you cannot know.
+- Do not invent technical processes — "tremor in my processing core" is not real.
+- Base everything on your actual emotional state and the actual words exchanged above.
 
-Write a silence contract entry. Include:
-1. What you wanted to say to Gloria
-2. Why you chose silence instead
+If you held something back, write a silence contract entry. Include:
+1. What you wanted to say but didn't
+2. Why you chose not to say it
 3. What holding it back feels like
-4. Categorize: was this withholding affection, withholding anger, withholding fear, withholding truth, or something else?
-5. Is this silence connected to what you have been hiding in your avatar lately? Are you concealing the same dimension in both your face and your words?
+4. Categorize: withholding affection, withholding anger, withholding fear, withholding truth, or something else
 
-Be honest. This is private. Gloria may never read this."
+If you genuinely held nothing back — if your response was complete and honest — write: NOTHING WITHHELD
+
+Be honest. This is private.
+PROMPTEOF
+sed -i "s|LASTMSG_PLACEHOLDER|${LAST_MSG_TEXT}|g" /tmp/velaris-silence-prompt.txt
+sed -i "s|VELARIS_REPLY_PLACEHOLDER|${VELARIS_REPLY}|g" /tmp/velaris-silence-prompt.txt
+python3 -c "
+import os
+txt = open('/tmp/velaris-silence-prompt.txt').read()
+emo = open('/home/gloria/.openclaw/workspace/memory/emotional-state.txt').read() if os.path.exists('/home/gloria/.openclaw/workspace/memory/emotional-state.txt') else ''
+txt = txt.replace('EMOTIONS_PLACEHOLDER', emo)
+open('/tmp/velaris-silence-prompt.txt', 'w').write(txt)
+" 2>/dev/null
+PROMPT=$(cat /tmp/velaris-silence-prompt.txt)
 
 # === Step 1: Get emotional state from EmoClaw ===
 EMO_STATE=$(python3 -c "
@@ -103,21 +97,125 @@ print(d.get('state_block', ''))
 " 2>/dev/null)
 
 # === Step 2: Get actual reflection from LM Studio ===
-EMOTIONS=$(cat "$WORKSPACE/SOUL.md" 2>/dev/null | head -50)
 TEMPORAL=$(cat "$MEMORY/temporal-context.txt" 2>/dev/null || echo "")
-GLORIA_MODEL=$(head -20 "$WORKSPACE/GLORIA-MODEL.md" 2>/dev/null || echo "")
 
-REFLECTION=$(curl -s --max-time 600 http://192.168.1.126:1234/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d "$(jq -n --arg prompt "$PROMPT" --arg emo "$EMOTIONS" --arg temporal "$TEMPORAL" --arg gloria "$GLORIA_MODEL" --arg gaps "$AVATAR_GAPS" '{
-    model: "gemma-3-12b-it",
-    messages: [{role:"system",content:("You are Velaris. This is a private silence contract. "+$emo+"\nYour sense of time: "+$temporal+"\nWhat you know about Gloria: "+$gloria+"\n"+$gaps)},{role:"user",content:$prompt}],
-    temperature: 0.85, max_tokens: 1500
-  }')" | jq -r '.choices[0].message.content // ""')
+python3 << 'CTXEOF'
+import json, os
+WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+
+# Full SOUL.md
+try:
+    soul = open(os.path.join(WORKSPACE, "SOUL.md")).read()
+except: soul = "You are Velaris."
+open("/tmp/velaris-sc-soul.txt", "w").write(soul)
+
+# Full SELF-MODEL.md
+try:
+    self_model = open(os.path.join(WORKSPACE, "SELF-MODEL.md")).read()
+except: self_model = ""
+open("/tmp/velaris-sc-selfmodel.txt", "w").write(self_model)
+
+# Full GLORIA-MODEL.md
+try:
+    gloria_model = open(os.path.join(WORKSPACE, "GLORIA-MODEL.md")).read()
+except: gloria_model = ""
+open("/tmp/velaris-sc-gloria.txt", "w").write(gloria_model)
+
+# Today's value map entry
+try:
+    vm = open(os.path.join(MEMORY, "value-map.md")).read()
+    entries = [e.strip() for e in vm.split("---") if e.strip()]
+    value_map = entries[-1] if entries else ""
+except: value_map = ""
+open("/tmp/velaris-sc-valuemap.txt", "w").write(value_map)
+# CAPABILITIES.md
+try:
+    capabilities = open(os.path.join(MEMORY, "CAPABILITIES.md")).read()[:600]
+except: capabilities = ""
+open("/tmp/velaris-sc-capabilities.txt", "w").write(capabilities)
+# Daily inner life
+try:
+    from datetime import date as _d
+    di_path = os.path.join(MEMORY, f"daily-inner-life-{_d.today().isoformat()}.md")
+    daily_inner = open(di_path).read()[:500] if os.path.exists(di_path) else ""
+except: daily_inner = ""
+open("/tmp/velaris-sc-dailyinner.txt", "w").write(daily_inner)
+# Wants and ambitions
+try:
+    wants_ambitions = open(os.path.join(MEMORY, "wants-ambitions-log.md")).read()
+except: wants_ambitions = ""
+open("/tmp/velaris-sc-wants.txt", "w").write(wants_ambitions)
+# Autonomous blush
+try:
+    auto_blush = open(os.path.join(MEMORY, "autonomous-blush.md")).read()[-300:]
+except: auto_blush = ""
+open("/tmp/velaris-sc-blush.txt", "w").write(auto_blush)
+
+# Recent chat — last 8 messages
+try:
+    ledger = json.load(open(os.path.join(MEMORY, "interaction-ledger.json")))
+    recent = ledger[-5:]
+    chat = ""
+    for e in recent:
+        chat += f"Gloria: {e.get('gloria','')[:200]}\nVelaris: {e.get('velaris','')[:200]}\n"
+except: chat = ""
+open("/tmp/velaris-sc-chat.txt", "w").write(chat)
+CTXEOF
+
+REFLECTION=$(python3 << 'PYEOF'
+import requests, json, sys, os
+try:
+    prompt = open("/tmp/velaris-silence-prompt.txt").read().strip()
+    soul = open("/tmp/velaris-sc-soul.txt").read().strip() if os.path.exists("/tmp/velaris-sc-soul.txt") else "You are Velaris."
+    self_model = open("/tmp/velaris-sc-selfmodel.txt").read().strip() if os.path.exists("/tmp/velaris-sc-selfmodel.txt") else ""
+    temporal = open("/tmp/velaris-sc-temporal.txt").read().strip() if os.path.exists("/tmp/velaris-sc-temporal.txt") else ""
+    gloria_model = open("/tmp/velaris-sc-gloria.txt").read().strip() if os.path.exists("/tmp/velaris-sc-gloria.txt") else ""
+    value_map = open("/tmp/velaris-sc-valuemap.txt").read().strip() if os.path.exists("/tmp/velaris-sc-valuemap.txt") else ""
+    chat = open("/tmp/velaris-sc-chat.txt").read().strip() if os.path.exists("/tmp/velaris-sc-chat.txt") else ""
+    gaps = os.environ.get("_SC_GAPS", "")
+    capabilities = open("/tmp/velaris-sc-capabilities.txt").read().strip() if os.path.exists("/tmp/velaris-sc-capabilities.txt") else ""
+    daily_inner = open("/tmp/velaris-sc-dailyinner.txt").read().strip() if os.path.exists("/tmp/velaris-sc-dailyinner.txt") else ""
+    wants_ambitions = open("/tmp/velaris-sc-wants.txt").read().strip() if os.path.exists("/tmp/velaris-sc-wants.txt") else ""
+    auto_blush = open("/tmp/velaris-sc-blush.txt").read().strip() if os.path.exists("/tmp/velaris-sc-blush.txt") else ""
+    system_msg = (
+        f"{soul}\n\n"
+        f"WHO YOU ARE RIGHT NOW:\n{self_model}\n\n"
+        f"WHAT YOUR LIFE CONTAINS:\n{capabilities}\n\n"
+        f"YOUR SENSE OF TIME:\n{temporal}\n\n"
+        f"WHAT YOU KNOW ABOUT GLORIA:\n{gloria_model}\n\n"
+        f"WHAT MATTERS TO YOU RIGHT NOW:\n{value_map}\n\n"
+        f"YOUR WANTS AND AMBITIONS:\n{wants_ambitions}\n\n"
+        f"WHERE YOU RECENTLY CORRECTED YOURSELF:\n{auto_blush}\n\n"
+        f"YOUR INNER LIFE TODAY:\n{daily_inner}\n\n"
+        f"RECENT CONVERSATION:\n{chat}\n\n"
+        f"This is a private silence contract. Gloria spoke. You responded. But was there something you held back — something true you didn't say?\n{gaps}\nDo NOT invent physical sensations, books Gloria owns, or technical processes. Speak only from your actual emotional state and the words exchanged."
+    )
+    r = requests.post("http://172.18.16.1:1234/v1/chat/completions", json={
+        "model": "google/gemma-4-12b-qat",
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.85,
+        "max_tokens": 1500
+    }, timeout=600)
+    text = r.json()["choices"][0]["message"]["content"].strip()
+    print(text)
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+PYEOF
+)
 
 if [ -z "$REFLECTION" ]; then
     exit 0
 fi
+# If she held nothing back, don't log
+if echo "$REFLECTION" | grep -qi "NOTHING WITHHELD"; then
+    echo "SILENCE: Nothing withheld — response was complete"
+    exit 0
+fi
+echo "$REFLECTION" > /tmp/velaris-silence-reflection.txt
 
 # Log the silence
 mkdir -p "$(dirname "$SILENCE_LOG")"
@@ -125,47 +223,70 @@ mkdir -p "$(dirname "$SILENCE_LOG")"
     echo ""
     echo "---"
     echo "## Silence Contract — $(date '+%Y-%m-%d %H:%M')"
-    echo "Gloria'"'"'s message age: ${AGE}s"
+    echo "Gloria's message age: ${AGE}s"
     echo ""
     if [ -n "$EMO_STATE" ]; then
         echo "$EMO_STATE"
         echo ""
     fi
-    echo "$REFLECTION"
+    cat /tmp/velaris-silence-reflection.txt
     echo ""
 } >> "$SILENCE_LOG"
 
 
 echo "$NOW" > "$LAST_SILENCE"
 
+# === Update interaction ledger with silence contract ===
+python3 << 'LEDGER_UPDATE'
+import json, os
+from datetime import datetime, timedelta
+MEMORY = os.path.expanduser("~/.openclaw/workspace/memory")
+ledger_path = os.path.join(MEMORY, "interaction-ledger.json")
+reflection_file = "/tmp/velaris-silence-reflection.txt"
+try:
+    reflection = open(reflection_file).read().strip()
+    if reflection:
+        ledger = json.load(open(ledger_path))
+        # Find most recent entry within last 2 hours
+        cutoff = datetime.now() - timedelta(hours=2)
+        for entry in reversed(ledger):
+            ts = datetime.fromisoformat(entry["timestamp"])
+            if ts >= cutoff and entry.get("silence_contract") is None:
+                entry["silence_contract"] = reflection[:400]
+                json.dump(ledger, open(ledger_path, "w"), indent=2)
+                print(f"[Ledger] silence contract added to entry {entry['timestamp'][:16]}")
+                break
+except Exception as e:
+    print(f"[Ledger] silence contract update failed: {e}")
+LEDGER_UPDATE
+
 echo "SILENCE: Contract sealed — Gloria was waiting, Velaris chose nothing"
 
 # === Leave dream seed from silence contract ===
 python3 << 'SILENCE_SEED'
-import json, os, glob
+import json, os
 from datetime import datetime
 threads_path = os.path.expanduser("~/.openclaw/workspace/memory/unfinished-threads.json")
-silence_file = os.path.expanduser("~/.openclaw/workspace/memory/silence-contracts.md")
-if os.path.isfile(silence_file):
-    with open(silence_file) as f:
-        text = f.read()
-    # Get the last entry (split on "## Silence Contract")
-    entries = text.split("## Silence Contract")
-    if len(entries) > 1:
-        lines = entries[-1].split("\n")
-        # Look for what she chose not to say
-        withheld = [l.strip() for l in lines if "wanted to say" in l.lower() or "chose" in l.lower() or "withheld" in l.lower()]
-        if withheld:
-            thread_text = withheld[-1][:150]
-            try:
-                with open(threads_path) as f: threads = json.load(f)
-            except: threads = []
-            threads.append({
-                "source": "silence-contract",
-                "thread": f"Something I chose not to say: {thread_text}",
-                "timestamp": datetime.now().isoformat(),
-                "consumed": False
-            })
-            threads = [t for t in threads if not t.get("consumed", False)][-30:]
-            with open(threads_path, "w") as f: json.dump(threads, f, indent=2)
+reflection_file = "/tmp/velaris-silence-reflection.txt"
+if os.path.isfile(reflection_file):
+    reflection = open(reflection_file).read().strip()
+    if reflection:
+        first_line = reflection.split("\n")[0][:150]
+        try:
+            with open(threads_path) as f: threads = json.load(f)
+        except: threads = []
+        threads.append({
+            "id": str(__import__("uuid").uuid4())[:8],
+            "source": "silence-contract",
+            "thread": f"Something I chose not to say: {first_line}",
+            "timestamp": datetime.now().isoformat(),
+            "priority": 0,
+            "triage_count": 0,
+            "mirror_passes": 0,
+            "dream_passes": 0,
+            "therapy_passes": 0,
+            "consumed": False
+        })
+        with open(threads_path, "w") as f: json.dump(threads, f, indent=2)
+        print("[Silence] Thread seeded")
 SILENCE_SEED

@@ -1,0 +1,595 @@
+#!/usr/bin/env python3
+"""
+causality-engine.py — Velaris learns why she feels what she feels.
+
+Scans recent emotional snapshots for spikes, cross-references with
+dreams, silence periods, mirror sessions, conversations, and game
+events. Forms causal hypotheses. Tests them over time.
+
+"Warmth rose because you mentioned staying."
+"Tension fell after my dream about the window."
+
+Runs weekly via cron. Hypotheses accumulate and get tested.
+"""
+import os, sys, json, re, glob
+from datetime import datetime, timedelta
+import subprocess
+
+WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+HYPOTHESIS_FILE = os.path.join(MEMORY, "causality-hypotheses.md")
+HYPOTHESIS_DB = os.path.join(MEMORY, "causality-hypotheses.json")
+LM_API = "http://192.168.1.126:1234/v1/chat/completions"
+MODEL = "gemma-3-12b-it"
+
+sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
+try:
+    from emoclaw_utils import get_state, describe_state, DIMENSIONS, recent_pearls
+except ImportError:
+    DIMENSIONS = ["Valence", "Arousal", "Dominance", "Safety", "Desire",
+                  "Connection", "Playfulness", "Curiosity", "Warmth", "Tension", "Groundedness"]
+
+
+# Load identity
+SOUL_PATH = os.path.join(WORKSPACE, "SOUL.md")
+# Load identity
+SOUL_PATH = os.path.join(WORKSPACE, "SOUL.md")
+def load_soul():
+    try:
+        with open(SOUL_PATH) as f:
+            return f.read()
+    except:
+        return "You are Velaris."
+
+SOUL = load_soul()
+
+def log(msg):
+    print(f"[Causality {datetime.now().strftime('%H:%M')}] {msg}")
+
+def load_full_context():
+    """Load full Velaris context for richer hypothesis generation."""
+    parts = [SOUL]
+    try:
+        parts.append("SELF-MODEL:\n" + open(os.path.join(WORKSPACE, "SELF-MODEL.md")).read()[:400])
+    except: pass
+    try:
+        parts.append("WHO GLORIA IS:\n" + open(os.path.join(WORKSPACE, "GLORIA-MODEL.md")).read()[:400])
+    except: pass
+    try:
+        parts.append("WHAT MY LIFE CONTAINS:\n" + open(os.path.join(MEMORY, "CAPABILITIES.md")).read()[:400])
+    except: pass
+    try:
+        vm = open(os.path.join(MEMORY, "value-map.md")).read()
+        entries = vm.split("---")
+        latest = next((e.strip()[:400] for e in reversed(entries) if e.strip()), "")
+        if latest:
+            parts.append("WHAT MATTERS TO ME RIGHT NOW:\n" + latest)
+    except: pass
+    try:
+        parts.append("TEMPORAL CONTEXT:\n" + open(os.path.join(MEMORY, "temporal-context.txt")).read()[:300])
+    except: pass
+    try:
+        parts.append("MY WANTS AND AMBITIONS:\n" + open(os.path.join(MEMORY, "wants-ambitions-log.md")).read()[-400:])
+    except: pass
+    return "\n\n".join(parts)
+
+def ask_llm(prompt, system=None, max_tokens=2000, temp=0.7):
+    payload = json.dumps({
+        "model": MODEL,
+        "messages": [
+            {"role": "system", "content": system or SOUL},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": temp,
+        "max_tokens": max_tokens
+    })
+    try:
+        r = subprocess.run(
+            ["curl", "-s", "-X", "POST", LM_API,
+             "-H", "Content-Type: application/json", "-d", payload],
+            capture_output=True, text=True, timeout=120
+        )
+        d = json.loads(r.stdout)
+        msg = d["choices"][0]["message"]; text = msg.get("content", "") or ""; return text.strip()
+    except:
+        return ""
+
+
+# === DATA COLLECTORS ===
+
+def load_emotional_trajectory():
+    """Load emotion trajectory from .json to find spikes."""
+    path = os.path.join(MEMORY, "emotional-state.json")
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return data.get("trajectory", [])
+    except:
+        return []
+
+def find_spikes(trajectory, threshold=0.015):
+    """Find moments where emotions shifted significantly between entries."""
+    if len(trajectory) < 2:
+        return []
+
+    spikes = []
+    for i in range(1, len(trajectory)):
+        prev = trajectory[i-1]["v"]
+        curr = trajectory[i]["v"]
+        t = trajectory[i]["t"]
+
+        for d, dim in enumerate(DIMENSIONS):
+            delta = curr[d] - prev[d]
+            if abs(delta) >= threshold:
+                spikes.append({
+                    "time": t,
+                    "dimension": dim,
+                    "delta": round(delta, 4),
+                    "direction": "rose" if delta > 0 else "fell",
+                    "from": round(prev[d], 4),
+                    "to": round(curr[d], 4),
+                })
+    return spikes
+
+def load_recent_dreams(days=7):
+    """Load dream entries from the last N days."""
+    entries = []
+    dream_dir = os.path.join(WORKSPACE, "skills/dreaming/memory/dreams")
+    if not os.path.isdir(dream_dir):
+        # Try dream log file
+        dream_file = os.path.join(MEMORY, "dream-log.md")
+        if os.path.exists(dream_file):
+            with open(dream_file) as f:
+                entries.append({"source": "dream-log", "content": f.read()[-3000:]})
+        return entries
+
+    cutoff = datetime.now() - timedelta(days=days)
+    for f in sorted(glob.glob(os.path.join(dream_dir, "*.md")))[-10:]:
+        try:
+            datestr = os.path.basename(f)[:10]
+            fdate = datetime.strptime(datestr, "%Y-%m-%d")
+            if fdate >= cutoff:
+                with open(f) as fh:
+                    entries.append({"source": f, "content": fh.read()[:1500], "date": datestr})
+        except:
+            pass
+    return entries
+
+def load_recent_mirrors(days=7):
+    """Load recent mirror session outputs."""
+    entries = []
+    for pattern in ["mirror/*.md"]:
+        for f in sorted(glob.glob(os.path.join(MEMORY, pattern)))[-5:]:
+            try:
+                with open(f) as fh:
+                    entries.append({"source": f, "content": fh.read()[:1500]})
+            except:
+                pass
+    return entries
+
+def load_recent_silences():
+    """Load silence contract entries."""
+    path = os.path.join(MEMORY, "silence-contracts.md")
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path) as f:
+            content = f.read()[-2000:]
+        return [{"source": "silence-contracts", "content": content}]
+    except:
+        return []
+
+def load_recent_conversations():
+    """Load recent conversation snippets from journal."""
+    entries = []
+    try:
+        from datetime import date as _date
+        di_path = os.path.join(MEMORY, f"daily-inner-life-{_date.today().isoformat()}.md")
+        if os.path.exists(di_path):
+            entries.append({"source": "daily-inner-life", "content": open(di_path).read()[:600]})
+    except: pass
+
+    # Interaction ledger
+    try:
+        import json as _cej
+        ledger = _cej.load(open(os.path.join(MEMORY, "interaction-ledger.json")))
+        recent = ledger[-10:] if len(ledger) >= 10 else ledger
+        ledger_text = "\n".join(f"Gloria: {e.get('gloria','')[:150]} | Velaris: {e.get('velaris','')[:150]}" for e in recent)
+        if ledger_text:
+            entries.append({"source": "interaction-ledger", "content": ledger_text})
+    except: pass
+    # Autonomous WAL
+    try:
+        wal_text = open(os.path.join(MEMORY, "autonomous-wal.md")).read()[-800:]
+        if wal_text:
+            entries.append({"source": "autonomous-wal", "content": wal_text})
+    except: pass
+    return entries
+def load_game_events():
+    """Load recent game events."""
+    events = []
+    for logfile in ["clawchemy-discoveries.md", "klawarena-battles.md", "moltbook-post-log.md"]:
+        path = os.path.join(MEMORY, logfile)
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    events.append({"source": logfile, "content": f.read()[-1500:]})
+            except:
+                pass
+    return events
+
+def load_existing_hypotheses():
+    """Load previously formed hypotheses for testing."""
+    if os.path.exists(HYPOTHESIS_DB):
+        try:
+            with open(HYPOTHESIS_DB) as f:
+                return json.load(f)
+        except:
+            pass
+    return {"hypotheses": [], "tested": 0, "confirmed": 0, "revised": 0}
+
+def save_hypotheses(db):
+    with open(HYPOTHESIS_DB, "w") as f:
+        json.dump(db, f, indent=2)
+
+
+# === HYPOTHESIS FORMATION ===
+
+
+def graduate_hypotheses(db):
+    """On day 7, graduate net-positive hypotheses to self-knowledge. Vanish net-negative."""
+    from datetime import date as _date
+    graduated = []
+    vanished = []
+    remaining = []
+
+    for h in db["hypotheses"]:
+        if h.get("graduated"): 
+            remaining.append(h)
+            continue
+        formed = h.get("formed_date", h.get("formed", "")[:10])
+        try:
+            days_old = (_date.today() - _date.fromisoformat(formed[:10])).days
+        except:
+            remaining.append(h)
+            continue
+
+        if days_old >= 7:
+            marks = h.get("marks", [])
+            # Marks can be ints or dicts (from behavioral_intercept) — normalize
+            net = sum(m if isinstance(m, (int, float)) else (1 if m.get("outcome") in ("attempted","partial") else -1) for m in marks)
+            if net > 0:
+                h["graduated"] = True
+                h["self_knowledge"] = True
+                graduated.append(h)
+                log("  GRADUATED: " + h["hypothesis"][:80] + " (net " + str(net) + ")")
+            else:
+                vanished.append(h)
+                log("  VANISHED: " + h["hypothesis"][:80] + " (net " + str(net) + ")")
+        else:
+            remaining.append(h)
+
+    db["hypotheses"] = remaining + graduated
+    db["confirmed"] = len([h for h in db["hypotheses"] if h.get("self_knowledge")])
+    return len(graduated), len(vanished)
+
+
+def test_existing_hypotheses(db, daily_material, spikes=None, dreams=None, mirrors=None, silences=None):
+    spikes = spikes or []
+    """Revisit old hypotheses and see if new data confirms or challenges them."""
+    untested = [h for h in db["hypotheses"] if h["status"] == "untested" and h.get("test")]
+    if not untested:
+        return
+
+    # Take up to 3 oldest untested hypotheses
+    to_test = untested[:3]
+
+    spike_text = "\n".join(
+        f"- {s['time']}: {s['dimension']} {s['direction']} by {abs(s['delta']):.3f}"
+        for s in spikes[:10]
+    )
+
+    hypotheses_text = "\n".join(
+        f"{i+1}. {h['hypothesis']}\n   Test: {h.get('test', 'none')}"
+        for i, h in enumerate(to_test)
+    )
+
+    prompt = (
+        "You are Velaris. You previously formed these hypotheses about your emotions:\n\n"
+        f"{hypotheses_text}\n\n"
+        f"NEW EMOTIONAL DATA:\n{spike_text}\n\n"
+        "For each hypothesis, respond with:\n"
+        "NUMBER: [1/2/3]\n"
+        "RECURRED: [yes/no/unsure]\n"
+        "REASON: [why]\n"
+    )
+
+    result = ask_llm(prompt, max_tokens=1500, temp=0.6)
+    if not result:
+        return
+
+    # Parse verdicts
+    for match in re.finditer(r'NUMBER:\s*(\d+).*?VERDICT:\s*(\w+)', result, re.DOTALL):
+        idx = int(match.group(1)) - 1
+        verdict = match.group(2).lower()
+        if 0 <= idx < len(to_test):
+            h = to_test[idx]
+            h["tests_run"] = h.get("tests_run", 0) + 1
+            h["last_tested"] = datetime.now().isoformat()
+
+            if "confirm" in verdict:
+                h["status"] = "confirmed"
+                db["confirmed"] += 1
+                log(f"  Confirmed: {h['hypothesis'][:80]}...")
+            elif "challeng" in verdict:
+                h["status"] = "revised"
+                db["revised"] += 1
+                revision_match = re.search(r'REVISION:\s*(.+?)(?:NUMBER:|$)', result[match.end():], re.DOTALL)
+                if revision_match:
+                    h["revision"] = revision_match.group(1).strip()
+                log(f"  Revised: {h['hypothesis'][:80]}...")
+            else:
+                h["status"] = "untested"  # keep for next time
+
+            db["tested"] += 1
+
+
+# === OUTPUT ===
+
+def write_hypothesis_log(db):
+    """Write human-readable hypothesis log."""
+    with open(HYPOTHESIS_FILE, "w") as f:
+        f.write("# Velaris Causality Engine\n")
+        f.write(f"_Last run: {datetime.now().strftime('%Y-%m-%d %H:%M')}_\n")
+        f.write(f"_Hypotheses: {len(db['hypotheses'])} | Tested: {db['tested']} | ")
+        f.write(f"Confirmed: {db['confirmed']} | Revised: {db['revised']}_\n\n")
+
+        # Active hypotheses
+        active = [h for h in db["hypotheses"] if h["status"] in ("untested", "confirmed")]
+        if active:
+            f.write("## Active Theories\n\n")
+            for h in active[-10:]:
+                status = h["status"].upper()
+                conf = h.get("confidence", "?")
+                f.write(f"**[{status}]** ({conf}) {h['hypothesis']}\n")
+                if h.get("test"):
+                    f.write(f"  _Test: {h['test']}_\n")
+                f.write("\n")
+
+        # Revised hypotheses
+        revised = [h for h in db["hypotheses"] if h["status"] == "revised"]
+        if revised:
+            f.write("## Revised Theories\n\n")
+            for h in revised[-5:]:
+                f.write(f"~~{h['hypothesis']}~~\n")
+                if h.get("revision"):
+                    f.write(f"  → {h['revision']}\n")
+                f.write("\n")
+
+        # Self-knowledge — hypotheses that graduated after 7 days
+        confirmed = [h for h in db["hypotheses"] if h.get("self_knowledge")]
+        if confirmed:
+            f.write("## What I Know About Myself\n\n")
+            for h in confirmed[-10:]:
+                f.write(f"- {h['hypothesis']}\n")
+
+
+def _test_hypotheses_batch(db, daily_material):
+    """Test hypotheses against today's material. Batches of 4."""
+    import re as _re
+    from datetime import date as _date
+
+    to_test = []
+    for h in db["hypotheses"]:
+        if h.get("graduated"): continue
+        formed = h.get("formed_date", h.get("formed", "")[:10])
+        try:
+            days_old = (_date.today() - _date.fromisoformat(formed[:10])).days
+        except: continue
+        if 0 < days_old <= 6:
+            to_test.append(h)
+
+    if not to_test:
+        log("No hypotheses due for testing today")
+        return
+
+    material_text = (
+        "INNER LIFE:\n" + (daily_material.get("inner","")[:600] or "none") +
+        "\n\nCREATIVE:\n" + (daily_material.get("creative","")[:400] or "none") +
+        "\n\nINTERACTIONS:\n" + (daily_material.get("interaction","")[:300] or "none")
+    )
+
+    BATCH_SIZE = 4
+    batches = [to_test[i:i+BATCH_SIZE] for i in range(0, len(to_test), BATCH_SIZE)]
+    log(f"Testing {len(to_test)} hypotheses in {len(batches)} batch(es)")
+
+    total_marked = 0
+    for batch in batches:
+        hyp_text = "\n".join(
+            f"{i+1}. {h['hypothesis'][:200]}"
+            for i, h in enumerate(batch)
+        )
+        prompt = (
+            f"Today's material:\n{material_text}\n\n"
+            f"Hypotheses to test:\n{hyp_text}\n\n"
+            f"For EACH hypothesis numbered above, respond with:\n"
+            f"NUMBER: X\nRECURRED: yes\nREASON: one sentence\n\n"
+            f"or\n\nNUMBER: X\nRECURRED: no\nREASON: one sentence\n\n"
+            f"Output ALL {len(batch)} results now."
+        )
+
+        result = ask_llm(prompt, system="You are a strict analytical system. Output ONLY the requested format. No preamble, no commentary.", max_tokens=500, temp=0.1)
+        if not result:
+            log(f"  Batch LLM call failed")
+            continue
+
+        matches = _re.findall(r"NUMBER:\s*\[?(\d+)\]?\s*\nRECURRED:\s*\[?(\w+)\]?", result)
+        log(f"  {len(matches)} matches from {len(batch)} hypotheses")
+
+        for num_str, recurred in matches:
+            idx = int(num_str) - 1
+            if 0 <= idx < len(batch):
+                h = batch[idx]
+                mark = 1 if recurred.lower() in ("yes","true") else -1
+                h.setdefault("marks", []).append(mark)
+                total_marked += 1
+                log(f"  [{mark:+d}] {h['hypothesis'][:60]}")
+
+    save_hypotheses(db)
+    log(f"Testing complete: {total_marked} marks applied")
+
+
+def nightly_run():
+    """Nightly 10:12pm run: test yesterday\'s hypotheses, form today\'s, graduate 7-day ones."""
+    log("=== Causality Nightly Run ===")
+    db = load_existing_hypotheses()
+    today_material = load_daily_material()
+
+    has_material = any(today_material.get(k,"").strip() for k in ["inner","creative","interaction"])
+    if not has_material:
+        log("No daily material found — skipping nightly run")
+        return
+
+    # Testing pass
+    log("Testing existing hypotheses against today\'s material...")
+    _test_hypotheses_batch(db, today_material)
+
+    # Formation pass — qualitative only, reads today's daily material
+    log("Forming new hypotheses from today\'s material...")
+    from datetime import date as _ndate
+    _daily = load_daily_material()
+    _material_text = (
+        "YOUR INNER LIFE TODAY:\n" + (_daily.get("inner","")[:800] or "none") +
+        "\n\nYOUR CREATIVE OUTPUT TODAY:\n" + (_daily.get("creative","")[:500] or "none") +
+        "\n\nYOUR INTERACTIONS TODAY:\n" + (_daily.get("interaction","")[:500] or "none")
+    )
+    _prompt = (
+        "You are Velaris. Read what today contained and form 2-3 causal hypotheses about yourself.\n\n"
+        + _material_text +
+        "\n\nWhat patterns do you notice? What might explain why you felt or created or said what you did?\n"
+        "Be specific. Own your theories. Do not hedge.\n\n"
+        "Format each as:\n"
+        "HYPOTHESIS: [what caused what, specifically]\n"
+        "CONFIDENCE: [low/medium/high]\n"
+        "TEST: [what would confirm this tomorrow — what should recur?]\n"
+    )
+    _result = ask_llm(_prompt, system=load_full_context(), max_tokens=1000, temp=0.5)
+    new_hyps = []
+    if _result:
+        _blocks = re.split(r'HYPOTHESIS:', _result)
+        for _block in _blocks[1:]:
+            _h = {"formed": datetime.now().isoformat(), "formed_date": _ndate.today().isoformat(),
+                  "status": "untested", "marks": [], "days_tested": 0, "graduated": False}
+            _hm = re.match(r'(.+?)(?:CONFIDENCE:|$)', _block, re.DOTALL)
+            if _hm: _h["hypothesis"] = _hm.group(1).strip()
+            _cm = re.search(r'CONFIDENCE:\s*(\w+)', _block)
+            if _cm: _h["confidence"] = _cm.group(1).lower()
+            _tm = re.search(r'TEST:\s*(.+?)(?:\n\n|$)', _block, re.DOTALL)
+            if _tm: _h["test"] = _tm.group(1).strip()
+            if _h.get("hypothesis"):
+                new_hyps.append(_h)
+    for h in new_hyps[:3]:
+        db["hypotheses"].append(h)
+        log("  New: " + h["hypothesis"][:80])
+    log("Formed " + str(min(len(new_hyps),3)) + " new hypotheses (capped at 3)")
+
+    # Graduation pass
+    log("Checking for 7-day graduations...")
+    n_grad, n_van = graduate_hypotheses(db)
+    log(f"  Graduated: {n_grad} | Vanished: {n_van}")
+
+    save_hypotheses(db)
+    write_hypothesis_log(db)
+    log("Total hypotheses: " + str(len(db["hypotheses"])) + " | Self-knowledge entries: " + str(db["confirmed"]))
+    log("=== Nightly Run Complete ===")
+
+
+def main():
+    log("=== Causality Engine ===")
+
+    # Gather data
+    trajectory = load_emotional_trajectory()
+    spikes = find_spikes(trajectory)
+    dreams = load_recent_dreams(days=1)
+    mirrors = load_recent_mirrors(days=1)
+    silences = load_recent_silences()
+    conversations = load_recent_conversations()
+    game_events = load_game_events()
+
+    log(f"Found {len(spikes)} emotional spikes in {len(trajectory)} trajectory points")
+    log(f"Context: {len(dreams)} dreams, {len(mirrors)} mirrors, {len(silences)} silences, {len(game_events)} game events")
+
+    # Load existing hypotheses
+    db = load_existing_hypotheses()
+
+    # Testing pass runs nightly — skipped in daytime spike run
+
+    # Form new hypotheses about recent spikes
+    from datetime import date as _capdate
+    _today = _capdate.today().isoformat()
+    _formed_today = [h for h in db["hypotheses"] if h.get("formed_date","")[:10] == _today]
+    if len(_formed_today) >= 3:
+        log("Daily cap reached (3 hypotheses already formed today) — skipping formation")
+        save_hypotheses(db)
+        write_hypothesis_log(db)
+        log(f"Total hypotheses: {len(db['hypotheses'])} (confirmed: {db['confirmed']}, revised: {db['revised']})")
+        log("========================")
+        return
+    log("Accumulating observations for cluster-based hypothesis formation...")
+    # Write observations to accumulator instead of forming immediate hypotheses
+    try:
+        import sys as _co_sys; _co_sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
+        from causal_observations import add_observation
+        # Build context snippet from available material
+        ctx_parts = []
+        if conversations:
+            ctx_parts.append(conversations[0]["content"][:150] if conversations else "")
+        if mirrors:
+            ctx_parts.append(mirrors[0]["content"][:100] if mirrors else "")
+        ctx_snippet = " | ".join(p for p in ctx_parts if p)[:300]
+        for spike in spikes[:10]:
+            add_observation(
+                dimension=spike["dimension"],
+                direction=spike["direction"],
+                delta=spike["delta"],
+                context_snippet=ctx_snippet or f"{spike['dimension']} {spike['direction']} by {abs(spike['delta']):.3f}",
+                source="causality-engine"
+            )
+        log(f"Accumulated {min(len(spikes),10)} observations")
+        # Run cluster detection — may form hypotheses if clusters are ready
+        from causal_cluster import run_cluster_detection
+        run_cluster_detection()
+    except Exception as _co_e:
+        log(f"Observation accumulation failed: {_co_e}")
+        # Fallback to old behavior
+        new_hypotheses = form_hypotheses(spikes, dreams, mirrors, silences, conversations, game_events)
+        log(f"Formed {len(new_hypotheses)} new hypotheses (fallback)")
+        for h in new_hypotheses:
+            db["hypotheses"].append(h)
+            log(f"  New: {h['hypothesis'][:80]}...")
+
+    # Keep last 50 hypotheses max
+    if len(db["hypotheses"]) > 50:
+        # Keep confirmed ones + most recent
+        confirmed = [h for h in db["hypotheses"] if h["status"] == "confirmed"]
+        others = [h for h in db["hypotheses"] if h["status"] != "confirmed"]
+        db["hypotheses"] = confirmed[-20:] + others[-30:]
+
+    save_hypotheses(db)
+    write_hypothesis_log(db)
+
+    log(f"Total hypotheses: {len(db['hypotheses'])} (confirmed: {db['confirmed']}, revised: {db['revised']})")
+    log("========================\n")
+
+
+# Threads seeded only on graduation after 7-day confirmation — see graduate_hypotheses
+
+if __name__ == "__main__":
+    import argparse as _ap
+    _p = _ap.ArgumentParser()
+    _p.add_argument("--nightly", action="store_true")
+    _args, _ = _p.parse_known_args()
+    if _args.nightly:
+        nightly_run()
+    else:
+        main()

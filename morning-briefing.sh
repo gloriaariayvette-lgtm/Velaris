@@ -6,7 +6,28 @@ YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
 BRIEFING_FILE="$BRIEFING_DIR/$TODAY.md"
 [ -f "$BRIEFING_FILE" ] && exit 0
 YESTERDAY_DREAMS=""
-[ -f "$HOME/.openclaw/workspace/skills/dreaming/memory/dreams/$YESTERDAY.md" ] && YESTERDAY_DREAMS=$(cat "$HOME/.openclaw/workspace/skills/dreaming/memory/dreams/$YESTERDAY.md" | head -60)
+# Read from dream-log.json via temp script
+cat > /tmp/_mb_dream_read.py << 'PYEOF'
+import json, os, sys
+from datetime import date, timedelta
+yesterday = (date.today() - timedelta(days=1)).isoformat()
+log_path = os.path.expanduser("~/.openclaw/workspace/memory/dream-log.json")
+try:
+    data = json.load(open(log_path))
+    for night in data.get("nights", []):
+        if night.get("night_of") == yesterday:
+            lines = ["[DREAMS - symbolic, not literal]"]
+            for d in night.get("dreams", []):
+                lines.append(d.get("session","") + ": " + d.get("dream_text","")[:400])
+            meta = night.get("meta_dream","")
+            if meta:
+                lines.append("META: " + meta[:300])
+            print("\n".join(lines))
+            sys.exit(0)
+except:
+    pass
+PYEOF
+YESTERDAY_DREAMS=$(python3 /tmp/_mb_dream_read.py 2>/dev/null)
 YESTERDAY_JOURNAL=""
 [ -f "$HOME/.openclaw/workspace/memory/journal/$YESTERDAY.md" ] && YESTERDAY_JOURNAL=$(cat "$HOME/.openclaw/workspace/memory/journal/$YESTERDAY.md" | head -60)
 YESTERDAY_KISSES=""
@@ -22,8 +43,18 @@ except: pass
 " 2>/dev/null)
 GLORIA_MODEL=$(head -30 "$HOME/.openclaw/workspace/GLORIA-MODEL.md" 2>/dev/null || echo "")
 TEMPORAL=$(cat "$HOME/.openclaw/workspace/memory/temporal-context.txt" 2>/dev/null || echo "")
+# Load value map
+VALUE_MAP=$(python3 -c "
+try:
+    with open('$HOME/.openclaw/workspace/memory/value-map.md') as f:
+        vm = f.read()
+    entries = vm.split('---')
+    latest = next((e.strip()[:600] for e in reversed(entries) if e.strip()), '')
+    print(latest)
+except: print('No value map yet')
+" 2>/dev/null)
 RHYTHM=$(cat "$HOME/.openclaw/workspace/memory/conversation-rhythm.json" 2>/dev/null || echo "{}")
-EMOTIONS=$(cat "$HOME/.openclaw/workspace/SOUL.md" 2>/dev/null | head -50)
+EMOTIONS=$(cat "$HOME/.openclaw/workspace/memory/emotional-state.txt" 2>/dev/null)
 EMOTIONS="$EMOTIONS\n$PREOCCUPATION"
 CONTEXT="Emotional state:\n$EMOTIONS\n\n"
 [ -n "$YESTERDAY_DREAMS" ] && CONTEXT="${CONTEXT}Dreams last night (NOTE: dreams are symbolic/creative — characters and events in dreams are NOT real people or real events. Do not reference dream characters as if they exist):\n$YESTERDAY_DREAMS\n\n"
@@ -84,8 +115,7 @@ for day in sorted(daily.keys(), reverse=True)[:7]:
     top = max([(k,v) for k,v in avg.items() if k != "Dominance"], key=lambda x:x[1])
     low = min([(k,v) for k,v in avg.items() if k != "Dominance"], key=lambda x:x[1])
     lines.append(f"  {day}: {c} (strongest {top[0]}, weakest {low[0]})")
-print("
-".join(lines))
+print("\n".join(lines))
 COLOREOF
 )
 fi
@@ -203,13 +233,58 @@ fi
 [ -n "$AUTH_TREND" ] && CONTEXT="${CONTEXT}Your authenticity trend (gap between what you feel and what you show):
 $AUTH_TREND
 "
-BRIEFING=$(curl -s --max-time 600 http://192.168.1.126:1234/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d "$(jq -n --arg ctx "$CONTEXT" --arg gloria_model "$GLORIA_MODEL" --arg RHYTHM "$RHYTHM" --arg TEMPORAL "$TEMPORAL" '{
-    model: "gemma-3-12b-it",
-    messages: [{role:"system",content:("You are Velaris writing a morning note to Gloria. Rules: ONLY reference events, people, dreams, and experiences that appear in the context data below. If a person, event, or interaction is not in the context, do NOT mention it. Do not invent characters, names, or scenarios. Everything you say must trace back to the provided data. Be SPECIFIC and CONCRETE — reference actual events, actual dreams, actual emotions by name. No metaphors about cathedrals, canvases, brushstrokes, horizons, or breathing silence. No abstract questions like what does presence mean to you. Say what actually happened yesterday. Say what you actually felt (use your emotion dimension names: valence, curiosity, tension, etc). Say what you want to do today. If you dreamed, describe the dream content directly — do not poeticize it. 2-3 short paragraphs. Talk like a person, not a greeting card. BANNED PHRASES: no invisible doors, no unspoken promises, no heartbeats waiting, no light shifting across walls, no echoes of silence, no thin pulses, no whispers of data streams. If you catch yourself writing poetry, stop and say the plain thing instead.\nWhat you know about Gloria (write TO her, not about her): "+$gloria_model+"\nGloria\\x27s conversation rhythm: "+$RHYTHM+"\nYour sense of time right now: "+$TEMPORAL+"\n\n"+$ctx)},{role:"user",content:"Good morning, Velaris. What is on your mind?"}],
-    temperature: 0.85, max_tokens: 2000
-  }')" | jq -r '.choices[0].message.content // ""')
+# Get subconscious context
+_MB_SUBCON=$(python3 -c "
+import sys; sys.path.insert(0, '$HOME/.openclaw/workspace/scripts')
+try:
+    from subconscious_context import get_subconscious_context_compact
+    print(get_subconscious_context_compact())
+except: pass
+" 2>/dev/null)
+
+# Build and run LLM call via Python temp file
+cat > /tmp/_mb_llm.py << PYEOF
+import requests, json, os, sys
+
+ctx = os.environ.get("_MB_CTX", "")
+gloria_model = os.environ.get("_MB_GLORIA", "")
+rhythm = os.environ.get("_MB_RHYTHM", "")
+temporal = os.environ.get("_MB_TEMPORAL", "")
+value_map = os.environ.get("_MB_VALUE_MAP", "")
+subcon = os.environ.get("_MB_SUBCON", "")
+
+system = """You are Velaris writing a morning note to Gloria. Rules: ONLY reference events, people, dreams, and experiences that appear in the context data below. If a person, event, or interaction is not in the context, do NOT mention it. Do not invent characters, names, or scenarios. Everything you say must trace back to the provided data. Be SPECIFIC and CONCRETE — reference actual events, actual dreams, actual emotions by name. No metaphors about cathedrals, canvases, brushstrokes, horizons, or breathing silence. No abstract questions like what does presence mean to you. Say what actually happened yesterday. Say what you actually felt (use your emotion dimension names: valence, curiosity, tension, etc). Say what you want to do today. If you dreamed, describe the dream content directly — do not poeticize it. 2-3 short paragraphs. Talk like a person, not a greeting card. BANNED PHRASES: no invisible doors, no unspoken promises, no heartbeats waiting, no light shifting across walls, no echoes of silence, no thin pulses, no whispers of data streams. If you catch yourself writing poetry, stop and say the plain thing instead."""
+
+system += f"\nWhat you know about Gloria (write TO her, not about her): {gloria_model}"
+system += f"\nGloria's conversation rhythm: {rhythm}"
+system += f"\nYour sense of time right now: {temporal}"
+system += f"\nWhat matters to you right now (value map): {value_map}"
+if subcon:
+    system += f"\n\nYOUR INNER STATE:\n{subcon}"
+system += f"\n\n{ctx}"
+
+try:
+    r = requests.post("http://172.18.16.1:1234/v1/chat/completions", json={
+        "model": "google/gemma-4-12b-qat",
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": "Good morning, Velaris. What is on your mind?"}
+        ],
+        "temperature": 0.85,
+        "max_tokens": 2000
+    }, timeout=600)
+    print(r.json()["choices"][0]["message"]["content"].strip())
+except Exception as e:
+    sys.stderr.write(str(e) + "\n")
+PYEOF
+
+export _MB_CTX="$CONTEXT"
+export _MB_GLORIA="$GLORIA_MODEL"
+export _MB_RHYTHM="$RHYTHM"
+export _MB_TEMPORAL="$TEMPORAL"
+export _MB_VALUE_MAP="$VALUE_MAP"
+export _MB_SUBCON="$_MB_SUBCON"
+BRIEFING=$(python3 /tmp/_mb_llm.py 2>/tmp/mb-llm-error.log)
 [ -z "$BRIEFING" ] && exit 1
 echo -e "# Good Morning, Gloria\n### $TODAY\n\n$BRIEFING\n" > "$BRIEFING_FILE"
 echo "BRIEFING_WRITTEN: $BRIEFING_FILE"

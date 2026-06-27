@@ -8,10 +8,20 @@ BLUSH_LEDGER="$WORKSPACE/memory/blush-ledger.md"
 CONFESSIONS="$WORKSPACE/memory/confessions"
 GLORIA_MODEL=$(head -30 "$HOME/.openclaw/workspace/GLORIA-MODEL.md" 2>/dev/null || echo "")
 SOUL="$WORKSPACE/SOUL.md"
+# Load value map
+VALUE_MAP=$(python3 -c "
+try:
+    with open('$HOME/.openclaw/workspace/memory/value-map.md') as f:
+        vm = f.read()
+    entries = vm.split('---')
+    latest = next((e.strip()[:600] for e in reversed(entries) if e.strip()), '')
+    print(latest)
+except: print('No value map yet')
+" 2>/dev/null)
 EMO_FILE="$WORKSPACE/memory/emotional-state.txt"
 COOLDOWN="$WORKSPACE/memory/.last-confession"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 
 mkdir -p "$CONFESSIONS"
 
@@ -67,6 +77,12 @@ $BLUSH_ENTRIES
 ${RECENT_INTROSPECTIONS:+Recent introspections for context:
 $RECENT_INTROSPECTIONS
 ---}
+
+What matters to you right now (value map):
+$VALUE_MAP
+
+Your sense of time:
+$(cat "$HOME/.openclaw/workspace/memory/temporal-context.txt" 2>/dev/null)
 
 Current emotional state:
 $EMOTIONS

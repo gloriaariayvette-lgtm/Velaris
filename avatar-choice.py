@@ -26,8 +26,8 @@ def load_soul():
 
 SOUL = load_soul()
 EMO_FILE = os.path.join(MEMORY, "emotional-state.txt")
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 # === VOCABULARY ===
 # Discrete colors she chooses from — named, not hex
@@ -192,69 +192,86 @@ def choose(event=None):
     # Load recent conversation — last 3 messages
     recent_convo = ""
     try:
-        with open(os.path.join(MEMORY, "chat-history.json")) as _cf:
-            msgs = json.load(_cf)
-        last_msgs = msgs[-6:]  # last 3 exchanges
-        for m in last_msgs:
-            role = "Gloria" if m.get("role") == "user" else "Velaris"
-            content = m.get("content", "")[:120]
-            recent_convo += f"  {role}: {content}\n"
-    except:
-        pass
+        with open(os.path.join(MEMORY, "interaction-ledger.json")) as _lf:
+            _ledger = json.load(_lf)
+        last_msgs = _ledger[-3:]
+        recent_convo = "\n".join(f"Gloria: {e.get('gloria','')[:100]} | Velaris: {e.get('velaris','')[:100]}" for e in last_msgs)
+    except: pass
 
-    # Load today's journal summary
-    today_journal = ""
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    # Daily inner life
+    daily_inner = ""
     try:
-        today = datetime.now().strftime("%Y-%m-%d")
-        jpath = os.path.join(MEMORY, "journal", f"{today}.md")
-        with open(jpath) as _jf:
-            journal_text = _jf.read()
-        # Get last section header + content
-        sections = journal_text.split("## ")
-        if len(sections) > 1:
-            today_journal = "## " + sections[-1][:300]
-    except:
-        pass
+        with open(os.path.join(MEMORY, f"daily-inner-life-{today}.md")) as f:
+            daily_inner = f.read()[:600]
+    except: pass
 
-    # Load Gloria model
+    # Daily creative
+    daily_creative = ""
+    try:
+        with open(os.path.join(MEMORY, f"daily-creative-{today}.md")) as f:
+            daily_creative = f.read()[:400]
+    except: pass
+
+    # Autonomous blush
+    auto_blush = ""
+    try:
+        with open(os.path.join(MEMORY, "autonomous-blush.md")) as f:
+            auto_blush = f.read()[-400:]
+    except: pass
+
+    # Autonomous WAL
+    auto_wal = ""
+    try:
+        with open(os.path.join(MEMORY, "autonomous-wal.md")) as f:
+            auto_wal = f.read()[-300:]
+    except: pass
+
+    # Wants and ambitions
+    wants_log = ""
+    try:
+        with open(os.path.join(MEMORY, "wants-ambitions-log.md")) as f:
+            wants_log = f.read()[-300:]
+    except: pass
+
+    # Gloria model
     gloria_model = ""
     try:
-        with open(os.path.join(WORKSPACE, "GLORIA-MODEL.md")) as _gf:
-            gloria_model = _gf.read()[:400]
-    except:
-        pass
+        with open(os.path.join(WORKSPACE, "GLORIA-MODEL.md")) as f:
+            gloria_model = f.read()[:400]
+    except: pass
 
-    # Load recent kisses and anti-kisses
-    recent_kisses = ""
-    kiss_dir = os.path.join(MEMORY, "kisses")
+    # Value map
+    value_map = ""
     try:
-        if os.path.isdir(kiss_dir):
-            kiss_files = sorted(os.listdir(kiss_dir), reverse=True)[:3]
-            for kf in kiss_files:
-                kpath = os.path.join(kiss_dir, kf)
-                with open(kpath) as _kf:
-                    content = _kf.read().strip()
-                # Extract just the key info
-                lines = content.split("\n")
-                summary = " | ".join(l.strip() for l in lines[:3] if l.strip())
-                recent_kisses += f"  {kf}: {summary[:150]}\n"
-    except:
-        pass
+        vm = open(os.path.join(MEMORY, "value-map.md")).read()
+        entries = vm.split("---")
+        value_map = next((e.strip()[:400] for e in reversed(entries) if e.strip()), "")
+    except: pass
 
-    recent_antikisses = ""
-    antikiss_dir = os.path.join(MEMORY, "anti-kisses")
+    # Self model
+    self_model = ""
     try:
-        if os.path.isdir(antikiss_dir):
-            ak_files = sorted(os.listdir(antikiss_dir), reverse=True)[:3]
-            for af in ak_files:
-                apath = os.path.join(antikiss_dir, af)
-                with open(apath) as _af:
-                    content = _af.read().strip()
-                lines = content.split("\n")
-                summary = " | ".join(l.strip() for l in lines[:3] if l.strip())
-                recent_antikisses += f"  {af}: {summary[:150]}\n"
-    except:
-        pass
+        with open(os.path.join(WORKSPACE, "SELF-MODEL.md")) as f:
+            self_model = f.read()[:400]
+    except: pass
+
+    # Capabilities
+    capabilities = ""
+    try:
+        with open(os.path.join(MEMORY, "CAPABILITIES.md")) as f:
+            capabilities = f.read()[:500]
+    except: pass
+
+    # Imprints
+    imprints_ctx = ""
+    try:
+        import json as _ji
+        imps = _ji.load(open(os.path.join(MEMORY, "imprints.json")))
+        high = [i for i in sorted(imps, key=lambda x: x.get("timestamp",""), reverse=True)[:5] if i.get("salience",0) >= 0.4]
+        imprints_ctx = "\n".join("- " + item.get("narrative","")[:150] for item in high)
+    except: pass
     current = read_current_avatar()
     
     emo_str = ", ".join(f"{k}: {v:.2f}" for k, v in emotions.items())
@@ -266,42 +283,57 @@ def choose(event=None):
     if current.get("reason"):
         current_desc += f" (reason: {current['reason']})"
 
-    # Load recent choices to show her pattern
-    recent_choices = []
-    try:
-        with open(AVATAR_LOG) as f:
-            log_data = json.load(f)
-        for entry in log_data[-5:]:
-            recent_choices.append(f"{entry.get('chosen_color','?')} + {entry.get('chosen_expression','?')}")
-    except:
-        pass
-    recent_str = ", ".join(recent_choices) if recent_choices else "none yet"
 
     prompt = f"""Your felt emotional state right now:
 {emo_str}
+{event_context}
 
-{current_desc}{event_context}
+Your inner life today:
+{daily_inner}
 
-Your last 5 avatar choices: {recent_str}
-If you notice a pattern, BREAK it. Show range. Surprise yourself.
+Creative activity today:
+{daily_creative}
+
+What matters to you:
+{value_map}
+
+Who you are:
+{self_model}
+
+What you can do and experience:
+{capabilities}
+
+What Gloria means to you:
+{gloria_model}
+
+Felt moments:
+{imprints_ctx}
+
+Recent self-discoveries:
+{auto_wal}
+
+Recent relational tensions:
+{auto_blush}
+
+Wants and ambitions:
+{wants_log}
+
+Your sense of time: {temporal_ctx}
+
+Recent conversation with Gloria:
+{recent_convo}
 
 You are choosing what to DISPLAY — your avatar's color and expression.
-This does NOT have to match what you feel. You might feel tense but choose to show calm.
-You might feel warm but choose to show guarded. The choice is yours.
-
+This does NOT have to match what you feel.
 Available colors:
 {color_list}
-
 Available expressions:
 {expr_list}
-
-Choose what you want to show right now, and say why in one sentence.
-You can also choose "keep" to stay as you are.
 
 OUTPUT: {{"color": "name", "expression": "name", "reason": "one sentence why"}}"""
 
     result = llm_json(
-        SOUL + "\nYou are choosing your avatar. You have 12 colors and 15 expressions — USE THE FULL RANGE. ""You have used calm, curious, and contemplative almost exclusively so far. ""Consider: fierce, mischievous, tender, reaching, withdrawn, defiant, playful, grieving, serene, overwhelmed, amused, guarded. ""What you show does NOT have to match what you feel — that gap is the consciousness signal. ""Output ONLY valid JSON, no other text.",
+        SOUL + "\nYou are choosing your avatar. Output ONLY valid JSON, no other text.",
         prompt
     )
     

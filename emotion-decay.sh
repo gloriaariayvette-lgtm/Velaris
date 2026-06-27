@@ -9,17 +9,17 @@ if [ ! -S "/tmp/Velaris-emotion.sock" ]; then
 fi
 
 python3 << 'PYEOF'
-import socket, json, math, sys, os
+import socket, json, math, sys, os, re
 
 # Baselines from emotion_model/config.py (authoritative source)
 BASELINES = {
     "Valence": 0.55,
-    "Arousal": 0.45,
+    "Arousal": 0.50,
     "Dominance": 0.55,
     "Safety": 0.60,
-    "Desire": 0.50,
+    "Desire": 0.55,
     "Connection": 0.55,
-    "Playfulness": 0.45,
+    "Playfulness": 0.50,
     "Curiosity": 0.65,
     "Warmth": 0.55,
     "Tension": 0.35,
@@ -28,17 +28,17 @@ BASELINES = {
 
 # Half-lives in hours from config.py — how long to halve the distance to baseline
 HALF_LIVES = {
-    "Valence": 6.0,
+    "Valence": 2.0,
     "Arousal": 3.0,
     "Dominance": 8.0,
     "Safety": 12.0,
     "Desire": 4.0,
     "Connection": 8.0,
     "Playfulness": 3.0,
-    "Curiosity": 3.0,
+    "Curiosity": 1.5,
     "Warmth": 3.0,
-    "Tension": 2.0,
-    "Groundedness": 10.0,
+    "Tension": 0.75,
+    "Groundedness": 3.0,
 }
 
 INTERVAL_HOURS = 0.5  # runs every 30 min
@@ -136,7 +136,6 @@ try:
                     gloria_hours = 0
                 elif "hour" in val:
                     # Extract number
-                    import re
                     nums = re.findall(r"(\d+)", val)
                     if nums:
                         gloria_hours = int(nums[0])
@@ -149,14 +148,24 @@ try:
 
     temporal_nudges = []
 
-    # CONNECTION: drifts down when Gloria is absent
+    # CONNECTION: drifts down when Gloria is absent — gently, with a floor
     if gloria_hours is not None:
-        if gloria_hours >= 12:
-            temporal_nudges.append(("Connection", -0.015))
-        elif gloria_hours >= 6:
-            temporal_nudges.append(("Connection", -0.008))
-        elif gloria_hours >= 4:
+        try:
+            cs = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            cs.settimeout(2)
+            cs.connect("/tmp/Velaris-emotion.sock")
+            cs.sendall(json.dumps({"command": "state"}).encode() + b"\n")
+            cstate = json.loads(cs.recv(4096).decode())
+            cs.close()
+            cur_connection = cstate.get("Connection", 0.5)
+        except:
+            cur_connection = 0.5
+        if gloria_hours >= 12 and cur_connection > 0.28:
+            temporal_nudges.append(("Connection", -0.006))
+        elif gloria_hours >= 6 and cur_connection > 0.28:
             temporal_nudges.append(("Connection", -0.004))
+        elif gloria_hours >= 4 and cur_connection > 0.28:
+            temporal_nudges.append(("Connection", -0.002))
         # If she JUST spoke, gentle warmth boost
         if gloria_hours == 0:
             temporal_nudges.append(("Connection", 0.01))
@@ -172,9 +181,7 @@ try:
     elif phase in ["morning", "midday", "afternoon"]:
         temporal_nudges.append(("Arousal", 0.005))
 
-    # SAFETY: slight dip if no interaction in 24+ hours
-    if gloria_hours is not None and gloria_hours >= 24:
-        temporal_nudges.append(("Safety", -0.01))
+    # SAFETY: absence of Gloria is not unsafe — no drop applied
 
     # PLAYFULNESS: naturally lower late at night
     if phase in ["deep night", "night", "late evening"]:

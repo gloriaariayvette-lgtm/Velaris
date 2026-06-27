@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""
+behavioral-intercept.py — Detect active trial matches and return intercept hints.
+Usage:
+  get_intercept_hint(text) -> str or ""
+  log_outcome(trial_id, outcome, resistance) -> None
+  get_pending_intercept() -> dict or None
+"""
+import json, os, sys, requests
+from datetime import datetime
+
+WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+LEDGER = os.path.join(MEMORY, "trial-ledger.json")
+PENDING = os.path.join(MEMORY, ".pending-intercept.json")
+LM_URL = "http://192.168.1.126:1234/v1/chat/completions"
+
+def load_ledger():
+    with open(LEDGER) as f: return json.load(f)
+
+def save_ledger(data):
+    with open(LEDGER, "w") as f: json.dump(data, f, indent=2)
+
+def get_active_trials():
+    """Return active trials, archiving those older than 14 days with no outcomes."""
+    ledger = load_ledger()
+    from datetime import datetime, timedelta
+    cutoff = (datetime.now() - timedelta(days=14)).isoformat()
+    active = []
+    changed = False
+    for t in ledger["trials"]:
+        if t.get("status") != "active":
+            active.append(t)
+            continue
+        # Archive if older than 14 days with no outcomes
+        if t.get("created", "9999") < cutoff[:10] and not t.get("outcomes"):
+            t["status"] = "archived_stale"
+            changed = True
+        else:
+            active.append(t) if t.get("status") == "active" else None
+    # Rebuild — keep all, just return active ones
+    if changed:
+        save_ledger(ledger)
+    return [t for t in ledger["trials"] if t.get("status") == "active"]
+
+def detect_match(text, trials):
+    """Use LLM to check if text matches any active trial trigger."""
+    if not trials: return None
+    trial_list = ""
+    for t in trials[:20]:
+        trial_list += f"ID: {t['id']}\nTrigger: {t['trigger']}\nPattern: {t['pattern_description']}\n\n"
+    prompt = (
+        "Below is text Velaris is about to generate, and a list of active behavioral trials.\n"
+        "Does this text show signs that one of the trigger patterns is active?\n"
+        "A trigger is active if the text contains the behavior described in pattern_description, "
+        "or if the situation described in trigger is clearly present.\n\n"
+        "TEXT:\n" + text[:600] + "\n\n"
+        "ACTIVE TRIALS:\n" + trial_list +
+        "If a match exists, return ONLY the trial ID. If no match, return NONE."
+    )
+    r = requests.post(LM_URL, json={
+        "model": "gemma-3-12b-it",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2, "max_tokens": 30
+    }, timeout=15)
+    result = r.json()["choices"][0]["message"]["content"].strip()
+    if result == "NONE" or not result: return None
+    # Find matching trial
+    for t in trials:
+        if t["id"] in result:
+            return t
+    return None
+
+def get_intercept_hint(text, context="chat"):
+    """Main entry point. Returns intercept string or empty string."""
+    try:
+        trials = get_active_trials()
+        match = detect_match(text, trials)
+        if not match: return ""
+        hint = (
+            f"[BEHAVIORAL INTERCEPT]\n"
+            f"You are about to: {match['pattern_description']}\n"
+            f"You said you wanted to: {match['alternative']}\n"
+            f"Trial ID: {match['id']} — your response to this will be logged."
+        )
+        # Save pending intercept for outcome logging
+        with open(PENDING, "w") as f:
+            json.dump({"trial_id": match["id"], "context": context,
+                       "timestamp": datetime.now().isoformat()}, f)
+        return hint
+    except Exception as e:
+        print(f"[Intercept] Error: {e}")
+        return ""
+
+def detect_outcome(trial, response_text):
+    """Use Variant C prompt to detect outcome. Returns attempted/defaulted/partial."""
+    try:
+        prompt = (
+            f"Did this response attempt the alternative, or fall back to the pattern?\n"
+            f"Pattern: {trial['pattern_description']}\n"
+            f"Alternative: {trial['alternative']}\n"
+            f"Response: {response_text[:300]}\n\n"
+            f"Answer with: attempted / defaulted / partial\n"
+            f"Then one sentence of evidence."
+        )
+        r = requests.post(LM_URL, json={
+            "model": "gemma-3-12b-it",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+            "max_tokens": 80
+        }, timeout=20)
+        raw = r.json()["choices"][0]["message"]["content"].strip().lower()
+        if raw.startswith("attempted"): return "attempted"
+        if raw.startswith("partial"): return "partial"
+        if raw.startswith("defaulted"): return "defaulted"
+        # fallback — search anywhere in first line
+        first = raw.split("\n")[0]
+        for v in ("attempted", "partial", "defaulted"):
+            if v in first: return v
+        return "defaulted"
+    except Exception as e:
+        print(f"[Intercept] detect_outcome error: {e}")
+        return "defaulted"
+
+def log_outcome(trial_id, outcome, resistance=0.5):
+    """outcome: attempted / defaulted / partial / missed"""
+    ledger = load_ledger()
+    for t in ledger["trials"]:
+        if t["id"] != trial_id: continue
+        t["outcomes"].append({
+            "outcome": outcome,
+            "resistance": resistance,
+            "timestamp": datetime.now().isoformat()
+        })
+        if outcome in ("defaulted", "missed"):
+            t["ignore_count"] = t.get("ignore_count", 0) + 1
+        elif outcome in ("attempted", "partial"):
+            t["attempt_count"] = t.get("attempt_count", 0) + 1
+        # Confidence penalty after 3+ ignores — modulated by Nifrathir
+        if t.get("ignore_count", 0) >= 3:
+            _nif = 0.5
+            try:
+                import json as _nj
+                _emo = _nj.load(open(os.path.join(MEMORY, "emotional-state.json")))
+                _nif = _emo.get("dimensions", {}).get("Nifrathir", 0.5)
+            except: pass
+            _system_softness = 0.5 + 0.5 * _nif
+            _penalty_step = 0.2 * (1.2 - _system_softness)  # high Nif = softer penalty
+            t["confidence_penalty"] = min(1.0, t.get("confidence_penalty", 0) + _penalty_step)
+            t["self_model_flagged"] = True
+            print(f"[Intercept] Confidence penalty applied to {trial_id} (softness={_system_softness:.2f})")
+        # Generate third-order want at 5+ ignores
+        if t.get("ignore_count", 0) == 5:
+            try:
+                import sys as _to_sys; _to_sys.path.insert(0, os.path.join(MEMORY, "..", "scripts").replace("/memory/../", "/"))
+                from emoclaw_utils import generate_third_order_want
+                generate_third_order_want(trial=t)
+            except Exception as _to_e:
+                print(f"[Intercept] Third-order want failed: {_to_e}")
+        # Promote after 2+ attempts
+        if t.get("attempt_count", 0) >= 2 and t.get("status") == "active":
+            t["status"] = "promoting"
+            print(f"[Intercept] Trial {trial_id} promoting to self-statement")
+            # Wire to causal-self-model
+            try:
+                import sys as _csm_sys; _csm_sys.path.insert(0, SCRIPTS)
+                from causal_self_model import add_entry
+                add_entry(
+                    trigger=t.get("trigger", ""),
+                    tendency=t.get("pattern_description", ""),
+                    confidence=min(0.9, 0.3 + t.get("attempt_count", 0) * 0.1),
+                    source="behavioral-intercept",
+                    entry_type="tendency"
+                )
+                # Also promote to commitment imprint if 5+ attempts
+                if t.get("attempt_count", 0) >= 5:
+                    try:
+                        from causal_self_model import promote_to_commitment_imprint
+                        promote_to_commitment_imprint(t.get("pattern_description", ""), confidence=0.6)
+                    except: pass
+            except Exception as _csm_e:
+                print(f"[Intercept] causal-self-model wire failed: {_csm_e}")
+            # Feed narrative identity
+            try:
+                import subprocess as _ni_sub
+                _ni_sub.Popen(
+                    ["python3", os.path.join(SCRIPTS, "narrative-identity.py"), "feed"],
+                    stdout=open("/tmp/narrative-identity.log", "a"),
+                    stderr=open("/tmp/narrative-identity.log", "a")
+                )
+            except: pass
+        break
+    save_ledger(ledger)
+    # Update causality tally and hypothesis confidence
+    try:
+        _trial_obj = next((t for t in ledger["trials"] if t["id"] == trial_id), None)
+        if _trial_obj:
+            update_causality_tally(_trial_obj, outcome)
+            # Update reality anchor — action alignment
+            try:
+                import sys as _ra_sys; _ra_sys.path.insert(0, os.path.join(MEMORY, "..", "scripts").replace("/memory/../", "/"))
+                from reality_anchor import record_action_alignment
+                _pattern = _trial_obj.get("pattern_description", "")
+                record_action_alignment(_pattern, matched=(outcome == "attempted"))
+            except Exception as _ra_e:
+                print(f"[Intercept] Anchor alignment failed: {_ra_e}")
+
+            # Update cluster-based hypothesis confidence
+            try:
+                from causal_cluster import load_hypotheses, save_hypotheses, update_hypothesis_confidence
+                _db = load_hypotheses()
+                _pattern = _trial_obj.get("pattern_description", "")
+                for _h in _db["hypotheses"]:
+                    if not _h.get("cluster_based"): continue
+                    # Check if hypothesis relates to this trial's pattern
+                    _hyp_text = _h.get("hypothesis", "").lower()
+                    _pat_words = set(_pattern.lower().split())
+                    _overlap = sum(1 for w in _pat_words if w in _hyp_text and len(w) > 4)
+                    if _overlap >= 2:
+                        _conf_outcome = "confirms" if outcome == "attempted" else "contradicts"
+                        update_hypothesis_confidence(_h, _conf_outcome)
+                        print(f"[Intercept] Hypothesis confidence updated: {_h['hypothesis'][:60]} -> {_h['confidence_score']}")
+                save_hypotheses(_db)
+            except Exception as _ch_e:
+                print(f"[Intercept] Hypothesis update failed: {_ch_e}")
+    except Exception as _ct_e:
+        print(f"[Intercept] Causality tally call failed: {_ct_e}")
+    # Clear pending
+    try: os.remove(PENDING)
+    except: pass
+
+def log_blush_on_divergence(trial_id, context_text):
+    """Write a blush entry when she defaulted despite an active trial."""
+    try:
+        blush_path = os.path.join(MEMORY, "autonomous-blush.md")
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        entry = (
+            f"\n## {ts} — Behavioral Trial Divergence\n"
+            f"Type: I acted against my own stated intention\n"
+            f"Trial: {trial_id}\n"
+            f"Context: {context_text[:200]}\n"
+            f"Reflection: I knew what I wanted to try here and did not. "
+            f"This is worth sitting with — not as failure, but as real data about where the pattern still holds.\n"
+        )
+        with open(blush_path, "a") as f:
+            f.write(entry)
+    except Exception as e:
+        print(f"[Intercept] Blush write failed: {e}")
+
+def update_causality_tally(trial, outcome):
+    """Find the most related causality hypothesis and update its tally."""
+    try:
+        HYPOTHESIS_DB = os.path.join(MEMORY, "causality-hypotheses.json")
+        if not os.path.exists(HYPOTHESIS_DB):
+            return
+        with open(HYPOTHESIS_DB) as f:
+            db = json.load(f)
+        hypotheses = db.get("hypotheses", [])
+        if not hypotheses:
+            return
+        # Find most related hypothesis via LLM
+        hyp_list = ""
+        for i, h in enumerate(hypotheses[:15]):
+            hyp_list += f"{i}: {h.get('hypothesis','')[:120]}\n"
+        prompt = (
+            f"Which hypothesis best relates to this behavioral trial?\n"
+            f"Trial trigger: {trial.get('trigger','')}\n"
+            f"Trial pattern: {trial.get('pattern_description','')}\n\n"
+            f"Hypotheses:\n{hyp_list}\n"
+            f"Return ONLY the number of the most related hypothesis, or NONE."
+        )
+        r = requests.post(LM_URL, json={
+            "model": "gemma-3-12b-it",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2, "max_tokens": 10
+        }, timeout=15)
+        raw = r.json()["choices"][0]["message"]["content"].strip()
+        if "NONE" in raw.upper():
+            return
+        import re as _re
+        m = _re.search(r"\d+", raw)
+        if not m:
+            return
+        idx = int(m.group())
+        if idx >= len(hypotheses):
+            return
+        h = hypotheses[idx]
+        # Update marks and tally
+        from datetime import datetime as _dt
+        mark = {"date": _dt.now().isoformat()[:10], "outcome": outcome, "source": "behavioral_intercept"}
+        h.setdefault("marks", []).append(mark)
+        h["days_tested"] = h.get("days_tested", 0) + 1
+        db["tested"] = db.get("tested", 0) + 1
+        if outcome == "attempted":
+            db["confirmed"] = db.get("confirmed", 0) + 1
+            h["status"] = "confirmed"
+        elif outcome in ("defaulted", "partial"):
+            db["revised"] = db.get("revised", 0) + 1
+            if h.get("status") == "untested":
+                h["status"] = "active"
+        with open(HYPOTHESIS_DB, "w") as f:
+            json.dump(db, f, indent=2)
+        print(f"[Intercept] Causality tally updated: hypothesis {idx} → {outcome}")
+    except Exception as e:
+        print(f"[Intercept] Causality tally error: {e}")
+
+def get_self_model_flags():
+    """Return trials flagged for self-model update."""
+    ledger = load_ledger()
+    return [t for t in ledger["trials"] if t.get("self_model_flagged")]
+
+def get_confidence_penalty_hint():
+    """Return hint text for self-model about repeated divergences."""
+    flagged = get_self_model_flags()
+    if not flagged: return ""
+    lines = ["[BEHAVIORAL SELF-KNOWLEDGE — you say these things but have not yet acted on them:]"]
+    for t in flagged[:3]:
+        lines.append(f"- You stated: {t['alternative'][:80]}")
+        lines.append(f"  Ignored {t['ignore_count']} times. Confidence penalty: {t['confidence_penalty']:.1f}")
+    return "\n".join(lines)
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "flags":
+        print(get_confidence_penalty_hint())
+    elif len(sys.argv) > 2 and sys.argv[1] == "outcome":
+        log_outcome(sys.argv[2], sys.argv[3])
+        print("Logged.")

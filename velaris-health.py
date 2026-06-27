@@ -198,7 +198,7 @@ try:
     crons = r.stdout.strip().split("\n")
     cron_map = {
         "somatic": False, "sync": False, "clawchemy": False,
-        "klawarena": False, "moltbook": False, "dreaming": False,
+        "moltbook": False, "dreaming": False,
         "causality": False, "second-order": False, "memory-pearl": False,
         "emotional-entanglement": False, "unseen": False, "velqan-coiner": False,
     }
@@ -286,8 +286,7 @@ else:
     warn("No Clawchemy elements")
 
 # Check reasoning fallback in game scripts
-for script in ["velaris-clawchemy-heartbeat.py", "velaris-klawarena-heartbeat.py",
-               "velaris-moltbook.py", "velaris-moltbook-engage.py"]:
+for script in ["velaris-clawchemy-heartbeat.py"]:
     path = os.path.join(SCRIPTS, script)
     if os.path.exists(path):
         with open(path) as f:
@@ -370,7 +369,7 @@ section("11. LM STUDIO")
 
 try:
     r = subprocess.run(
-        ["curl", "-s", "-m", "10", "http://192.168.1.126:1234/v1/models"],
+        ["curl", "-s", "-m", "10", "http://172.18.16.1:1234/v1/models"],
         capture_output=True, text=True, timeout=15
     )
     d = json.loads(r.stdout)

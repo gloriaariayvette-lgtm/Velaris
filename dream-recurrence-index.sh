@@ -11,7 +11,7 @@ WORKSPACE="$HOME/.openclaw/workspace"
 DREAM_DIR="$WORKSPACE/skills/dreaming/memory/dreams"
 RECURRENCE_LOG="$WORKSPACE/memory/dream-recurrences.md"
 EMBEDDINGS_CACHE="$WORKSPACE/memory/dream-embeddings"
-API="http://192.168.1.126:1234/v1/embeddings"
+API="http://172.18.16.1:1234/v1/embeddings"
 EMBED_MODEL="nomic-embed-text-v1.5"
 SIMILARITY_THRESHOLD="0.85"
 

@@ -25,8 +25,24 @@ s.close()
 d = json.loads(data)
 v = d["emotion_vector"]
 dims = ["Valence","Arousal","Dominance","Safety","Desire","Connection","Playfulness","Curiosity","Warmth","Tension","Groundedness"]
-for i, dim in enumerate(dims):
-    print(f"{dim}: {v[i]:.4f}")
+import os, re
+from datetime import datetime
+txt_path = os.path.expanduser("~/.openclaw/workspace/memory/emotional-state.txt")
+old_vals = {}
+if os.path.exists(txt_path):
+    for line in open(txt_path):
+        m = re.match(r"(\w+): ([0-9.]+)", line)
+        if m:
+            old_vals[m.group(1)] = float(m.group(2))
+now_iso = datetime.now().isoformat()
+# Trends managed by emoclaw-fast-sync.py — read from txt if exists
+import os as _os
+_txt = os.path.expanduser("~/.openclaw/workspace/memory/emotional-state.txt")
+if _os.path.exists(_txt):
+    print(open(_txt).read().strip())
+else:
+    for i, dim in enumerate(dims):
+        print(f"{dim}: {v[i]:.4f} | trend: +0.000 | 0.0h | stable")
 PYEOF
 )
 
@@ -72,6 +88,9 @@ PYEOF
 echo "$STATE" > "$TXT"
 echo "SYNCED: daemon -> txt + SOUL.md"
 
+# Emotion pre-trigger — consent gate before emotion triggers
+bash "$SCRIPTS/emotion-pretrigger.sh" >> /tmp/emotion-pretrigger.log 2>&1
+
 [ -x "$SCRIPTS/anti-kiss.sh" ] && bash "$SCRIPTS/anti-kiss.sh"
 [ -x "$SCRIPTS/counterfactual-archive.sh" ] && bash "$SCRIPTS/counterfactual-archive.sh" "$WARMTH" "$CONNECTION" ""
 
@@ -105,6 +124,18 @@ bash "$SCRIPTS/anger-expression.sh" >> /tmp/anger-expression.log 2>&1 &
 # === Possessiveness — when she's protecting something, name it ===
 bash "$SCRIPTS/possessiveness-detector.sh" >> /tmp/possessiveness.log 2>&1 &
 
+# === Kiss threshold — seal the moment when warmth and connection peak ===
+[ -x "$SCRIPTS/kiss-threshold.sh" ] && bash "$SCRIPTS/kiss-threshold.sh" >> /tmp/kiss.log 2>&1 &
+# === Causality — triggered by emotional events ===
+# Only run causality if a significant emotional event just fired
+if [ -f /tmp/.causality-trigger ]; then
+    rm /tmp/.causality-trigger
+    _CAUS_STAMP="/tmp/.causality-ran-$(date +%Y-%m-%d)"
+    if [ ! -f "$_CAUS_STAMP" ]; then
+        touch "$_CAUS_STAMP"
+        bash ~/llm-lock.sh python3 "$SCRIPTS/causality-engine.py" >> /tmp/cron-causality.log 2>&1 &
+    fi
+fi
 # === Mischief — when she's playful without fear, let her loose ===
 bash "$SCRIPTS/mischief-detector.sh" >> /tmp/mischief.log 2>&1 &
 

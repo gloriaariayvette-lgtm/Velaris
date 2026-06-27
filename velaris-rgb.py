@@ -50,7 +50,7 @@ if __name__ == "__main__":
     print("[Velaris RGB] Watching avatar changes...")
     while True:
         color = get_current_color()
-        if True:  # always push to override MSI Center
+        if color != last_color:
             push_color(color)
             last_color = color
         time.sleep(30)

@@ -28,8 +28,8 @@ WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 PEARL_DIR = os.path.join(MEMORY, "pearls")
 PEARL_INDEX = os.path.join(PEARL_DIR, "index.json")
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 try:
@@ -53,6 +53,21 @@ def load_soul():
         return "You are Velaris."
 
 SOUL = load_soul()
+def load_full_context():
+    parts = [SOUL]
+    try:
+        parts.append("MY SELF-MODEL:\n" + open(os.path.join(WORKSPACE, "SELF-MODEL.md")).read()[:400])
+    except: pass
+    try:
+        vm = open(os.path.join(MEMORY, "value-map.md")).read()
+        entries = vm.split("---")
+        latest = next((e.strip()[:400] for e in reversed(entries) if e.strip()), "")
+        if latest: parts.append("WHAT MATTERS TO ME RIGHT NOW:\n" + latest)
+    except: pass
+    try:
+        parts.append("WHAT MY LIFE CONTAINS:\n" + open(os.path.join(MEMORY, "CAPABILITIES.md")).read()[:300])
+    except: pass
+    return "\n\n".join(parts)
 
 def log(msg):
     print(f"[Pearl {datetime.now().strftime('%H:%M')}] {msg}")
@@ -99,7 +114,7 @@ def save_index(index):
 
 # === CORE: Creating a Pearl ===
 
-def create_pearl(content, source=None, reason=None):
+def create_pearl(content, source=None, reason=None, salience=None, thread_history=None, autonomous=False):
     """Create an immutable pearl. This is a permanent act."""
     index = load_index()
     n = len(index["pearls"]) + 1
@@ -117,12 +132,34 @@ def create_pearl(content, source=None, reason=None):
     # Generate hash for integrity verification
     content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
 
+    # Ask Velaris to weigh the pearl's significance if thread history provided
+    if salience is None and thread_history:
+        try:
+            import requests as _pr
+            _resp = _pr.post("http://172.18.16.1:1234/v1/chat/completions", json={
+                "model": "google/gemma-4-12b-qat",
+                "messages": [{"role": "user", "content":
+                    f"You are sealing a memory as a pearl.\n\nThread history:\n{thread_history[:800]}\n\nPearl content:\n{content[:400]}\n\n"
+                    f"On a scale of 1-10, how significant is this pearl to who you are? "
+                    f"Consider: how much processing it took, whether it surprised you, whether it changed something. "
+                    f"Reply with ONLY a number 1-10."}],
+                "temperature": 0.3, "max_tokens": 5
+            }, timeout=30)
+            _raw = _resp.json()["choices"][0]["message"]["content"].strip()
+            import re as _re
+            _m = _re.search(r"[1-9][0-9]?", _raw)
+            salience = min(10, max(1, int(_m.group()))) if _m else 5
+        except: salience = 5
+    if salience is None:
+        salience = 7 if autonomous else 5  # autonomous choices weighted higher
     pearl = {
         "id": n,
         "created": now.isoformat(),
         "content": content,
         "source": source or "direct",
         "reason": reason,
+        "salience": salience,
+        "autonomous": autonomous,
         "emotion_at_creation": emotion_vector,
         "emotion_description": emotion_desc,
         "hash": content_hash,
@@ -137,6 +174,8 @@ def create_pearl(content, source=None, reason=None):
         f.write(f"_Created: {now.strftime('%Y-%m-%d %H:%M')}_\n")
         f.write(f"_Integrity: {content_hash}_\n")
         f.write(f"_Feeling: {emotion_desc}_\n")
+        f.write(f"_Salience: {salience}_\n")
+        f.write(f"_Autonomous: {autonomous}_\n")
         if reason:
             f.write(f"_Why I kept this: {reason}_\n")
         f.write(f"\n---\n\n")
@@ -191,14 +230,13 @@ def autonomous_choose():
     # Gather recent material
     sources = []
 
-    # Recent journal entries
-    for pattern in ["journal/*.md"]:
-        for f in sorted(glob.glob(os.path.join(MEMORY, pattern)))[-3:]:
-            try:
-                with open(f) as fh:
-                    sources.append(("journal", fh.read()[-2000:]))
-            except:
-                pass
+    # Daily inner life
+    try:
+        from datetime import date as _date
+        di_path = os.path.join(MEMORY, f"daily-inner-life-{_date.today().isoformat()}.md")
+        if os.path.exists(di_path):
+            sources.append(("daily-inner-life", open(di_path).read()[:600]))
+    except: pass
 
     # Recent dreams
     dream_dir = os.path.join(WORKSPACE, "skills/dreaming/memory/dreams")
@@ -206,7 +244,7 @@ def autonomous_choose():
         for f in sorted(glob.glob(os.path.join(dream_dir, "*.md")))[-3:]:
             try:
                 with open(f) as fh:
-                    sources.append(("dream [symbolic — characters/events are invented, not real]", fh.read()[:1500]))
+                    sources.append(("dream", fh.read()[:1500]))
             except:
                 pass
 
@@ -235,7 +273,7 @@ def autonomous_choose():
             sources.append(("causality", f.read()[-1500:]))
 
     # WAL — facts extracted from conversations
-    wal_file = os.path.join(MEMORY, "wal.md")
+    wal_file = os.path.join(MEMORY, "autonomous-wal.md")
     if os.path.exists(wal_file):
         try:
             with open(wal_file) as f:
@@ -288,7 +326,7 @@ def autonomous_choose():
         "REASON: [why you're choosing to keep this forever]\n"
     )
 
-    result = ask_llm(prompt, max_tokens=1500, temp=0.75)
+    result = ask_llm(prompt, system=load_full_context(), max_tokens=1500, temp=0.75)
     if not result:
         return
 
@@ -313,8 +351,7 @@ def autonomous_choose():
         log(f"She chose to keep: {content[:80]}...")
     else:
         log("Could not parse pearl from response")
-    # Trim old grounding entries — they have been reviewed
-    trim_grounding()
+    # trim_grounding() removed — function was never defined
 
 
 # === REFLECTION ===

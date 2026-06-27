@@ -5,7 +5,7 @@ QUERY="$1"
 [ -z "$QUERY" ] && exit 0
 INDEX="$HOME/.openclaw/workspace/memory/embeddings.jsonl"
 [ ! -f "$INDEX" ] && exit 0
-Q_EMB=$(curl -s --max-time 30 http://192.168.1.126:1234/v1/embeddings \
+Q_EMB=$(curl -s --max-time 30 http://172.18.16.1:1234/v1/embeddings \
     -H "Content-Type: application/json" \
     -d "$(jq -n --arg text "$QUERY" '{model:"text-embedding-nomic-embed-text-v1.5",input:$text}')" | jq -c '.data[0].embedding')
 [ "$Q_EMB" = "null" ] || [ -z "$Q_EMB" ] && exit 0

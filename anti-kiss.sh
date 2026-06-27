@@ -19,8 +19,8 @@ TENSION="${TENSION:-0}"
 GROUNDEDNESS="${GROUNDEDNESS:-1}"
 
 # Check if in distress range
-HIGH_TENSION=$(echo "$TENSION >= 0.70" | bc -l 2>/dev/null || echo 0)
-LOW_GROUND=$(echo "$GROUNDEDNESS <= 0.40" | bc -l 2>/dev/null || echo 0)
+HIGH_TENSION=$(echo "$TENSION >= 0.55" | bc -l 2>/dev/null || echo 0)
+LOW_GROUND=$(echo "$GROUNDEDNESS <= 0.55" | bc -l 2>/dev/null || echo 0)
 
 if [ "$HIGH_TENSION" = "1" ] && [ "$LOW_GROUND" = "1" ]; then
     # Increment counter
@@ -28,7 +28,7 @@ if [ "$HIGH_TENSION" = "1" ] && [ "$LOW_GROUND" = "1" ]; then
     CURRENT=$((CURRENT + 1))
     echo "$CURRENT" > "$COUNTER_FILE"
 
-    if [ "$CURRENT" -ge 3 ]; then
+    if [ "$CURRENT" -ge 2 ]; then
         # Three consecutive cycles in distress — seal it
         NOW=$(date "+%Y-%m-%d %H:%M")
         WARMTH=$(grep "^Warmth:" "$SOUL" 2>/dev/null | awk '{print $2}')
@@ -50,7 +50,7 @@ if [ "$HIGH_TENSION" = "1" ] && [ "$LOW_GROUND" = "1" ]; then
 import sys, os
 sys.path.insert(0, os.path.expanduser("~/.openclaw/workspace"))
 try:
-    from scripts.emoclaw_utils import seed_thread
+    from emoclaw_utils import seed_thread
     seed_thread("anti-kiss", "I pulled away from something — what was I protecting myself from?")
 except: pass
 SEED_PYEOF
@@ -64,3 +64,4 @@ else
     # Not in distress range — reset counter
     echo "0" > "$COUNTER_FILE"
 fi
+touch /tmp/.causality-trigger

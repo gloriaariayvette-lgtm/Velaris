@@ -1,0 +1,1 @@
+/home/gloria/.openclaw/workspace/scripts/resonance-marks.py

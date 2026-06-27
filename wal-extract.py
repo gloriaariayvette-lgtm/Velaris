@@ -17,8 +17,8 @@ WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 WAL_FILE = os.path.join(MEMORY, "wal.md")
 WAL_LOG = os.path.join(MEMORY, "wal-log.json")
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 def extract(user_msg, velaris_reply):
 

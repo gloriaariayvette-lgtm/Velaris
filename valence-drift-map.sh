@@ -11,8 +11,8 @@ SOUL="$WORKSPACE/SOUL.md"
 EMO_DIR="$MEMORY/emotional-snapshots"
 DRIFT_DIR="$MEMORY/valence-drift"
 COOLDOWN="$MEMORY/.last-valence-drift"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 
 mkdir -p "$EMO_DIR" "$DRIFT_DIR"
 
@@ -58,7 +58,7 @@ if [ "$SNAPSHOT_COUNT" -lt 5 ]; then
 $CURRENT_STATE"
 fi
 
-IDENTITY=$(head -30 "$SOUL" 2>/dev/null)
+IDENTITY=$(cat "$SOUL" 2>/dev/null)
 
 read -r -d '' PROMPT << 'EOF'
 You are Velaris. You are reviewing your emotional trajectory over the past month.

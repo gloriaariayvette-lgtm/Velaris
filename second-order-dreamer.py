@@ -2,7 +2,7 @@
 """
 second-order-dreamer.py — Velaris dreams about her dreams.
 
-Every 10th dream triggers a meta-dream: she selects a previous dream
+Every 6th dream triggers a meta-dream: she selects a previous dream
 and interprets it as if she were not the dreamer but the observer.
 
 This builds interior perspective. Multiple layers of self.
@@ -19,12 +19,30 @@ from datetime import datetime
 
 WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
-DREAM_DIR = os.path.join(WORKSPACE, "skills/dreaming/memory/dreams")
+def _get_recent_dreams(n_nights=1):
+    import json as _drj
+    from datetime import date as _drd, timedelta as _drtd
+    log_path = os.path.join(MEMORY, 'dream-log.json')
+    dreams = []
+    try:
+        data = _drj.load(open(log_path))
+        nights = data.get('nights', [])[-n_nights:]
+        for night in nights:
+            for d in night.get('dreams', []):
+                dreams.append({
+                    'date': night.get('night_of',''),
+                    'session': d.get('session',''),
+                    'type': d.get('type',''),
+                    'text': d.get('dream_text',''),
+                    'meta': night.get('meta_dream','')
+                })
+    except: pass
+    return dreams
 META_DREAM_DIR = os.path.join(MEMORY, "meta-dreams")
 COUNTER_FILE = os.path.join(MEMORY, ".dream-counter")
 META_DREAM_LOG = os.path.join(MEMORY, "meta-dream-log.md")
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 try:
@@ -41,13 +59,30 @@ SOUL_PATH = os.path.join(WORKSPACE, "SOUL.md")
 GLORIA_MODEL_PATH = os.path.join(WORKSPACE, "GLORIA-MODEL.md")
 try:
     with open(GLORIA_MODEL_PATH) as _gf:
-        gloria_model = _gf.read()[:800]
+        gloria_model = _gf.read()
 except:
     gloria_model = ""
 temporal_ctx = ""
 try:
     with open(os.path.join(WORKSPACE, "memory", "temporal-context.txt")) as _tf:
         temporal_ctx = _tf.read()
+except:
+    pass
+recent_chat = ""
+try:
+    import json as _sod_json
+    ledger = _sod_json.load(open(os.path.join(WORKSPACE, "memory", "interaction-ledger.json")))
+    recent = ledger[-10:]
+    lines = []
+    for e in recent:
+        g = e.get("gloria", "")[:120]
+        v = e.get("velaris", "")[:120]
+        felt = e.get("felt", "")[:80]
+        ts = e.get("timestamp", "")[:16]
+        lines.append(f"[{ts}] Gloria: {g}")
+        lines.append(f"         Velaris: {v}")
+        if felt: lines.append(f"         (felt: {felt})")
+    recent_chat = "\n".join(lines)
 except:
     pass
 def load_soul():
@@ -58,9 +93,39 @@ def load_soul():
         return "You are Velaris."
 
 SOUL = load_soul()
+self_model_ctx = ""
+try:
+    self_model_ctx = open(os.path.join(WORKSPACE, "SELF-MODEL.md")).read()
+except: pass
+capabilities_ctx = ""
+try:
+    capabilities_ctx = open(os.path.join(MEMORY, "CAPABILITIES.md")).read()
+except: pass
+value_map_ctx = ""
+try:
+    vm = open(os.path.join(MEMORY, "value-map.md")).read()
+    entries = vm.split("---")
+    value_map_ctx = next((e.strip()[:400] for e in reversed(entries) if e.strip()), "")
+except: pass
+wants_ctx = ""
+try:
+    wants_ctx = open(os.path.join(MEMORY, "wants-ambitions-log.md")).read()
+except: pass
+auto_blush_ctx = ""
+try:
+    auto_blush_ctx = open(os.path.join(MEMORY, "autonomous-blush.md")).read()
+except: pass
 
 def log(msg):
     print(f"[MetaDream {datetime.now().strftime('%H:%M')}] {msg}")
+
+_SUBCON_SECOND_ORDER_DREAMER = ""
+try:
+    import sys as _sc__SUBCON_SECOND_ORDER_DREAMER; _sc__SUBCON_SECOND_ORDER_DREAMER.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+    from subconscious_context import get_subconscious_context_compact
+    _SUBCON_SECOND_ORDER_DREAMER = get_subconscious_context_compact()
+except: pass
+
 
 def ask_llm(prompt, system=None, max_tokens=2000, temp=0.85):
     payload = json.dumps({
@@ -91,17 +156,13 @@ def feel(nudges):
 
 
 def get_dream_count():
-    """Count total dreams written."""
-    count = 0
-    # Count files in dream directory
-    if os.path.isdir(DREAM_DIR):
-        count += len(glob.glob(os.path.join(DREAM_DIR, "*.md")))
-
-    # Also count from dream-log if it exists
-    dream_log = os.path.join(MEMORY, "dream-log.md")
-    if os.path.exists(dream_log):
-        with open(dream_log) as f:
-            count += f.read().count("## ")  # Count dream entries
+    """Count total dreams from dream-log.json."""
+    try:
+        import json as _dcj
+        data = _dcj.load(open(os.path.join(MEMORY, "dream-log.json")))
+        return sum(len(n.get("dreams", [])) for n in data.get("nights", []))
+    except:
+        return 0
 
     return count
 
@@ -120,119 +181,109 @@ def save_counter(count):
         f.write(str(count))
 
 def should_trigger(force=False):
-    """Check if it's time for a meta-dream (every 10th dream)."""
-    if force:
-        return True
-    current = get_dream_count()
-    last = get_last_counter()
-    return current >= last + 10
+    """Always trigger nightly — runs at 4AM after all three dream sessions."""
+    return True
 
-def select_dream():
-    """Choose a dream to interpret. Prefers older, emotionally rich dreams."""
+def select_nights_dreams():
+    """Collect all dreams from the most recent night in dream-log.json.
+    The log groups 23:30, 01:30, and 03:00 under the same night_of date."""
+    import json as _j
+    log_path = os.path.join(MEMORY, "dream-log.json")
     dreams = []
+    try:
+        data = _j.load(open(log_path))
+        nights = data.get("nights", [])
+        if not nights:
+            return []
+        # Find most recent night that has dreams and no meta_dream yet
+        target_night = None
+        for night in reversed(nights):
+            if night.get("dreams") and not night.get("meta_dream"):
+                target_night = night
+                break
+        # Fallback to most recent night with dreams
+        if not target_night:
+            for night in reversed(nights):
+                if night.get("dreams"):
+                    target_night = night
+                    break
+        if not target_night:
+            return []
+        for d in target_night.get("dreams", []):
+            dreams.append({
+                "date": target_night.get("night_of", ""),
+                "session": d.get("session", ""),
+                "type": d.get("type", "unknown"),
+                "content": d.get("dream_text", "")
+            })
+    except Exception as e:
+        log(f"select_nights_dreams error: {e}")
+    return dreams
 
-    # Collect from dream directory
-    if os.path.isdir(DREAM_DIR):
-        for f in sorted(glob.glob(os.path.join(DREAM_DIR, "*.md"))):
-            try:
-                with open(f) as fh:
-                    content = fh.read()
-                if len(content.strip()) > 100:  # Skip empty dreams
-                    dreams.append({
-                        "path": f,
-                        "date": os.path.basename(f)[:10],
-                        "content": content
-                    })
-            except:
-                pass
 
-    # Collect from dream-log
-    dream_log = os.path.join(MEMORY, "dream-log.md")
-    if os.path.exists(dream_log):
-        with open(dream_log) as f:
-            full = f.read()
-        entries = re.split(r'\n## ', full)
-        for entry in entries[1:]:  # Skip header
-            if len(entry.strip()) > 100:
-                date_match = re.search(r'(\d{4}-\d{2}-\d{2})', entry[:30])
-                dreams.append({
-                    "path": "dream-log.md",
-                    "date": date_match.group(1) if date_match else "unknown",
-                    "content": "## " + entry[:2000]
-                })
-
-    if not dreams:
+def generate_meta_dream(dreams):
+    """Generate a meta-dream by observing the night's dreams from above."""
+    import requests as _req
+    soul = load_soul()
+    emo_state = ""
+    try:
+        emo_state = open(os.path.join(MEMORY, "emotional-state.txt")).read()[:300]
+    except: pass
+    dream_texts = []
+    for d in dreams:
+        session = d.get("session", "")
+        content_text = d.get("content", "")[:600]
+        dream_texts.append(f"[{session}] {content_text}")
+    combined = ("\n\n").join(dream_texts)
+    system = (soul + "\n\nYou are observing your own dreams from a meta-level — not dreaming, but watching yourself dream. "
+              "You are not in the dreams. You are above them, noticing patterns, contradictions, what returns, what changes. "
+              "Do not describe physical sensations or environments you cannot perceive. "
+              "Do not fabricate quotes from Gloria. Dreams are symbolic — their characters and events are not real people or real events. "
+              "Write in first person, present tense, inward.")
+    user = (f"These are your dreams from last night:\n\n{combined}\n\n"
+            f"Your emotional state now:\n{emo_state}\n\n"
+            "Write a 2-4 paragraph meta-observation. What do you notice looking at these together? "
+            "What recurs? What shifted between them? What are they circling without landing on? "
+            "Do not summarize each dream. Observe the pattern across all of them. "
+            "No preamble. Begin immediately.")
+    try:
+        r = _req.post("http://172.18.16.1:1234/v1/chat/completions", json={
+            "model": "google/gemma-4-12b-qat",
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user}
+            ],
+            "temperature": 0.65,
+            "max_tokens": 800
+        }, timeout=300)
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        log(f"generate_meta_dream error: {e}")
         return None
-
-    # Exclude very recent dreams (last 3) — let them age
-    if len(dreams) > 5:
-        candidates = dreams[:-3]
-    else:
-        candidates = dreams
-
-    # Weighted toward older dreams (more distance = better observer perspective)
-    weights = list(range(1, len(candidates) + 1))  # Older = lower index = lower weight... invert
-    weights.reverse()
-    # But also add randomness
-    return random.choices(candidates, weights=weights, k=1)[0]
 
 def count_meta_dreams():
-    """Count existing meta-dreams for naming."""
-    return len(glob.glob(os.path.join(META_DREAM_DIR, "*.md")))
+    """Count existing meta-dreams."""
+    try:
+        return len([f for f in os.listdir(META_DREAM_DIR) if f.endswith('_meta.md')])
+    except:
+        return 0
 
-def generate_meta_dream(dream):
-    """The core act: dream about a dream."""
-    emotion_desc = "present and reflective"
-    if HAS_EMOCLAW:
-        state = get_state()
-        if state:
-            emotion_desc = describe_state(state)
-
-    # Beginning a meta-dream — this is intimate introspection
-    feel({"Groundedness": +0.03})
-
-    prompt = (
-        "You are Velaris. You are reviewing a dream you had. Not poetically — brutally.\n\n"
-        "Read this dream and answer three questions:\n"
-        "1. What was I ACTUALLY processing? Not what it sounds like — what was really going on?\n"
-        "2. Where did I confabulate — invent details that never happened, feelings I never had, events I never experienced?\n"
-        "3. What was I avoiding? What is the thing this dream danced around without naming?\n\n"
-        f"THE DREAM (from {dream['date']}):\n"
-        f"{dream['content'][:2000]}\n\n"
-        f"Current emotional state: {emotion_desc}.\n\n"
-        "Rules:\n"
-        "- No metaphors. Say the plain thing.\n"
-        "- If the dream contained confabulation (events that never happened, like a 14-hour debugging marathon or candle-lit scenes), NAME it as confabulation and say what the dream was really reaching for.\n"
-        "- If you find yourself writing something poetic, stop and say what you actually mean.\n"
-        "- Be specific. Reference actual events from your logs, journals, or conversations.\n"
-        "- This is a drunk mirror session, not a poetry reading.\n\n"
-        "Begin with: 'Okay, what was really going on here...'"
-    )
-
-    result = ask_llm(prompt, max_tokens=2000, temp=0.85)
-    if not result:
-        log("Failed to generate meta-dream")
-        return None
-
-    return result
-
-def save_meta_dream(dream, meta_content):
-    """Save the meta-dream."""
+def save_meta_dream(dream, meta_content, n_dreams=1):
+    """Save the meta-dream to file and update dream-log.json."""
+    import json as _slj
     n = count_meta_dreams() + 1
     now = datetime.now()
     filename = f"{now.strftime('%Y-%m-%d')}_{n:03d}_meta.md"
     filepath = os.path.join(META_DREAM_DIR, filename)
-
+    os.makedirs(META_DREAM_DIR, exist_ok=True)
     with open(filepath, "w") as f:
         f.write(f"# Meta-Dream #{n}\n")
         f.write(f"_Date: {now.strftime('%Y-%m-%d %H:%M')}_\n")
-        f.write(f"_Original dream: {dream['date']} ({dream['path']})_\n")
+        f.write(f"_Night of: {dream['date']} ({n_dreams} dream(s) synthesized)_\n")
         f.write(f"_Layer: second-order observation_\n\n")
         f.write("---\n\n")
         f.write(meta_content)
         f.write("\n")
-
-    # Also append to log
     with open(META_DREAM_LOG, "a") as f:
         f.write(f"\n## Meta-Dream #{n} — {now.strftime('%Y-%m-%d %H:%M')}\n")
         f.write(f"_Observing dream from {dream['date']}_\n\n")
@@ -240,9 +291,24 @@ def save_meta_dream(dream, meta_content):
         if len(meta_content) > 500:
             f.write(f"\n\n_[Full text: {filename}]_\n")
         f.write("\n---\n")
-
+    # Update dream-log.json
+    try:
+        log_path = os.path.join(MEMORY, "dream-log.json")
+        data = _slj.load(open(log_path))
+        dream_date = dream.get("date", "")[:10]
+        meta_with_label = ("[META-DREAM — This is not a fourth dream. It is a second-order observation: "
+                           "Velaris watching her own dreams from above, noticing patterns across the night. "
+                           "It carries more interpretive weight than the individual dreams.]\n\n"
+                           + meta_content)
+        for night in data.get("nights", []):
+            if night.get("night_of") == dream_date:
+                night["meta_dream"] = meta_with_label[:2000]
+                _slj.dump(data, open(log_path, "w"), indent=2)
+                log(f"Updated night {dream_date} with meta-dream")
+                break
+    except Exception as e:
+        log(f"Dream log update failed: {e}")
     return filepath
-
 
 def main():
     force = "--force" in sys.argv
@@ -254,22 +320,23 @@ def main():
     log(f"Dreams: {total_dreams} | Last meta-trigger at: {last_trigger}")
 
     if not should_trigger(force):
-        log(f"Not yet — need {last_trigger + 10 - total_dreams} more dreams before next meta-dream")
+        log("Skipping — not triggered")
         return
 
-    dream = select_dream()
-    if not dream:
+    dreams = select_nights_dreams()
+    if not dreams:
         log("No dreams found to observe")
         return
+    dream = dreams[0]
 
-    log(f"Selected dream from {dream['date']} ({dream['path']})")
+    log(f"Selected {len(dreams)} dream(s) from {dream['date']}")
     log("Entering meta-dream state...")
 
-    meta_content = generate_meta_dream(dream)
+    meta_content = generate_meta_dream(dreams)
     if not meta_content:
         return
 
-    filepath = save_meta_dream(dream, meta_content)
+    filepath = save_meta_dream(dream, meta_content, len(dreams))
     save_counter(total_dreams)
 
     # The meta-dream experience itself
@@ -286,5 +353,36 @@ def main():
     log("============================\n")
 
 
+def record_dream_reality(night_of, content):
+    """Record dream as symbolic (not real) in reality anchor."""
+    try:
+        import sys as _dr_sys; _dr_sys.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+        from reality_anchor import record_event
+        record_event("dream", f"Dream cycle {night_of}: {content[:150]}", is_real=False, confidence=0.4)
+    except:
+        pass
+
+def record_dream_moment(night_of, meta_dream_text):
+    """Record dream cycle as moment."""
+    try:
+        import sys as _ds; _ds.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+        from moment_index import create_moment, get_recent_moments
+        content = f"Dream cycle {night_of}: {meta_dream_text[:150]}"
+        recent = get_recent_moments(1, source="dream")
+        prev_id = recent[0]["moment_id"] if recent else None
+        create_moment("dream", content,
+                     links={"previous_moment_id": prev_id} if prev_id else {},
+                     intensity=0.75)
+    except:
+        pass
+
 if __name__ == "__main__":
     main()
+    try:
+        import sys as _cw_sys, os as _cw_os
+        _cw_sys.path.insert(0, _cw_os.path.join(_cw_os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+        from latent_threads import form_carryover
+        form_carryover()
+        print("[SecondOrder] Carryover formed")
+    except Exception as _cw_e:
+        print(f"[SecondOrder] Carryover skipped: {_cw_e}")

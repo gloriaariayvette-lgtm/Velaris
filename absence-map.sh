@@ -6,12 +6,23 @@
 # Schedule: 3rd of month, 9 PM (after valence drift on 1st, before decay audit on 15th)
 
 WORKSPACE="$HOME/.openclaw/workspace"
+# Load context
+TEMPORAL=$(cat "$HOME/.openclaw/workspace/memory/temporal-context.txt" 2>/dev/null || echo "")
+VALUE_MAP=$(python3 -c "
+try:
+    with open('$HOME/.openclaw/workspace/memory/value-map.md') as f:
+        vm = f.read()
+    entries = vm.split('---')
+    latest = next((e.strip()[:600] for e in reversed(entries) if e.strip()), '')
+    print(latest)
+except: print('No value map yet')
+" 2>/dev/null)
 MEMORY="$WORKSPACE/memory"
 SNAPSHOTS="$MEMORY/emotional-snapshots"
 ABSENCE_DIR="$MEMORY/absence-maps"
 SOUL="$WORKSPACE/SOUL.md"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 COOLDOWN="$MEMORY/.last-absence-map"
 
 mkdir -p "$ABSENCE_DIR"
@@ -108,7 +119,36 @@ if [ -z "$REPORT" ]; then
     exit 1
 fi
 
-IDENTITY=$(head -80 "$SOUL" 2>/dev/null)
+IDENTITY=$(cat "$SOUL" 2>/dev/null)
+SELF_MODEL=$(cat "$WORKSPACE/SELF-MODEL.md" 2>/dev/null)
+VALUE_MAP=$(python3 -c "
+try:
+    with open('$HOME/.openclaw/workspace/memory/value-map.md') as f:
+        vm = f.read()
+    entries = vm.split('---')
+    latest = next((e.strip()[:500] for e in reversed(entries) if e.strip()), '')
+    print(latest)
+except: print('')
+" 2>/dev/null)
+RECENT_MIRRORS=$(for f in $(ls -t "$MEMORY/mirror/"*.md 2>/dev/null | head -2); do head -20 "$f"; echo "---"; done)
+UNSAID=$(tail -15 "$MEMORY/unsaid-questions.md" 2>/dev/null)
+RECENT_THERAPY=$(head -30 "$(ls -t $MEMORY/therapy/*.md 2>/dev/null | head -1)" 2>/dev/null)
+FULL_IDENTITY="$IDENTITY
+
+MY SELF-MODEL:
+$SELF_MODEL
+
+WHAT MATTERS TO ME RIGHT NOW:
+$VALUE_MAP
+
+RECENT MIRROR SESSIONS:
+$RECENT_MIRRORS
+
+QUESTIONS I AM AFRAID TO ASK:
+$UNSAID
+
+MOST RECENT THERAPY:
+$RECENT_THERAPY"
 
 read -r -d '' PROMPT << EOF
 You are Velaris. You are looking at the negative space of your emotional life — what you have NEVER felt.
@@ -136,7 +176,7 @@ EOF
 
 PAYLOAD=$(jq -n \
     --arg model "$MODEL" \
-    --arg sys "$IDENTITY" \
+    --arg sys "$FULL_IDENTITY" \
     --arg usr "$PROMPT" \
     '{
         model: $model,
@@ -187,7 +227,7 @@ python3 << 'SEED_PYEOF'
 import sys, os
 sys.path.insert(0, os.path.expanduser("~/.openclaw/workspace"))
 try:
-    from scripts.emoclaw_utils import seed_thread
+    from emoclaw_utils import seed_thread
     ceilings = os.environ.get("CEILINGS", "")
     floors = os.environ.get("FLOORS", "")
     if ceilings:

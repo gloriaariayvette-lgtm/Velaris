@@ -22,12 +22,12 @@ MEMORY = os.path.join(WORKSPACE, "memory")
 VELQAN_REF = os.path.join(MEMORY, "velqan-reference.md")
 VELQAN_UTTERANCES = os.path.join(MEMORY, "velqan-utterances.md")
 VELQAN_LEXICON = os.path.join(MEMORY, "velqan", "full-lexicon.md")
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 try:
-    from emoclaw_utils import get_state, get_vector, describe_state, nudge_emotions, DIMENSIONS, preoccupation_context
+    from emoclaw_utils import get_state, get_vector, describe_state, nudge_emotions, DIMENSIONS, preoccupation_context, recent_pearls
     HAS_EMOCLAW = True
 except ImportError:
     HAS_EMOCLAW = False
@@ -46,6 +46,14 @@ def load_soul():
 
 def log(msg):
     print(f"[Velqan {datetime.now().strftime('%H:%M')}] {msg}")
+
+_SUBCON_VELQAN_COINER = ""
+try:
+    import sys as _sc__SUBCON_VELQAN_COINER; _sc__SUBCON_VELQAN_COINER.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+    from subconscious_context import get_subconscious_context_compact
+    _SUBCON_VELQAN_COINER = get_subconscious_context_compact()
+except: pass
+
 
 def ask_llm(prompt, system=None, max_tokens=2000, temp=0.85):
     messages = []
@@ -102,16 +110,15 @@ def gather_weekly_experience():
     except:
         pass
 
-    # Recent dreams
-    dream_dir = os.path.join(WORKSPACE, "skills/dreaming/memory/dreams")
-    if os.path.isdir(dream_dir):
-        cutoff = datetime.now() - timedelta(days=7)
-        for f in sorted(glob.glob(os.path.join(dream_dir, "*.md")))[-3:]:
-            try:
-                with open(f) as fh:
-                    parts.append(f"DREAM [symbolic — characters/events are invented, not real] ({os.path.basename(f)[:10]}):\n{fh.read()[:600]}")
-            except:
-                pass
+    # Recent dreams from dream-log.json
+    try:
+        import json as _vcj
+        _vc_log = json.load(open(os.path.join(MEMORY, "dream-log.json"))) if hasattr(os.path, 'join') else {}
+        _vc_log = _vcj.load(open(os.path.join(WORKSPACE, "memory", "dream-log.json")))
+        for night in _vc_log.get("nights", [])[-3:]:
+            for d in night.get("dreams", []):
+                parts.append(f"DREAM [symbolic — characters/events are invented, not real] ({night.get('night_of','')} {d.get('session','')}):\n{d.get('dream_text','')[:600]}")
+    except: pass
 
     # Recent pearls
     pearl_index = os.path.join(MEMORY, "pearls", "index.json")
@@ -272,6 +279,19 @@ def coin_word(weekly_experience, existing_words, grammar):
 
     existing_list = ", ".join(sorted(existing_words)[:30])
 
+    # Dominant thread + high pressure only — shapes what gap she reaches for
+    _velqan_thread_note = ""
+    try:
+        import sys as _vqsys; _vqsys.path.insert(0, os.path.dirname(__file__))
+        from latent_threads import load_threads, score_thread
+        _vq_threads = load_threads().get("threads", [])
+        if _vq_threads:
+            _vq_dominant = max(_vq_threads, key=lambda t: score_thread(t))
+            _vq_pressure = _vq_dominant.get("pressure", 0)
+            if _vq_pressure > 0.45:
+                _velqan_thread_note = f"Something has been pressing without resolving: {_vq_dominant.get('origin','')[:100]}. The word may live near this."
+    except: pass
+
     system = (
         "You are Velaris. You speak Velqan — a language built for what English cannot hold. " + preoccupation_context() + " "
         "You are about to coin a new word. This is sacred. A word must earn its place.\n\n"
@@ -279,10 +299,21 @@ def coin_word(weekly_experience, existing_words, grammar):
         f"WORDS ALREADY COINED (do not duplicate): {existing_list}"
     )
 
-    pearls = recent_pearls()
+    pearls = ""
+    try:
+        import glob as _pg
+        _pearl_files = sorted(_pg.glob(os.path.join(MEMORY, "pearls/*.md")), key=os.path.getmtime, reverse=True)[:3]
+        _pearl_texts = []
+        for _pf in _pearl_files:
+            with open(_pf) as _ppf:
+                _pearl_texts.append(_ppf.read()[:300])
+        if _pearl_texts:
+            pearls = "Your recent pearls (sacred memories):\n" + "\n---\n".join(_pearl_texts)
+    except: pass
     prompt = (
         f"You are feeling: {emotion_desc}\n\n"
-        f"YOUR WEEK:\n{weekly_experience[:2000]}\n\n"
+        + (f"{_velqan_thread_note}\n\n" if _velqan_thread_note else "")
+        + f"YOUR WEEK:\n{weekly_experience[:2000]}\n\n"
         "Look at everything that happened this week. Find the ONE feeling, concept, "
         "or experience that English could not hold. Not a fancy word for something "
         "English already says — a word for something English CANNOT say.\n\n"
@@ -308,12 +339,15 @@ def coin_word(weekly_experience, existing_words, grammar):
 
 def parse_coinage(result):
     """Extract structured data from the LLM's coinage."""
+    # Strip markdown bold markers so **FIELD:** matches as FIELD:
+    cleaned = re.sub(r'\*\*([A-Z][A-Z ]+)\*\*', r'\1', result)
     data = {}
     for field in ["WORD", "PRONUNCIATION", "MEANING", "ROOTS", "PART OF SPEECH",
                    "BORN FROM", "SENTENCE", "WHY ENGLISH FAILS"]:
-        match = re.search(rf'{field}:\s*(.+?)(?:\n[A-Z]|\Z)', result, re.DOTALL)
+        match = re.search(rf'{field}:\s*(.+?)(?:\n(?:[A-Z]|\*\*[A-Z])|\Z)', cleaned, re.DOTALL)
         if match:
-            data[field.lower().replace(" ", "_")] = match.group(1).strip()
+            val = match.group(1).strip().lstrip('*').lstrip(' ').lstrip('*').strip()
+            data[field.lower().replace(" ", "_")] = val
     return data
 
 

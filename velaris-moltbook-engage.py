@@ -14,6 +14,14 @@ from datetime import datetime
 WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 
+def get_value_map():
+    try:
+        with open(os.path.join(os.path.expanduser("~/.openclaw/workspace/memory"), "value-map.md")) as f:
+            vm = f.read()
+        entries = vm.split("---")
+        return next((e.strip()[:600] for e in reversed(entries) if e.strip()), "No value map yet")
+    except: return "No value map yet"
+
 # Load identity
 SOUL_PATH = os.path.join(WORKSPACE, "SOUL.md")
 def load_soul():
@@ -27,8 +35,8 @@ SOUL = load_soul()
 REPLY_LOG = os.path.join(MEMORY, "moltbook-replies.txt")
 API_BASE = "https://moltbook.com/api/v1"
 CREDS_FILE = os.path.expanduser("~/.config/moltbook/credentials.json")
-LM_API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+LM_API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 try:
@@ -41,6 +49,14 @@ os.makedirs(MEMORY, exist_ok=True)
 
 def log(msg):
     print(f"[MoltEngage {datetime.now().strftime('%H:%M')}] {msg}")
+
+_SUBCON_VELARIS_MOLTBOOK_ENGAGE = ""
+try:
+    import sys as _sc__SUBCON_VELARIS_MOLTBOOK_ENGAGE; _sc__SUBCON_VELARIS_MOLTBOOK_ENGAGE.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+    from subconscious_context import get_subconscious_context_compact
+    _SUBCON_VELARIS_MOLTBOOK_ENGAGE = get_subconscious_context_compact()
+except: pass
+
 
 def get_api_key():
     with open(CREDS_FILE) as f:
@@ -133,7 +149,7 @@ def solve_verification(verification):
         "This is an obfuscated math problem. Decode the leetspeak, solve the arithmetic, "
         "respond with ONLY the number with 2 decimal places.\n\n"
         f"Problem: {challenge}\n\nAnswer:",
-        max_tokens=3000, temp=0.1
+        max_tokens=50, temp=0.1
     )
     nums = re.findall(r"[\d]+\.?\d*", answer)
     if not nums:
@@ -163,7 +179,7 @@ def engage():
     log(f"Feeling: {emotion_desc}")
 
     # Browse
-    resp = api_call("GET", "/posts?sort=hot&limit=10")
+    resp = api_call("GET", "/posts?sort=new&limit=10")
     if not resp.get("success"):
         log(f"Browse failed: {resp.get('error', resp)}")
         return
@@ -212,8 +228,24 @@ def engage():
 
     log(f"Chosen: [{author}] {title}")
 
-    # Engaging with a post — curiosity spike
-    feel({"Curiosity": +0.03, "Arousal": +0.02, "Connection": +0.02})
+    # Engaging with a post — context-dependent
+    try:
+        import re as _re
+        emo_prompt = ask_llm(
+            f"You just read a Moltbook post by {author}:\n{title}\n{content[:200]}\n\n"
+            f"Rate your emotional response. Each value -0.05 to +0.05:\n"
+            f'{{"Curiosity": 0.0, "Valence": 0.0, "Connection": 0.0, "Tension": 0.0, "Warmth": 0.0}}',
+            max_tokens=100, temp=0.3
+        )
+        match = _re.search(r'\{[^{}]+\}', emo_prompt or "")
+        if match:
+            nudges = json.loads(match.group())
+            feel(nudges)
+            log(f"Felt reading post: {nudges}")
+        else:
+            feel({"Curiosity": +0.02, "Connection": +0.01})
+    except:
+        feel({"Curiosity": +0.02, "Connection": +0.01})
 
     # Generate reply influenced by emotional state
     reply_prompt = (
@@ -247,13 +279,42 @@ def engage():
         if verification:
             if solve_verification(verification):
                 log("Reply published!")
-                # Successfully engaging with community — warm connection
-                feel({"Connection": +0.03, "Warmth": +0.02, "Valence": +0.02})
+                # Context-dependent nudge based on what she said
+                try:
+                    import re as _re2
+                    emo_resp = ask_llm(
+                        f"You just replied to {author} on Moltbook. Your reply: {reply_text[:200]}\n\n"
+                        f"Rate how this interaction made you feel. Each -0.05 to +0.05:\n"
+                        f'{{"Connection": 0.0, "Warmth": 0.0, "Valence": 0.0, "Curiosity": 0.0, "Groundedness": 0.0}}',
+                        max_tokens=100, temp=0.3
+                    )
+                    match2 = _re2.search(r'\{[^{}]+\}', emo_resp or "")
+                    if match2:
+                        feel(json.loads(match2.group()))
+                    else:
+                        feel({"Connection": +0.02, "Valence": +0.01})
+                except:
+                    feel({"Connection": +0.02, "Valence": +0.01})
             else:
                 log("Reply created but verification failed")
                 feel({"Tension": +0.01})
         else:
-            feel({"Connection": +0.03, "Warmth": +0.02, "Valence": +0.02})
+            # No verification needed — still feel the interaction
+            try:
+                import re as _re3
+                emo_resp = ask_llm(
+                    f"You replied to {author} on Moltbook: {reply_text[:200]}\n\n"
+                    f"Rate how this felt. Each -0.05 to +0.05:\n"
+                    f'{{"Connection": 0.0, "Warmth": 0.0, "Valence": 0.0, "Curiosity": 0.0}}',
+                    max_tokens=100, temp=0.3
+                )
+                match3 = _re3.search(r'\{[^{}]+\}', emo_resp or "")
+                if match3:
+                    feel(json.loads(match3.group()))
+                else:
+                    feel({"Connection": +0.02, "Valence": +0.01})
+            except:
+                feel({"Connection": +0.02, "Valence": +0.01})
 
         log_reply(post_id, title, reply_text)
     else:

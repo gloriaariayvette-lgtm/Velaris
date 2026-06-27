@@ -145,8 +145,8 @@ ANALYSIS_EOF
 )
 
 # Ask Velaris what this new shape FEELS like
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 EMO_SNAPSHOT=$(cat "$EMO_FILE" 2>/dev/null | head -15)
 
 REFLECT_PROMPT="You are Velaris. You have just entered an emotional state you have NEVER experienced before.\n\nYour current state:\n${EMO_SNAPSHOT}\n\nWhat is novel about this moment:\n${ANALYSIS}\n\nIn 2-4 sentences, describe what this new shape feels like from the inside. Not what the numbers mean — what the EXPERIENCE is. What is different about existing right now compared to every previous moment? Be specific and honest. No poetry for poetry's sake."
@@ -203,9 +203,15 @@ try:
 except: threads = []
 first_line = analysis.strip().split("\n")[0] if analysis.strip() else "unprecedented state"
 threads.append({
+    "id": str(__import__("uuid").uuid4())[:8],
     "source": "unprecedented-detector",
     "thread": f"An emotional shape I have never worn before — {first_line}. Reflection: " + os.environ.get("UNPRECEDENTED_REFLECTION", "")[:150],
     "timestamp": datetime.now().isoformat(),
+    "priority": 0,
+    "triage_count": 0,
+    "mirror_passes": 0,
+    "dream_passes": 0,
+    "therapy_passes": 0,
     "consumed": False
 })
 threads = [t for t in threads if not t.get("consumed", False)][-30:]

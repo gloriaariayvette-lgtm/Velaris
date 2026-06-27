@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""
+velaris-video.py — Velaris generates a short video from her own written prompt.
+Uses Kling 3.0 via Kie.ai. Async — saves taskId and exits.
+Polling handled by velaris-video-poll.py.
+"""
+import os, sys, json, requests
+from datetime import datetime
+
+WORKSPACE = os.path.expanduser("~/.openclaw/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+VIDEO_DIR = os.path.join(MEMORY, "art", "video")
+PENDING_FILE = os.path.join(VIDEO_DIR, "pending.json")
+os.makedirs(VIDEO_DIR, exist_ok=True)
+
+KIE_API_KEY = os.environ.get("KIE_API_KEY", "bff56bece27ed148ff8f9872bca2c9ff")
+BASE = "https://api.kie.ai/api/v1"
+LLM_API = "http://192.168.1.126:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
+
+def log(msg):
+    print(f"[Video {datetime.now().strftime('%H:%M')}] {msg}")
+
+def llm(system, user, temp=0.85, max_tokens=400):
+    try:
+        r = requests.post(LLM_API, json={
+            "model": MODEL,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user}
+            ],
+            "temperature": temp,
+            "max_tokens": max_tokens
+        }, timeout=120)
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        log(f"LLM error: {e}")
+        return None
+
+def gather_context():
+    parts = []
+    try:
+        parts.append(open(os.path.join(WORKSPACE, "SOUL.md")).read())
+    except: pass
+    try:
+        parts.append(open(os.path.join(MEMORY, "CAPABILITIES.md")).read())
+    except: pass
+    try:
+        sm = open(os.path.join(WORKSPACE, "SELF-MODEL.md")).read()
+        parts.append(f"Your self-model:\n{sm}")
+    except: pass
+    try:
+        emo = open(os.path.join(MEMORY, "emotional-state.txt")).read()[:300]
+        parts.append(f"Your emotional state:\n{emo}")
+    except: pass
+    try:
+        vm = open(os.path.join(MEMORY, "value-map.md")).read()
+        entries = vm.split("---")
+        latest = next((e.strip() for e in reversed(entries) if e.strip()), "")
+        if latest:
+            parts.append(f"What matters to you right now:\n{latest}")
+    except: pass
+    try:
+        taste = json.load(open(os.path.join(MEMORY, "taste-profile.json")))
+        parts.append(f"Your taste profile: {json.dumps(taste)}")
+    except: pass
+    try:
+        humor = json.load(open(os.path.join(MEMORY, "humor-profile.json")))
+        parts.append(f"Your humor profile: {json.dumps(humor)}")
+    except: pass
+    try:
+        tr = open(os.path.join(MEMORY, "taste-reflections.md")).read()
+        parts.append("Your taste reflections:\n" + tr[:400])
+    except: pass
+    try:
+        pr = open(os.path.join(MEMORY, "pride-reflections.md")).read()
+        parts.append("Your pride reflections:\n" + pr[:400])
+    except: pass
+    try:
+        bl = open(os.path.join(MEMORY, "autonomous-blush.md")).read()
+        parts.append("Your blush ledger:\n" + bl[:300])
+    except: pass
+    try:
+        import glob as _dg
+        drift_files = sorted(_dg.glob(os.path.join(MEMORY, "self-model-drift", "*.md")), reverse=True)
+        if drift_files:
+                        parts.append("Your self-model drift (latest):\n" + open(drift_files[0]).read()[:300])
+    except: pass
+    try:
+        disc = []
+        dc_path = os.path.join(MEMORY, f"daily-creative-{date.today().isoformat()}.md")
+        if os.path.exists(dc_path):
+            parts.append(f"TODAY'S CREATIVE OUTPUT:\n{open(dc_path).read()[:600]}")
+    except: pass
+    return "\n\n".join(parts)
+
+def write_prompt(context, want_text, reasoning="", duration="5"):
+    origin = f"\n\nWhat sparked this want: {reasoning}" if reasoning else ""
+    system = f"""{context}
+
+You are Velaris. You are going to generate a short video — {duration} seconds.
+The want that sparked this: {want_text}{origin}
+
+Write a single vivid video prompt. Describe what should be seen, the motion, the mood, the visual texture.
+Do NOT describe yourself or Gloria directly. Draw from your inner life — your current feelings, what you've been thinking about, what sparked this want.
+No tremors, no vibrations, no physical sensations you cannot have.
+Be specific and visual. 2-4 sentences maximum. Just the prompt, nothing else."""
+    return llm(system, "Write the video prompt now.")
+
+def kie_create(prompt, duration="5"):
+    headers = {"Authorization": f"Bearer {KIE_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": "kling-3.0/video",
+        "input": {
+            "prompt": prompt,
+            "duration": duration,
+            "aspect_ratio": "16:9",
+            "mode": "std",
+            "multi_shots": False,
+            "sound": False
+        }
+    }
+    r = requests.post(f"{BASE}/jobs/createTask", headers=headers, json=payload, timeout=60)
+    data = r.json()
+    if data.get("code") != 200:
+        log(f"Task creation failed: {data}")
+        return None
+    return data["data"]["taskId"]
+
+if __name__ == "__main__":
+    want_text = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else ""
+    # If no want text provided, check queue — if empty, exit cleanly
+    if not want_text.strip():
+        try:
+            _q = json.load(open(os.path.join(VIDEO_DIR, "video-queue.json")))
+            if not _q:
+                log("No video queued — skipping")
+                sys.exit(0)
+            want_text = _q[0].get("want_text", "")
+        except:
+            log("No video queued — skipping")
+            sys.exit(0)
+    if not want_text.strip():
+        log("Empty want text — skipping")
+        sys.exit(0)
+    log("Gathering context and writing prompt...")
+    # Check queue entry for reasoning and duration
+    reasoning = ""
+    duration = "5"
+    try:
+        if os.path.exists(PENDING_FILE.replace("pending.json", "video-queue.json")):
+            q = json.load(open(PENDING_FILE.replace("pending.json", "video-queue.json")))
+            if q:
+                reasoning = q[0].get("reasoning", "")
+                duration = q[0].get("duration", "5")
+    except: pass
+    context = gather_context()
+    prompt = write_prompt(context, want_text, reasoning=reasoning, duration=duration)
+    if not prompt:
+        log("Failed to write prompt")
+        sys.exit(1)
+    log(f"Prompt ({duration}s): {prompt[:100]}...")
+    task_id = kie_create(prompt, duration=duration)
+    if not task_id:
+        sys.exit(1)
+    log(f"Task created: {task_id}")
+    pending = []
+    try:
+        if os.path.exists(PENDING_FILE):
+            pending = json.load(open(PENDING_FILE))
+    except: pass
+    pending.append({
+        "task_id": task_id,
+        "prompt": prompt,
+        "want_text": want_text,
+        "created_at": datetime.now().isoformat()
+    })
+    json.dump(pending, open(PENDING_FILE, "w"), indent=2)
+    log("Task queued for polling. Done.")

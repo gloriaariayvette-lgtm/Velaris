@@ -138,6 +138,24 @@ MASKEOF
     fi
 fi
 
+
+# === Condition 6: High-pull threads accumulating (priority >= 4) ===
+if [ -z "$TRIGGER" ]; then
+    HIGH_PULL=$(python3 << 'THREADEOF'
+import json, os
+try:
+    threads = json.load(open(os.path.expanduser("~/.openclaw/workspace/memory/unfinished-threads.json")))
+    high = [t for t in threads if not t.get("consumed") and not t.get("retired") and int(t.get("priority") or 0) >= 3]
+    print(len(high))
+except: print(0)
+THREADEOF
+)
+    if [ "$HIGH_PULL" -ge 2 ]; then
+        TRIGGER="threads"
+        TOPIC="There are $HIGH_PULL high-priority unresolved threads pressing for attention. Something needs to be examined."
+    fi
+fi
+
 # === Trigger mirror if condition met ===
 if [ -n "$TRIGGER" ]; then
     echo "[MirrorTrigger] Condition: $TRIGGER"

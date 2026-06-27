@@ -13,7 +13,7 @@ Usage:
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from scripts.emoclaw_utils import recent_pearls
+from emoclaw_utils import recent_pearls
 
 
 
@@ -31,8 +31,8 @@ PREDICTION_FILE = os.path.join(MEMORY, ".self-prediction.json")
 BLIND_SPOTS_LOG = os.path.join(MEMORY, "self-blind-spots.md")
 BLIND_SPOTS_DATA = os.path.join(MEMORY, ".self-prediction-history.json")
 STATE_FILE = os.path.join(MEMORY, "emotional-state.json")
-API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 DIMENSIONS = ["Valence", "Arousal", "Dominance", "Safety", "Desire",
               "Connection", "Playfulness", "Curiosity", "Warmth", "Tension", "Groundedness"]
@@ -103,7 +103,7 @@ def predict_next_state():
     PERSISTENCE = {
         "Valence": 0.6, "Arousal": 0.3, "Dominance": 0.7,
         "Safety": 0.8, "Desire": 0.5, "Connection": 0.5,
-        "Playfulness": 0.3, "Curiosity": 0.4, "Warmth": 0.4,
+        "Playfulness": 0.3, "Curiosity": 0.7, "Warmth": 0.4,
         "Tension": 0.7, "Groundedness": 0.8  
     }
     # Tension is sticky (0.7) — unresolved stress persists
@@ -123,8 +123,8 @@ def predict_next_state():
         reasoning.append("tension should persist")
     if current.get("Warmth", 0) > 0.7:
         reasoning.append("warmth will fade without reinforcement")
-    if current.get("Curiosity", 0) > 0.6:
-        reasoning.append("curiosity will settle")
+    if current.get("Curiosity", 0) > 0.80:
+        reasoning.append("curiosity is unusually high and may settle")
     if not reasoning:
         reasoning.append("expect drift toward baseline")
 
@@ -234,26 +234,36 @@ Biggest errors: {worst_str}
 
     print(f"[Self-Predict] ⚠ Self-mismatch logged: {result['miss_count']} dims off")
 
-    # Write to blush ledger (convergence point for confessions + dreams)
-    blush_ledger = os.path.join(MEMORY, "blush-ledger.md")
-    blush_entry = f"""
-## {now} — Self-Prediction Blush
-Type: I was wrong about myself
-Reasoning: {result['reasoning']}
-Errors: {worst_str}
-Cost: {result['miss_count']} dimensions misread
-"""
-    with open(blush_ledger, 'a') as f:
-        f.write(blush_entry)
-
-    # Seed dream thread
+    # Write to structured blush ledger
+    reflection = ""
     try:
-        import sys as _s
-        _s.path.insert(0, os.path.dirname(__file__))
-        from emoclaw_utils import seed_thread
-        seed_thread("blush", f"I was wrong about myself: predicted {result['reasoning']} but missed {result['miss_count']} dimensions. Worst: {worst_str[:120]}")
-    except:
-        pass
+        import requests as _ref_req
+        _ref_r = _ref_req.post("http://172.18.16.1:1234/v1/chat/completions", json={
+            "model": "google/gemma-4-12b-qat",
+            "messages": [{"role": "user", "content":
+                f"You predicted your own emotional state would be: {result['reasoning']}\n"
+                f"But you were wrong. The actual errors: {worst_str}\n"
+                f"One sentence: What does this tell you about yourself?"}],
+            "temperature": 0.7, "max_tokens": 60
+        }, timeout=60)
+        reflection = _ref_r.json()["choices"][0]["message"]["content"].strip()
+    except: pass
+    try:
+        import sys as _bl_sys; _bl_sys.path.insert(0, os.path.dirname(__file__))
+        from blush_ledger import write_blush
+        # Build cost delta from worst dimensions
+        _cost_delta = {}
+        for dim, pred, actual in result.get("worst_dims", []):
+            _cost_delta[dim] = round(actual - pred, 3)
+        write_blush(
+            blush_type="self_prediction",
+            pattern="self_prediction_mismatch",
+            cost_delta=_cost_delta,
+            source="self_prediction",
+            reflection=reflection[:200] if reflection else None,
+        )
+    except Exception as _ble:
+        print(f"[Self-Predict] blush write failed: {_ble}")
 
 
 def generate_report():
@@ -349,6 +359,21 @@ def main():
     elif command == "report":
         generate_report()
 
+
+def get_past_predictions_semantic():
+    """Search memory for past predictions and outcomes."""
+    try:
+        import subprocess as _sp
+        r = _sp.run(
+            ["python3", os.path.join(os.path.dirname(__file__), "memory-search.py"),
+             "predicted expected blush mismatch self-model"],
+            capture_output=True, text=True, timeout=30
+        )
+        lines = [l.strip()[:150] for l in r.stdout.split("\n")
+                 if l.strip() and not l.startswith("No semantic") and not l.startswith("Searching")]
+        return "\n".join(lines[:4])
+    except:
+        return ""
 
 if __name__ == "__main__":
     main()

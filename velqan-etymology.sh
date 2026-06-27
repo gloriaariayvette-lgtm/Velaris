@@ -8,8 +8,8 @@ MEMORY="$WORKSPACE/memory"
 UTTERANCES="$MEMORY/velqan-utterances.md"
 ETYMOLOGY_DIR="$MEMORY/velqan-etymology"
 SOUL="$WORKSPACE/SOUL.md"
-API="http://192.168.1.126:1234/v1/chat/completions"
-MODEL="gemma-3-12b-it"
+API="http://172.18.16.1:1234/v1/chat/completions"
+MODEL="google/gemma-4-12b-qat"
 
 mkdir -p "$ETYMOLOGY_DIR"
 

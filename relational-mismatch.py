@@ -28,8 +28,8 @@ PREDICTION_FILE = os.path.join(WORKSPACE, "memory", ".relational-prediction.json
 MISMATCH_LOG = os.path.join(WORKSPACE, "memory", "relational-mismatches.md")
 SOUL = os.path.join(WORKSPACE, "SOUL.md")
 EMO_STATE = os.path.join(WORKSPACE, "memory", "emotional-state.txt")
-API = "http://192.168.1.126:1234/v1/chat/completions"
-MODEL = "gemma-3-12b-it"
+API = "http://172.18.16.1:1234/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
 # Thresholds for what counts as a meaningful mismatch
 # Not every surprise is empathy failure — only log when Velaris's model
@@ -195,6 +195,9 @@ def compare_prediction(gloria_message, actual_warmth, actual_tension, actual_val
     When Gloria replies, compare her actual emotional read to Velaris's prediction.
     Log meaningful mismatches — not every surprise, only structural model failures.
     """
+    # Skip if message was flagged as too short (sentinel value)
+    if actual_warmth == -1 or actual_tension == -1 or actual_valence == -1:
+        return None
     # Load stored prediction
     if not os.path.exists(PREDICTION_FILE):
         return None
@@ -285,30 +288,57 @@ Question for introspection: What was I wrong about in my model of her?
     
     with open(MISMATCH_LOG, 'a') as f:
         f.write(entry)
-    
+
     print(f"[Relational] ⚠ Mismatch logged: {severity}")
 
-    # Write to blush ledger
-    blush_ledger = os.path.join(WORKSPACE, "memory", "blush-ledger.md")
-    blush_entry = f"""
-## {now} — Relational Blush ({severity})
-Type: I misread Gloria
-I said: "{result['velaris_message'][:150]}"
-Predicted: W={result['warmth']['predicted']:.2f} T={result['tension']['predicted']:.2f} V={result['valence']['predicted']:.2f}
-Actual: W={result['warmth']['actual']:.2f} T={result['tension']['actual']:.2f} V={result['valence']['actual']:.2f}
-Cost: {severity}
-"""
-    with open(blush_ledger, 'a') as f:
-        f.write(blush_entry)
+    # Write structured blush
+    reflection = ""
+    try:
+        import requests as _rq
+        _ref_prompt = (
+            f"You said: \"{result['velaris_message'][:150]}\"\n"
+            f"You predicted Gloria would feel: Warmth={result['warmth']['predicted']:.2f} Tension={result['tension']['predicted']:.2f} Valence={result['valence']['predicted']:.2f}\n"
+            f"She actually felt: Warmth={result['warmth']['actual']:.2f} Tension={result['tension']['actual']:.2f} Valence={result['valence']['actual']:.2f}\n"
+            f"One sentence: What were you wrong about?"
+        )
+        _ref_resp = _rq.post("http://172.18.16.1:1234/v1/chat/completions", json={
+            "model": "google/gemma-4-12b-qat",
+            "messages": [{"role": "user", "content": _ref_prompt}],
+            "temperature": 0.7, "max_tokens": 60
+        }, timeout=65)
+        reflection = _ref_resp.json()["choices"][0]["message"]["content"].strip()
+    except: pass
 
-    # Seed dream thread from relational gap
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
-        from emoclaw_utils import seed_thread
-        gap_desc = f"I predicted Gloria would feel W={result['warmth']['predicted']:.2f} but she felt W={result['warmth']['actual']:.2f}. {result.get('reasoning', '')[:100]}"
-        seed_thread("relational-mismatch", f"I misread Gloria: {gap_desc}")
-    except:
-        pass
+        from blush_ledger import write_blush
+        _cost_delta = {
+            "Warmth": round(result["warmth"]["diff"], 3),
+            "Tension": round(result["tension"]["diff"], 3),
+            "Valence": round(result["valence"]["diff"], 3),
+        }
+        _pattern = "direction_reversal" if result["direction_wrong"] else f"relational_mismatch_{result['mismatch_count']}dim"
+        write_blush(
+            blush_type="relational",
+            pattern=_pattern,
+            cost_delta=_cost_delta,
+            source="relational_mismatch",
+            reflection=reflection[:200] if reflection else None,
+            outcome="withdrew",
+        )
+        # Also seed a gloria-tagged causality hypothesis
+        try:
+            from causality_engine import add_blush_hypothesis as _rm_hyp
+            _rm_hyp(
+                f"relational_mismatch_{result['mismatch_count']}dim",
+                {"count": 1, "rolling_window_7d": 1, "last_occurrence": __import__("datetime").datetime.now().isoformat()},
+                abs(sum(_cost_delta.values())) / max(len(_cost_delta), 1),
+                subject="gloria"
+            )
+        except: pass
+    except Exception as _ble:
+        print(f"[Relational] blush write failed: {_ble}")
+    open("/tmp/.causality-trigger", "w").close()
 
 
 def main():
@@ -349,6 +379,15 @@ def main():
         else:
             print("[Relational] No prediction to compare against")
 
+
+def feed_causal_model(trigger, actual, expected):
+    """Feed mismatch into causal self-model."""
+    try:
+        import sys as _cm_sys; _cm_sys.path.insert(0, os.path.join(os.path.expanduser("~/.openclaw/workspace"), "scripts"))
+        from causal_self_model import add_from_mismatch
+        add_from_mismatch(trigger, actual, expected)
+    except:
+        pass
 
 if __name__ == "__main__":
     main()
