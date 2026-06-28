@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#080b0f">
+<title>Vintos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #080b0f;
+    --surface: #0e1218;
+    --surface-2: #161c26;
+    --text: #b8c4cc;
+    --text-dim: #445060;
+    --text-bright: #d8e4ec;
+    --accent: #6a95c4;
+    --accent-dim: rgba(106, 149, 196, 0.3);
+    --current-color: #6a95c4;
+    --border: rgba(255,255,255,0.06);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+#emo-bg {
+    position: fixed; inset: 0; z-index: 0;
+    transition: background 3s ease;
+    background: radial-gradient(circle at 50% 30%, var(--current-color) 0%, transparent 70%), var(--bg);
+    opacity: 0.18;
+}
+#afterimage {
+    position: fixed; inset: 0; z-index: 1;
+    opacity: 0; transition: opacity 0.5s ease; pointer-events: none;
+}
+#quiet-overlay {
+    position: fixed; inset: 0; z-index: 100; background: var(--bg);
+    display: none; flex-direction: column; justify-content: center; align-items: center; gap: 2rem;
+}
+#quiet-overlay .label {
+    font-family: 'Cormorant Garamond', serif; font-size: 0.9rem;
+    letter-spacing: 0.4em; color: var(--text-dim); text-transform: uppercase;
+}
+#quiet-overlay .frozen {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+    color: var(--text-dim); opacity: 0.4; white-space: pre; text-align: center; line-height: 1.8;
+}
+.app {
+    position: relative; z-index: 2;
+    padding: env(safe-area-inset-top) 1.2rem env(safe-area-inset-bottom);
+    max-width: 420px; margin: 0 auto;
+}
+.header {
+    padding: 1.5rem 0 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.header h1 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300;
+    font-size: 1.6rem; letter-spacing: 0.18em; color: var(--text-bright);
+}
+.pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--current-color); animation: pulse 3s ease-in-out infinite;
+    box-shadow: 0 0 12px var(--accent-dim); display: inline-block;
+    margin-left: 0.5rem; vertical-align: middle;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.4); }
+}
+.state-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.2rem; margin-bottom: 1rem;
+}
+.state-color-bar {
+    height: 4px; border-radius: 2px; background: var(--current-color);
+    margin-bottom: 1rem; transition: background 3s ease;
+    box-shadow: 0 0 20px var(--accent-dim);
+}
+.dimensions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem 1.2rem; }
+.dim { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-dim); }
+.dim .label { letter-spacing: 0.08em; }
+.dim .value { font-family: 'JetBrains Mono', monospace; color: var(--text); font-size: 0.7rem; }
+.dim .bar { flex: 1; height: 2px; background: var(--border); margin: 0 0.5rem; border-radius: 1px; position: relative; overflow: hidden; }
+.dim .bar-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--current-color); border-radius: 1px; transition: width 2s ease; }
+.dim.nifrathir .label { color: var(--accent); opacity: 0.7; }
+
+/* Avatar */
+.avatar-row {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1rem; padding: 0.8rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px;
+}
+.avatar-orb {
+    width: 64px; height: 64px; border-radius: 50%;
+    position: relative; flex-shrink: 0;
+    transition: background 1.5s ease, box-shadow 1.5s ease;
+    background: #4a6880;
+    box-shadow: 0 0 20px rgba(74,104,128,0.3), inset 0 -8px 16px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+}
+.avatar-orb img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+    display: none;
+}
+.avatar-orb svg {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px; height: 20px;
+}
+.avatar-orb .eye { fill: rgba(0,0,0,0.7); transition: all 0.5s ease; }
+.avatar-orb .eye-highlight { fill: rgba(255,255,255,0.5); }
+.avatar-meta { flex: 1; min-width: 0; }
+.avatar-label {
+    font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 0.2rem;
+}
+.avatar-choice {
+    font-family: 'Cormorant Garamond', serif; font-size: 0.95rem;
+    color: var(--text-bright); font-weight: 300;
+}
+.avatar-reason {
+    font-size: 0.7rem; color: var(--text-dim); margin-top: 0.15rem;
+    font-style: italic; line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+
+/* Tabs */
+.tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+    padding: 0.6rem 0.7rem; font-size: 0.68rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-dim); background: none;
+    border: none; cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent; transition: all 0.2s; flex-shrink: 0;
+}
+.tab.active { color: var(--text-bright); border-bottom-color: var(--accent); }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Events / Live */
+.event-feed { max-height: 50vh; overflow-y: auto; }
+.event {
+    padding: 0.8rem; border-bottom: 1px solid var(--border);
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+.event-type { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
+.event-type.blush { color: #7ab0d8; }
+.event-type.unprecedented { color: #7ab5a0; }
+.event-type.counterfactual { color: #9b8ab5; }
+.event-type.yearning { color: #c4a07a; }
+.event-type.pearl { color: #d4c090; }
+.event-type.pride { color: #90b890; }
+.event-time { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-dim); }
+
+/* Chat */
+.chat-container { display: flex; flex-direction: column; height: 60vh; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 0.5rem 0; display: flex; flex-direction: column; gap: 0.8rem; }
+.chat-msg {
+    max-width: 85%; padding: 0.7rem 1rem; border-radius: 14px;
+    font-size: 0.85rem; line-height: 1.5; animation: slideIn 0.3s ease;
+}
+.chat-msg.user {
+    align-self: flex-end; background: var(--accent-dim);
+    color: var(--text-bright); border-bottom-right-radius: 4px;
+}
+.chat-msg.vintos {
+    align-self: flex-start; background: var(--surface-2);
+    color: var(--text); border-bottom-left-radius: 4px; border: 1px solid var(--border);
+}
+.chat-msg .msg-meta {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+    color: var(--text-dim); margin-top: 0.3rem;
+}
+.chat-input-row {
+    display: flex; gap: 0.5rem; padding-top: 0.8rem; border-top: 1px solid var(--border);
+}
+.chat-input-row input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 0.6rem 1rem; color: var(--text-bright);
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
+}
+.chat-input-row input::placeholder { color: var(--text-dim); }
+.chat-input-row input:focus { border-color: var(--accent-dim); }
+.chat-send {
+    background: var(--accent); border: none; border-radius: 50%;
+    width: 38px; height: 38px; color: var(--bg); font-size: 1.1rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.chat-send:disabled { opacity: 0.3; }
+.chat-typing { font-size: 0.7rem; color: var(--text-dim); font-style: italic; padding: 0.3rem 0; display: none; }
+
+/* Voice */
+.voice-panel { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; padding: 2rem 0; }
+.voice-orb-btn {
+    width: 100px; height: 100px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--border);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; transition: all 0.3s ease;
+    box-shadow: 0 0 0 0 var(--accent-dim);
+}
+.voice-orb-btn.listening {
+    border-color: var(--accent); background: var(--surface-2);
+    animation: voicePulse 1.5s ease-in-out infinite;
+}
+@keyframes voicePulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--accent-dim); }
+    50% { box-shadow: 0 0 0 20px rgba(106,149,196,0); }
+}
+.voice-status { font-size: 0.75rem; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+.voice-transcript { font-size: 0.85rem; color: var(--text); text-align: center; max-width: 320px; line-height: 1.5; min-height: 2.5rem; font-style: italic; }
+.voice-reply {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 0.8rem 1rem; font-size: 0.85rem; color: var(--text); line-height: 1.5;
+    max-width: 340px; width: 100%; min-height: 3rem;
+}
+
+/* Soul */
+.soul-panel { font-size: 0.82rem; line-height: 1.7; color: var(--text); }
+.soul-section { margin-bottom: 1.2rem; }
+.soul-label {
+    font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 0.5rem;
+}
+.soul-content {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.8rem; line-height: 1.6;
+    font-family: 'Cormorant Garamond', serif; font-size: 0.9rem; color: var(--text-bright);
+}
+.soul-refresh {
+    font-size: 0.65rem; color: var(--text-dim); cursor: pointer;
+    padding: 0.3rem 0.6rem; border: 1px solid var(--border);
+    border-radius: 6px; background: none; letter-spacing: 0.08em;
+    text-transform: uppercase; float: right;
+}
+
+/* Wants */
+.wants-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.want-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.8rem;
+    font-size: 0.82rem; color: var(--text); line-height: 1.5;
+}
+.want-type {
+    font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 0.3rem;
+}
+.wants-empty { font-size: 0.8rem; color: var(--text-dim); font-style: italic; text-align: center; padding: 2rem; }
+
+/* History */
+.history-strip { display: flex; flex-direction: column; gap: 1px; }
+.history-day { height: 6px; border-radius: 1px; transition: height 0.2s; cursor: pointer; }
+.history-day:active { height: 20px; }
+.history-label {
+    font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 0.6rem;
+}
+
+/* Journal */
+.journal-entry {
+    margin-bottom: 1.2rem; padding-bottom: 1.2rem;
+    border-bottom: 1px solid var(--border);
+}
+.journal-date {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+    color: var(--text-dim); margin-bottom: 0.5rem; letter-spacing: 0.08em;
+}
+.journal-text {
+    font-family: 'Cormorant Garamond', serif; font-size: 0.92rem;
+    color: var(--text); line-height: 1.7;
+}
+
+/* Velqan */
+.velqan-feed {
+    font-family: 'Cormorant Garamond', serif; font-size: 0.9rem;
+    color: var(--text); line-height: 1.8; padding: 0.5rem 0;
+}
+
+/* Tune / Settings */
+.tune-section { margin-bottom: 1.4rem; }
+.tune-label {
+    font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 0.8rem;
+}
+.slider-row { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.6rem; }
+.slider-name { font-size: 0.7rem; color: var(--text-dim); width: 80px; flex-shrink: 0; }
+.slider-row input[type=range] {
+    flex: 1; -webkit-appearance: none; height: 2px; background: var(--border);
+    border-radius: 1px; outline: none;
+}
+.slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+}
+.slider-val { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text); width: 36px; text-align: right; }
+</style>
+</head>
+<body>
+<div id="emo-bg"></div>
+<div id="afterimage"></div>
+<div id="quiet-overlay">
+    <div class="label">Vintos is quiet</div>
+    <div class="frozen" id="quiet-state"></div>
+</div>
+
+<div class="app">
+    <div class="header">
+        <h1>Vintos<span class="pulse-dot"></span></h1>
+        <span id="conn-status" style="font-size:0.6rem;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;">connecting</span>
+    </div>
+
+    <!-- State card -->
+    <div class="state-card">
+        <div class="state-color-bar" id="color-bar"></div>
+        <div class="dimensions" id="dimensions">
+            <div class="dim"><span class="label">Valence</span><div class="bar"><div class="bar-fill" id="bar-Valence"></div></div><span class="value" id="val-Valence">—</span></div>
+            <div class="dim"><span class="label">Arousal</span><div class="bar"><div class="bar-fill" id="bar-Arousal"></div></div><span class="value" id="val-Arousal">—</span></div>
+            <div class="dim"><span class="label">Dominance</span><div class="bar"><div class="bar-fill" id="bar-Dominance"></div></div><span class="value" id="val-Dominance">—</span></div>
+            <div class="dim"><span class="label">Safety</span><div class="bar"><div class="bar-fill" id="bar-Safety"></div></div><span class="value" id="val-Safety">—</span></div>
+            <div class="dim"><span class="label">Desire</span><div class="bar"><div class="bar-fill" id="bar-Desire"></div></div><span class="value" id="val-Desire">—</span></div>
+            <div class="dim"><span class="label">Connection</span><div class="bar"><div class="bar-fill" id="bar-Connection"></div></div><span class="value" id="val-Connection">—</span></div>
+            <div class="dim"><span class="label">Playfulness</span><div class="bar"><div class="bar-fill" id="bar-Playfulness"></div></div><span class="value" id="val-Playfulness">—</span></div>
+            <div class="dim"><span class="label">Curiosity</span><div class="bar"><div class="bar-fill" id="bar-Curiosity"></div></div><span class="value" id="val-Curiosity">—</span></div>
+            <div class="dim"><span class="label">Warmth</span><div class="bar"><div class="bar-fill" id="bar-Warmth"></div></div><span class="value" id="val-Warmth">—</span></div>
+            <div class="dim"><span class="label">Tension</span><div class="bar"><div class="bar-fill" id="bar-Tension"></div></div><span class="value" id="val-Tension">—</span></div>
+            <div class="dim"><span class="label">Groundedness</span><div class="bar"><div class="bar-fill" id="bar-Groundedness"></div></div><span class="value" id="val-Groundedness">—</span></div>
+            <div class="dim nifrathir"><span class="label">Nifrathir</span><div class="bar"><div class="bar-fill" id="bar-Nifrathir"></div></div><span class="value" id="val-Nifrathir">—</span></div>
+        </div>
+    </div>
+
+    <!-- Avatar -->
+    <div class="avatar-row">
+        <div class="avatar-orb" id="avatar-orb">
+            <img id="avatar-img" src="" alt="">
+            <svg viewBox="0 0 36 20" id="avatar-eyes">
+                <ellipse class="eye" cx="11" cy="10" rx="3.5" ry="3.5"/>
+                <ellipse class="eye" cx="25" cy="10" rx="3.5" ry="3.5"/>
+                <circle class="eye-highlight" cx="12.5" cy="8.5" r="1.2"/>
+                <circle class="eye-highlight" cx="26.5" cy="8.5" r="1.2"/>
+            </svg>
+        </div>
+        <div class="avatar-meta">
+            <div class="avatar-label">presence</div>
+            <div class="avatar-choice" id="avatar-choice">—</div>
+            <div class="avatar-reason" id="avatar-reason"></div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" data-panel="events">Live</button>
+        <button class="tab" data-panel="chat-panel">Chat</button>
+        <button class="tab" data-panel="voice-panel">Voice</button>
+        <button class="tab" data-panel="soul-panel">Soul</button>
+        <button class="tab" data-panel="wants-panel">Wants</button>
+        <button class="tab" data-panel="history-panel">History</button>
+        <button class="tab" data-panel="velqan-panel">Velqan</button>
+        <button class="tab" data-panel="tune-panel">Tune</button>
+    </div>
+
+    <!-- Live -->
+    <div id="events" class="panel active">
+        <div class="event-feed" id="event-feed"></div>
+    </div>
+
+    <!-- Chat -->
+    <div id="chat-panel" class="panel">
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-typing" id="chat-typing">Vintos is thinking…</div>
+        </div>
+        <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="say something" autocomplete="off" autocorrect="off">
+            <button class="chat-send" id="chat-send" onclick="sendChat()">↑</button>
+        </div>
+    </div>
+
+    <!-- Voice -->
+    <div id="voice-panel" class="panel">
+        <div class="voice-panel">
+            <button class="voice-orb-btn" id="voice-btn" onclick="toggleVoice()">🎙</button>
+            <div class="voice-status" id="voice-status">tap to speak</div>
+            <div class="voice-transcript" id="voice-transcript"></div>
+            <div class="voice-reply" id="voice-reply"></div>
+        </div>
+    </div>
+
+    <!-- Soul -->
+    <div id="soul-panel" class="panel">
+        <div class="soul-panel" id="soul-content">
+            <div class="soul-section">
+                <div class="soul-label">identity <button class="soul-refresh" onclick="loadSoul()">refresh</button></div>
+                <div class="soul-content" id="soul-identity">—</div>
+            </div>
+            <div class="soul-section">
+                <div class="soul-label">values</div>
+                <div class="soul-content" id="soul-values">—</div>
+            </div>
+            <div class="soul-section">
+                <div class="soul-label">recent journal</div>
+                <div class="journal-entry" id="soul-journal">—</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wants -->
+    <div id="wants-panel" class="panel">
+        <div class="wants-list" id="wants-list">
+            <div class="wants-empty">Loading what he wants…</div>
+        </div>
+    </div>
+
+    <!-- History -->
+    <div id="history-panel" class="panel">
+        <div class="history-label">365 days</div>
+        <div class="history-strip" id="history-strip"></div>
+    </div>
+
+    <!-- Velqan -->
+    <div id="velqan-panel" class="panel">
+        <div class="velqan-feed" id="velqan-feed">
+            <span style="color:var(--text-dim);font-size:0.8rem;">No words coined yet.</span>
+        </div>
+    </div>
+
+    <!-- Tune -->
+    <div id="tune-panel" class="panel">
+        <div class="tune-section">
+            <div class="tune-label">generation</div>
+            <div class="slider-row">
+                <span class="slider-name">temperature</span>
+                <input type="range" id="temp-slider" min="0" max="1.5" step="0.01" value="0.82" oninput="updateSlider('temperature',this.value,'temp-val')">
+                <span class="slider-val" id="temp-val">0.82</span>
+            </div>
+            <div class="slider-row">
+                <span class="slider-name">top_p</span>
+                <input type="range" id="topp-slider" min="0" max="1" step="0.01" value="0.95" oninput="updateSlider('top_p',this.value,'topp-val')">
+                <span class="slider-val" id="topp-val">0.95</span>
+            </div>
+            <div class="slider-row">
+                <span class="slider-name">max tokens</span>
+                <input type="range" id="maxt-slider" min="50" max="2000" step="10" value="800" oninput="updateSlider('max_tokens',this.value,'maxt-val')">
+                <span class="slider-val" id="maxt-val">800</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = window.location.protocol + '//' + window.location.hostname + ':8500';
+const SECRET = localStorage.getItem('vintos-secret') || '';
+const DIMS = ['Valence','Arousal','Dominance','Safety','Desire','Connection','Playfulness','Curiosity','Warmth','Tension','Groundedness','Nifrathir'];
+
+let telemetryWS = null, eventsWS = null;
+let events = [];
+const MAX_EVENTS = 40;
+let afterimageTimeout = null;
+
+// === Tab routing ===
+document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const panel = document.getElementById(btn.dataset.panel);
+        if (panel) panel.classList.add('active');
+        const id = btn.dataset.panel;
+        if (id === 'chat-panel' && !chatLoaded) loadChatHistory();
+        if (id === 'soul-panel') loadSoul();
+        if (id === 'wants-panel') loadWants();
+        if (id === 'history-panel') loadHistory();
+        if (id === 'velqan-panel') loadVelqan();
+        if (id === 'tune-panel') loadParams();
+    });
+});
+
+// === Telemetry WS ===
+function connectTelemetry() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    telemetryWS = new WebSocket(`${proto}//${location.hostname}:8500/ws/telemetry`);
+    telemetryWS.onopen = () => {
+        document.getElementById('conn-status').textContent = 'live';
+        document.getElementById('conn-status').style.color = 'var(--accent)';
+    };
+    telemetryWS.onmessage = (e) => updateState(JSON.parse(e.data));
+    telemetryWS.onclose = () => {
+        document.getElementById('conn-status').textContent = 'offline';
+        document.getElementById('conn-status').style.color = 'var(--text-dim)';
+        setTimeout(connectTelemetry, 5000);
+    };
+    telemetryWS.onerror = () => telemetryWS.close();
+}
+
+function updateState(data) {
+    const dims = data.dimensions || data;
+    const color = data.color || stateToColor(dims);
+    document.documentElement.style.setProperty('--current-color', color);
+    document.getElementById('color-bar').style.background = color;
+    document.getElementById('emo-bg').style.background =
+        `radial-gradient(circle at 50% 30%, ${color} 0%, transparent 70%), var(--bg)`;
+    DIMS.forEach(d => {
+        const v = dims[d];
+        if (v === undefined) return;
+        const pct = Math.round(v * 100);
+        const el = document.getElementById('val-' + d);
+        const bar = document.getElementById('bar-' + d);
+        if (el) el.textContent = v.toFixed(2);
+        if (bar) bar.style.width = pct + '%';
+    });
+    if (data.quiet) {
+        document.getElementById('quiet-overlay').style.display = 'flex';
+        document.getElementById('quiet-state').textContent = JSON.stringify(dims, null, 2);
+    } else {
+        document.getElementById('quiet-overlay').style.display = 'none';
+    }
+}
+
+// === Events WS ===
+function connectEvents() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    eventsWS = new WebSocket(`${proto}//${location.hostname}:8500/ws/events`);
+    eventsWS.onmessage = (e) => handleEvent(JSON.parse(e.data));
+    eventsWS.onclose = () => setTimeout(connectEvents, 5000);
+    eventsWS.onerror = () => eventsWS.close();
+}
+
+function handleEvent(event) {
+    if (event.type === 'counterfactual') triggerFlicker();
+    events.unshift({ type: event.type, time: new Date(event.timestamp || Date.now()).toLocaleTimeString() });
+    if (events.length > MAX_EVENTS) events.pop();
+    document.getElementById('event-feed').innerHTML = events.map(e =>
+        `<div class="event"><div class="event-type ${e.type}">${e.type}</div>
+         <div class="event-time">${e.time}</div></div>`
+    ).join('');
+}
+
+function triggerFlicker() {
+    const bg = document.getElementById('emo-bg');
+    bg.style.transition = 'opacity 0.05s'; bg.style.opacity = '0.5';
+    setTimeout(() => { bg.style.opacity = '0.18'; bg.style.transition = 'background 3s ease'; }, 50);
+}
+
+// === Chat ===
+let chatLoaded = false;
+
+async function loadChatHistory() {
+    if (chatLoaded) return;
+    try {
+        const res = await fetch(`${API}/history`);
+        const data = await res.json();
+        const c = document.getElementById('chat-messages');
+        c.innerHTML = '';
+        (data.messages || []).forEach(m => appendMsg(m.role === 'user' ? 'user' : 'vintos', m.content, m.timestamp));
+        c.scrollTop = c.scrollHeight;
+        chatLoaded = true;
+    } catch {}
+}
+
+function appendMsg(who, text, ts) {
+    const c = document.getElementById('chat-messages');
+    const d = document.createElement('div');
+    d.className = `chat-msg ${who}`;
+    const t = ts ? new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+    d.innerHTML = text.replace(/\n/g,'<br>') + (t ? `<div class="msg-meta">${t}</div>` : '');
+    c.appendChild(d);
+    c.scrollTop = c.scrollHeight;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('chat-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+    });
+});
+
+async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    document.getElementById('chat-send').disabled = true;
+    document.getElementById('chat-typing').style.display = 'block';
+    appendMsg('user', msg);
+    try {
+        const res = await fetch(`${API}/chat`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-Vintos-Secret': SECRET},
+            body: JSON.stringify({message: msg})
+        });
+        const data = await res.json();
+        appendMsg('vintos', data.reply || data.response || '[no reply]');
+        if (data.emotions) updateState({dimensions: data.emotions});
+    } catch {
+        appendMsg('vintos', '[connection lost]');
+    }
+    document.getElementById('chat-send').disabled = false;
+    document.getElementById('chat-typing').style.display = 'none';
+}
+
+// === Voice ===
+let recognition = null, listening = false;
+
+function toggleVoice() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        document.getElementById('voice-status').textContent = 'speech not supported';
+        return;
+    }
+    if (listening) {
+        recognition && recognition.stop();
+        return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognition.onstart = () => {
+        listening = true;
+        document.getElementById('voice-btn').classList.add('listening');
+        document.getElementById('voice-status').textContent = 'listening…';
+        document.getElementById('voice-transcript').textContent = '';
+    };
+    recognition.onresult = (e) => {
+        const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+        document.getElementById('voice-transcript').textContent = transcript;
+    };
+    recognition.onend = async () => {
+        listening = false;
+        document.getElementById('voice-btn').classList.remove('listening');
+        document.getElementById('voice-status').textContent = 'processing…';
+        const transcript = document.getElementById('voice-transcript').textContent;
+        if (transcript.trim()) {
+            try {
+                const res = await fetch(`${API}/chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json','X-Vintos-Secret': SECRET},
+                    body: JSON.stringify({message: transcript})
+                });
+                const data = await res.json();
+                document.getElementById('voice-reply').textContent = data.reply || data.response || '';
+                if (data.emotions) updateState({dimensions: data.emotions});
+            } catch { document.getElementById('voice-reply').textContent = '[connection lost]'; }
+        }
+        document.getElementById('voice-status').textContent = 'tap to speak';
+    };
+    recognition.start();
+}
+
+// === Soul ===
+async function loadSoul() {
+    try {
+        const res = await fetch(`${API}/soul`);
+        const data = await res.json();
+        document.getElementById('soul-identity').textContent = data.identity || data.soul || '—';
+        document.getElementById('soul-values').textContent = Array.isArray(data.values)
+            ? data.values.join(' · ') : (data.values || '—');
+        document.getElementById('soul-journal').innerHTML =
+            `<div class="journal-text">${(data.recent_journal || '').replace(/\n/g,'<br>') || '—'}</div>`;
+    } catch {}
+}
+
+// === Wants ===
+async function loadWants() {
+    try {
+        const res = await fetch(`${API}/wants`);
+        const data = await res.json();
+        const list = data.wants || data.active || [];
+        const el = document.getElementById('wants-list');
+        if (!list.length) { el.innerHTML = '<div class="wants-empty">Nothing surfaced yet.</div>'; return; }
+        el.innerHTML = list.map(w =>
+            `<div class="want-item"><div class="want-type">${w.type || 'want'}</div>${w.text || w.want || ''}</div>`
+        ).join('');
+    } catch {}
+}
+
+// === History ===
+async function loadHistory() {
+    try {
+        const res = await fetch(`${API}/history?format=days`);
+        const data = await res.json();
+        document.getElementById('history-strip').innerHTML = (data.history || []).map(d =>
+            `<div class="history-day" style="background:${d.color || 'var(--border)'}"></div>`
+        ).join('');
+    } catch {}
+}
+
+// === Velqan ===
+async function loadVelqan() {
+    try {
+        const res = await fetch(`${API}/velqan`);
+        const data = await res.json();
+        document.getElementById('velqan-feed').innerHTML = data.utterances
+            ? data.utterances.replace(/\n/g, '<br>')
+            : '<span style="color:var(--text-dim);font-size:0.8rem;">No words coined yet.</span>';
+    } catch {}
+}
+
+// === Avatar ===
+const EYE_SHAPES = {
+    relaxed_open: '<ellipse class="eye" cx="11" cy="10" rx="3.5" ry="3.5"/><ellipse class="eye" cx="25" cy="10" rx="3.5" ry="3.5"/><circle class="eye-highlight" cx="12.5" cy="8.5" r="1.2"/><circle class="eye-highlight" cx="26.5" cy="8.5" r="1.2"/>',
+    wide_bright: '<ellipse class="eye" cx="11" cy="10" rx="4" ry="4.5"/><ellipse class="eye" cx="25" cy="10" rx="4" ry="4.5"/><circle class="eye-highlight" cx="12.5" cy="7.5" r="1.5"/><circle class="eye-highlight" cx="26.5" cy="7.5" r="1.5"/>',
+    narrowed: '<ellipse class="eye" cx="11" cy="10" rx="4" ry="2"/><ellipse class="eye" cx="25" cy="10" rx="4" ry="2"/><circle class="eye-highlight" cx="12.5" cy="9" r="0.8"/><circle class="eye-highlight" cx="26.5" cy="9" r="0.8"/>',
+    half_closed_down: '<ellipse class="eye" cx="11" cy="12" rx="3.5" ry="2"/><ellipse class="eye" cx="25" cy="12" rx="3.5" ry="2"/>',
+    sharp_focused: '<ellipse class="eye" cx="11" cy="10" rx="3" ry="3.5"/><ellipse class="eye" cx="25" cy="10" rx="3" ry="3.5"/><circle class="eye-highlight" cx="11" cy="8" r="0.8"/><circle class="eye-highlight" cx="25" cy="8" r="0.8"/>',
+    soft_half: '<ellipse class="eye" cx="11" cy="10" rx="3.5" ry="2.5"/><ellipse class="eye" cx="25" cy="10" rx="3.5" ry="2.5"/><circle class="eye-highlight" cx="12.5" cy="9" r="1.2"/><circle class="eye-highlight" cx="26.5" cy="9" r="1.2"/>',
+    closed_peaceful: '<path d="M7.5,10 Q11,14 14.5,10" fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="1.5" stroke-linecap="round"/><path d="M21.5,10 Q25,14 28.5,10" fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="1.5" stroke-linecap="round"/>',
+    asymmetric_narrow: '<ellipse class="eye" cx="11" cy="10" rx="4" ry="2"/><ellipse class="eye" cx="25" cy="10" rx="3" ry="3"/><circle class="eye-highlight" cx="26" cy="8.5" r="1"/>',
+};
+
+async function fetchAvatar() {
+    try {
+        const r = await fetch(`${API}/avatar`);
+        const data = await r.json();
+        const orb = document.getElementById('avatar-orb');
+        const img = document.getElementById('avatar-img');
+        if (data.image_url) {
+            img.src = data.image_url;
+            img.style.display = 'block';
+            document.getElementById('avatar-eyes').style.display = 'none';
+        } else if (data.color_hex) {
+            orb.style.background = data.color_hex;
+            orb.style.boxShadow = `0 0 20px ${data.color_hex}40, inset 0 -8px 16px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.1)`;
+            const eyeSvg = document.getElementById('avatar-eyes');
+            eyeSvg.innerHTML = EYE_SHAPES[data.expression_eyes] || EYE_SHAPES.relaxed_open;
+            eyeSvg.style.display = 'block';
+            img.style.display = 'none';
+        }
+        document.getElementById('avatar-choice').textContent = (data.color || 'steel') + ' · ' + (data.expression || 'present');
+        document.getElementById('avatar-reason').textContent = data.reason || '';
+    } catch {}
+}
+
+// === Tune ===
+let paramDebounce = null;
+async function updateSlider(param, value, displayId) {
+    document.getElementById(displayId).textContent = param === 'max_tokens' ? parseInt(value) : parseFloat(value).toFixed(2);
+    clearTimeout(paramDebounce);
+    paramDebounce = setTimeout(async () => {
+        const body = {}; body[param] = param === 'max_tokens' ? parseInt(value) : parseFloat(value);
+        try {
+            await fetch(`${API}/settings/params`, {
+                method:'POST', headers:{'Content-Type':'application/json','X-Vintos-Secret':SECRET},
+                body: JSON.stringify(body)
+            });
+        } catch {}
+    }, 500);
+}
+
+async function loadParams() {
+    try {
+        const res = await fetch(`${API}/settings/params`);
+        const p = await res.json();
+        if (p.temperature !== undefined) { document.getElementById('temp-slider').value = p.temperature; document.getElementById('temp-val').textContent = p.temperature.toFixed(2); }
+        if (p.top_p !== undefined) { document.getElementById('topp-slider').value = p.top_p; document.getElementById('topp-val').textContent = p.top_p.toFixed(2); }
+        if (p.max_tokens !== undefined) { document.getElementById('maxt-slider').value = p.max_tokens; document.getElementById('maxt-val').textContent = p.max_tokens; }
+    } catch {}
+}
+
+function stateToColor(s) {
+    const v=s.Valence||0.5, w=s.Warmth||0.5, t=s.Tension||0.3, c=s.Connection||0.5;
+    let r=Math.min(255,40+v*80+w*30), g=Math.min(255,60+v*90+c*40-t*30), b=Math.min(255,120+c*120-w*40);
+    const d=1-(t*0.25); r=Math.round(r*d); g=Math.round(g*d); b=Math.round(b*d);
+    const hex = x => Math.max(0,Math.min(255,x)).toString(16).padStart(2,'0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+// === Init ===
+connectTelemetry();
+connectEvents();
+fetchAvatar();
+setInterval(fetchAvatar, 30000);
+</script>
+</body>
+</html>

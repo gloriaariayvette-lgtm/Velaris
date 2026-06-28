@@ -261,6 +261,108 @@ async def chat_ws(websocket: WebSocket):
 
 # ── Entry ─────────────────────────────────────────────────────────────────────
 
+# ── Static app ────────────────────────────────────────────────────────────────
+
+try:
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse, HTMLResponse
+    _APP_DIR = os.path.join(os.path.dirname(__file__), "website", "app")
+    if os.path.isdir(_APP_DIR):
+        app.mount("/app", StaticFiles(directory=_APP_DIR, html=True), name="app")
+
+    @app.get("/")
+    def root_redirect():
+        return FileResponse(os.path.join(_APP_DIR, "index.html"))
+except Exception:
+    pass
+
+# ── Avatar endpoint ────────────────────────────────────────────────────────────
+
+@app.get("/avatar")
+def get_avatar():
+    try:
+        state = get_emotional_state()
+        v = state.get("Valence", 0.5)
+        w = state.get("Warmth", 0.5)
+        c = state.get("Connection", 0.5)
+        t = state.get("Tension", 0.3)
+        r = int(min(255, 40 + v*80 + w*30))
+        g = int(min(255, 60 + v*90 + c*40 - t*30))
+        b = int(min(255, 120 + c*120 - w*40))
+        color_hex = f"#{max(0,min(255,r)):02x}{max(0,min(255,g)):02x}{max(0,min(255,b)):02x}"
+        valence = state.get("Valence", 0.5)
+        tension = state.get("Tension", 0.3)
+        if tension > 0.65:
+            eyes = "narrowed"
+        elif valence > 0.75:
+            eyes = "wide_bright"
+        elif valence < 0.35:
+            eyes = "half_closed_down"
+        else:
+            eyes = "relaxed_open"
+        return {"color_hex": color_hex, "expression_eyes": eyes, "expression": "present", "reason": ""}
+    except Exception as e:
+        return {"color_hex": "#4a6880", "expression_eyes": "relaxed_open", "expression": "present", "reason": ""}
+
+# ── Events WebSocket ──────────────────────────────────────────────────────────
+
+event_clients: list[WebSocket] = []
+
+@app.websocket("/ws/events")
+async def events_ws(websocket: WebSocket):
+    await websocket.accept()
+    event_clients.append(websocket)
+    try:
+        while True:
+            await asyncio.sleep(60)
+    except WebSocketDisconnect:
+        event_clients.remove(websocket)
+
+async def broadcast_event(event_type: str, data: dict = {}):
+    payload = json.dumps({"type": event_type, "timestamp": datetime.now().isoformat(), **data})
+    dead = []
+    for ws in event_clients:
+        try:
+            await ws.send_text(payload)
+        except Exception:
+            dead.append(ws)
+    for ws in dead:
+        event_clients.remove(ws)
+
+# ── Velqan endpoint ───────────────────────────────────────────────────────────
+
+@app.get("/velqan")
+def get_velqan():
+    try:
+        from velqan import get_recent_velqan
+        return {"utterances": get_recent_velqan()}
+    except Exception:
+        velqan_path = os.path.expanduser("~/.vintos/workspace/memory/velqan-log.json")
+        try:
+            data = json.load(open(velqan_path))
+            entries = data.get("utterances", [])[-20:]
+            lines = [f"{e.get('word','')}: {e.get('meaning','')}" for e in entries]
+            return {"utterances": "\n".join(lines)}
+        except Exception:
+            return {"utterances": ""}
+
+# ── Settings params endpoint ──────────────────────────────────────────────────
+
+_params = {"temperature": 0.82, "top_p": 0.95, "max_tokens": 800}
+
+@app.get("/settings/params")
+def get_params():
+    return _params
+
+@app.post("/settings/params")
+def set_params(body: dict):
+    for k in ("temperature", "top_p", "max_tokens", "frequency_penalty", "presence_penalty"):
+        if k in body:
+            _params[k] = body[k]
+    return _params
+
+# ── Entry ─────────────────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
     port = int(os.environ.get("VINTOS_PORT", 8500))
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
