@@ -5,7 +5,7 @@ Handles voice output for Vintos when voice mode is active.
 """
 import os, sys, subprocess, tempfile
 
-VOICE_MODEL = os.environ.get("VINTOS_VOICE_MODEL", "af_sky")
+VOICE_MODEL = os.environ.get("VINTOS_VOICE_MODEL", "am_adam")
 VOICE_SPEED = float(os.environ.get("VINTOS_VOICE_SPEED", "1.0"))
 KOKORO_PATH = os.path.expanduser("~/.vintos/kokoro")
 
@@ -40,7 +40,7 @@ def speak(text, voice=None, speed=None):
         print(f"[voice-kokoro] Kokoro error: {e}", file=sys.stderr)
     # Fallback: espeak
     try:
-        subprocess.run(["espeak", "-s", "150", text], check=False, capture_output=True)
+        subprocess.run(["espeak", "-s", "150", "-v", "en+m3", text], check=False, capture_output=True)
         return True
     except: pass
     # Last resort: print
