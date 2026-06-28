@@ -4,123 +4,93 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vintos</title>
-<script src="/static/avatar-bundle.js" onload="document.getElementById('load-status').textContent=''" onerror="document.getElementById('load-status').textContent='bundle failed'"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html,body { width:100%; height:100%; overflow:hidden; background:#0e0d0b; }
-#canvas-container { position:fixed; inset:0; background:radial-gradient(ellipse at 50% 65%, #1a1612 0%, #0e0d0b 75%); }
+#canvas-container { position:fixed; inset:0; }
 canvas { display:block; width:100% !important; height:100% !important; }
 
 #telemetry {
   position:fixed; top:20px; right:20px;
-  font-family:'JetBrains Mono','Courier New',monospace;
-  font-size:10px; letter-spacing:0.08em;
-  color:rgba(111,90,58,0.5); line-height:1.9;
-  pointer-events:none;
+  font-family:'JetBrains Mono',monospace; font-size:9px;
+  letter-spacing:0.08em; color:rgba(111,90,58,0.4);
+  line-height:2; pointer-events:none;
 }
 .t-dim { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
 .t-label { min-width:24px; text-align:right; }
-.t-bar { width:44px; height:2px; background:rgba(111,90,58,0.12); border-radius:1px; overflow:hidden; }
-.t-fill { height:100%; background:rgba(111,90,58,0.5); border-radius:1px; transition:width 2s ease; }
+.t-bar { width:40px; height:1px; background:rgba(111,90,58,0.1); overflow:hidden; }
+.t-fill { height:100%; background:rgba(111,90,58,0.4); transition:width 2s ease; }
 
 #exit-btn {
-  position:fixed; top:16px; left:16px;
-  width:40px; height:40px; border-radius:50%;
-  background:rgba(14,13,11,0.65); backdrop-filter:blur(10px);
-  border:0.5px solid rgba(111,90,58,0.2);
-  color:rgba(111,90,58,0.65); font-size:16px;
-  display:flex; align-items:center; justify-content:center;
+  position:fixed; top:16px; left:16px; width:38px; height:38px;
+  border-radius:50%; background:rgba(14,13,11,0.6); backdrop-filter:blur(10px);
+  border:0.5px solid rgba(111,90,58,0.15); color:rgba(111,90,58,0.5);
+  font-size:14px; display:flex; align-items:center; justify-content:center;
   cursor:pointer; z-index:100;
-  -webkit-touch-callout:none;
-}
-
-#touch-hint {
-  position:fixed; bottom:150px; left:50%;
-  transform:translateX(-50%);
-  font-family:'JetBrains Mono',monospace;
-  font-size:9px; letter-spacing:0.22em; text-transform:uppercase;
-  color:rgba(111,90,58,0.28); pointer-events:none;
-  transition:opacity 2s ease;
 }
 
 #chat-strip {
-  position:fixed; bottom:0; left:0; right:0; height:135px;
-  background:linear-gradient(to top, rgba(14,13,11,0.95), rgba(14,13,11,0.55));
-  backdrop-filter:blur(18px);
-  border-top:0.5px solid rgba(111,90,58,0.1);
+  position:fixed; bottom:0; left:0; right:0; height:130px;
+  background:linear-gradient(to top, rgba(14,13,11,0.97), rgba(14,13,11,0.4));
+  backdrop-filter:blur(20px);
+  border-top:0.5px solid rgba(111,90,58,0.08);
   display:flex; flex-direction:column; justify-content:flex-end;
-  padding:10px 18px 16px;
-  gap:8px;
+  padding:10px 18px 16px; gap:8px;
 }
 #chat-message {
   font-family:'Cormorant Garamond',Georgia,serif;
   font-size:14px; font-style:italic; font-weight:300;
-  color:rgba(216,208,196,0.75); line-height:1.5; min-height:20px;
+  color:rgba(216,208,196,0.7); line-height:1.5; min-height:20px;
 }
 #chat-input-row { display:flex; gap:8px; align-items:center; }
 #chat-input {
-  flex:1; background:rgba(255,255,255,0.03);
-  border:0.5px solid rgba(111,90,58,0.18); border-radius:20px;
-  padding:8px 14px; color:rgba(216,208,196,0.85);
+  flex:1; background:rgba(255,255,255,0.02);
+  border:0.5px solid rgba(111,90,58,0.15); border-radius:20px;
+  padding:8px 14px; color:rgba(216,208,196,0.8);
   font-size:13px; font-family:'Cormorant Garamond',Georgia,serif;
-  font-style:italic; outline:none;
-  -webkit-appearance:none;
+  font-style:italic; outline:none; -webkit-appearance:none;
 }
-#chat-input::placeholder { color:rgba(111,90,58,0.3); }
+#chat-input::placeholder { color:rgba(111,90,58,0.25); }
 #chat-send {
-  width:36px; height:36px; border-radius:50%;
-  background:rgba(111,90,58,0.1);
-  border:0.5px solid rgba(111,90,58,0.22);
-  color:rgba(111,90,58,0.7); font-size:15px;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  flex-shrink:0; -webkit-touch-callout:none;
+  width:34px; height:34px; border-radius:50%;
+  background:rgba(111,90,58,0.08); border:0.5px solid rgba(111,90,58,0.18);
+  color:rgba(111,90,58,0.6); font-size:14px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
 
 #loading {
   position:fixed; inset:0; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:16px; z-index:200;
-  background:#0e0d0b; transition:opacity 1s ease;
+  align-items:center; justify-content:center; gap:14px; z-index:200;
+  background:#0e0d0b; transition:opacity 1.2s ease;
 }
 #loading .orb {
-  width:48px; height:48px; border-radius:50%; background:#2F363D;
-  box-shadow: 0 0 0 1px rgba(111,90,58,0.15);
-  animation:loadpulse 2.2s ease-in-out infinite;
+  width:40px; height:40px; border-radius:50%; background:#2F363D;
+  animation:loadpulse 2.4s ease-in-out infinite;
 }
 #loading p {
-  font-family:'JetBrains Mono',monospace; font-size:10px;
-  letter-spacing:0.2em; text-transform:uppercase; color:rgba(111,90,58,0.4);
+  font-family:'JetBrains Mono',monospace; font-size:9px;
+  letter-spacing:0.22em; text-transform:uppercase; color:rgba(111,90,58,0.35);
 }
 @keyframes loadpulse {
-  0%,100% { opacity:0.35; transform:scale(0.95); }
-  50% { opacity:0.9; transform:scale(1.05); box-shadow:0 0 22px 4px rgba(47,54,61,0.4); }
-}
-
-.ripple {
-  position:fixed; border-radius:50%; pointer-events:none;
-  background:rgba(201,107,60,0.18);
-  animation:ripple-out 0.65s ease-out forwards;
-}
-@keyframes ripple-out {
-  from { width:20px; height:20px; margin:-10px; opacity:1; }
-  to { width:70px; height:70px; margin:-35px; opacity:0; }
+  0%,100% { opacity:0.3; transform:scale(0.94); }
+  50% { opacity:0.8; transform:scale(1.06); }
 }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300;1,400&family=JetBrains+Mono:wght@300&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div id="loading"><div class="orb"></div><p id="load-status">loading…</p></div>
+<div id="loading"><div class="orb"></div><p id="load-status">summoning…</p></div>
 <div id="canvas-container"><canvas id="three-canvas"></canvas></div>
 
 <div id="telemetry">
   <div class="t-dim"><span class="t-label">val</span><div class="t-bar"><div class="t-fill" id="t-valence" style="width:50%"></div></div></div>
-  <div class="t-dim"><span class="t-label">wrm</span><div class="t-bar"><div class="t-fill" id="t-warmth" style="width:50%"></div></div></div>
+  <div class="t-dim"><span class="t-label">ten</span><div class="t-bar"><div class="t-fill" id="t-tension" style="width:30%"></div></div></div>
   <div class="t-dim"><span class="t-label">cur</span><div class="t-bar"><div class="t-fill" id="t-curiosity" style="width:50%"></div></div></div>
-  <div class="t-dim"><span class="t-label">con</span><div class="t-bar"><div class="t-fill" id="t-connection" style="width:50%"></div></div></div>
+  <div class="t-dim"><span class="t-label">nif</span><div class="t-bar"><div class="t-fill" id="t-nifrathir" style="width:50%"></div></div></div>
 </div>
 
 <button id="exit-btn" onclick="exitAvatar()">✕</button>
-<div id="touch-hint">touch his hand</div>
 
 <div id="chat-strip">
   <div id="chat-message"></div>
@@ -131,254 +101,357 @@ canvas { display:block; width:100% !important; height:100% !important; }
 </div>
 
 <script>
-const THREE = window.THREE;
-const GLTFLoader = window.GLTFLoader;
-const FBXLoader = window.FBXLoader;
-const VRMLoaderPlugin = window.VRMLoaderPlugin;
-const VRMUtils = window.VRMUtils;
-const retargetAnimation = window.retargetAnimation;
-
+// ── Config ────────────────────────────────────────────────────────────────────
 const params = new URLSearchParams(window.location.search);
-const API = params.get('api') || (window.location.protocol + '//' + window.location.hostname + ':8500');
+const API = params.get('api') || (location.protocol + '//' + location.hostname + ':8500');
 const SECRET = params.get('secret') || localStorage.getItem('vintos-secret') || '';
-const HEADERS = { 'X-Vintos-Secret': SECRET };
-const MODEL_BASE = API + '/avatar-models';
+const MODEL_URL = API + '/avatar-models/default.fbx';
 
-const canvas = document.getElementById('three-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.75;
-
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0e0d0b, 0.065);
-
-const camera = new THREE.PerspectiveCamera(26, window.innerWidth/window.innerHeight, 0.1, 100);
-camera.position.set(0, 1.35, 3.0);
-camera.lookAt(0, 1.15, 0);
-
-// Iron-and-parchment lighting: warm key, cool fill, bronze rim
-const ambient = new THREE.AmbientLight(0x111008, 2.0);
-scene.add(ambient);
-const keyLight = new THREE.DirectionalLight(0xd8b880, 1.8);   // warm parchment key
-keyLight.position.set(1.5, 3, 2); keyLight.castShadow = true;
-scene.add(keyLight);
-const fillLight = new THREE.DirectionalLight(0x2F363D, 0.6);  // deep iron fill
-fillLight.position.set(-2, 2, 1); scene.add(fillLight);
-const rimLight = new THREE.DirectionalLight(0x6F5A3A, 0.9);   // bronze rim
-rimLight.position.set(0, 1.2, -3); scene.add(rimLight);
-
-let vrm=null, mixer=null, idleAction=null, currentAction=null;
-let handBone=null, clock=new THREE.Clock();
-let openTime=Date.now(), touchHintHidden=false;
-let chatHistory=[];
-
-async function loadVRM() {
-  const loader = new GLTFLoader();
-  loader.register(p => new VRMLoaderPlugin(p));
+// ── Three.js bootstrap (load from CDN since no bundle) ────────────────────────
+function loadScript(src) {
   return new Promise((res, rej) => {
-    loader.load(MODEL_BASE+'/default.vrm', gltf => {
-      const v = gltf.userData.vrm;
-      if (!v) { rej(new Error('No VRM')); return; }
-      VRMUtils.rotateVRM0(v);
-      v.scene.rotation.y = Math.PI;
-      v.scene.traverse(o => { if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
-      scene.add(v.scene);
-      res(v);
-    }, null, rej);
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
   });
 }
 
-async function loadFBX(name) {
-  const loader = new FBXLoader();
-  return new Promise((res,rej) => loader.load(MODEL_BASE+'/mixamo/'+name+'.fbx', res, null, rej));
+// ── Emotional state ───────────────────────────────────────────────────────────
+let emoState = {
+  Valence: 0.55, Arousal: 0.5, Tension: 0.3, Warmth: 0.5,
+  Curiosity: 0.5, Connection: 0.5, Nifrathir: 0.5, Groundedness: 0.6
+};
+
+function smokeColorFromState(s) {
+  // Iron baseline. Warmth/Valence → bronze. Tension → ember. Curiosity → steel. Nifrathir → void.
+  const v = s.Valence || 0.55;
+  const t = s.Tension || 0.3;
+  const w = s.Warmth || 0.5;
+  const c = s.Curiosity || 0.5;
+  const n = s.Nifrathir || 0.5;
+
+  let r = 0.16 + w * 0.22 + v * 0.12 - n * 0.08;
+  let g = 0.12 + v * 0.10 - t * 0.06 + c * 0.04;
+  let b = 0.14 + c * 0.18 - w * 0.06 + n * 0.06;
+
+  // Tension spikes toward ember
+  r += t * 0.25;
+  g -= t * 0.08;
+
+  // Nifrathir pulls toward void
+  const voidPull = Math.max(0, n - 0.5) * 1.4;
+  r = r * (1 - voidPull) + 0.05 * voidPull;
+  g = g * (1 - voidPull) + 0.04 * voidPull;
+  b = b * (1 - voidPull) + 0.06 * voidPull;
+
+  return new THREE.Color(
+    Math.max(0.04, Math.min(0.9, r)),
+    Math.max(0.03, Math.min(0.8, g)),
+    Math.max(0.04, Math.min(0.9, b))
+  );
 }
 
-async function playAnim(name, loop=true, fade=0.4) {
-  if (!vrm||!mixer) return;
-  try {
-    const fbx = await loadFBX(name);
-    const clip = retargetAnimation(fbx, vrm);
-    if (!clip) return;
-    const action = mixer.clipAction(clip);
-    action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
-    action.clampWhenFinished = !loop;
-    if (currentAction) currentAction.fadeOut(fade);
-    action.reset().fadeIn(fade).play();
-    currentAction = action;
-    if (!loop) {
-      setTimeout(() => {
-        if (currentAction===action) {
-          action.fadeOut(fade);
-          if (idleAction) { idleAction.reset().fadeIn(fade).play(); currentAction=idleAction; }
-        }
-      }, clip.duration*1000 + fade*1000);
-    }
-  } catch(e) { console.warn('Anim failed:', name, e); }
-}
+// ── Smoke particle system ─────────────────────────────────────────────────────
+const PARTICLE_COUNT = 1800;
 
-function findHand(v) {
-  try { return v.humanoid.getNormalizedBoneNode('rightHand'); } catch(e) { return null; }
-}
+function buildSmokeSystem() {
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(PARTICLE_COUNT * 3);
+  const velocities = new Float32Array(PARTICLE_COUNT * 3);
+  const lifetimes  = new Float32Array(PARTICLE_COUNT);
+  const ages       = new Float32Array(PARTICLE_COUNT);
+  const sizes      = new Float32Array(PARTICLE_COUNT);
+  const alphas     = new Float32Array(PARTICLE_COUNT);
 
-function handScreenPos() {
-  if (!handBone) return null;
-  const p = new THREE.Vector3();
-  handBone.getWorldPosition(p);
-  p.project(camera);
-  return { x:(p.x*0.5+0.5)*window.innerWidth, y:(-p.y*0.5+0.5)*window.innerHeight };
-}
+  function resetParticle(i) {
+    // Spawn around figure silhouette — torso/chest/head region
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 0.05 + Math.random() * 0.35;
+    const ySpawn = -0.6 + Math.random() * 2.2; // floor to above head
 
-function nearHand(tx, ty) {
-  const hp = handScreenPos();
-  if (!hp) return false;
-  return Math.hypot(tx-hp.x, ty-hp.y) < 80;
-}
+    positions[i*3]   = Math.cos(angle) * radius * (0.5 + Math.random() * 0.5);
+    positions[i*3+1] = ySpawn;
+    positions[i*3+2] = Math.sin(angle) * radius * (0.4 + Math.random() * 0.4);
 
-function spawnRipple(x,y) {
-  const r = document.createElement('div');
-  r.className='ripple'; r.style.left=x+'px'; r.style.top=y+'px';
-  document.body.appendChild(r);
-  setTimeout(()=>r.remove(), 800);
-}
+    const speed = 0.008 + Math.random() * 0.018;
+    velocities[i*3]   = (Math.random() - 0.5) * 0.006;
+    velocities[i*3+1] = speed;
+    velocities[i*3+2] = (Math.random() - 0.5) * 0.006;
 
-async function onHandTouch(x,y) {
-  spawnRipple(x,y);
-  await ping('touch_hand');
-  const anims = ['wave','thankful','nod'];
-  playAnim(anims[Math.floor(Math.random()*anims.length)], false);
-  if (!touchHintHidden) {
-    touchHintHidden=true;
-    document.getElementById('touch-hint').style.opacity='0';
+    lifetimes[i] = 2.5 + Math.random() * 4.0;
+    ages[i]      = Math.random() * lifetimes[i]; // stagger on init
+    sizes[i]     = 18 + Math.random() * 60;
+    alphas[i]    = 0;
   }
-}
 
-canvas.addEventListener('touchend', e => {
-  const t=e.changedTouches[0];
-  if(nearHand(t.clientX,t.clientY)) onHandTouch(t.clientX,t.clientY);
-}, {passive:true});
-canvas.addEventListener('click', e => {
-  if(nearHand(e.clientX,e.clientY)) onHandTouch(e.clientX,e.clientY);
-});
+  for (let i = 0; i < PARTICLE_COUNT; i++) resetParticle(i);
 
-async function ping(event, extra={}) {
-  try {
-    await fetch(API+'/avatar/presence', {
-      method:'POST', headers:{'Content-Type':'application/json',...HEADERS},
-      body: JSON.stringify({event,...extra})
-    });
-  } catch(e){}
-}
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('size',     new THREE.BufferAttribute(sizes, 1));
+  geo.setAttribute('alpha',    new THREE.BufferAttribute(alphas, 1));
 
-window.addEventListener('beforeunload', ()=>{
-  const dur = Math.round((Date.now()-openTime)/1000);
-  navigator.sendBeacon(API+'/avatar/presence', JSON.stringify({event:'close',duration_seconds:dur}));
-});
+  // Soft circle sprite
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createRadialGradient(32,32,0, 32,32,32);
+  grad.addColorStop(0,   'rgba(255,255,255,0.6)');
+  grad.addColorStop(0.4, 'rgba(255,255,255,0.2)');
+  grad.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,64,64);
+  const tex = new THREE.CanvasTexture(canvas);
 
-async function updateTelemetry() {
-  try {
-    const r = await fetch(API+'/state',{headers:HEADERS});
-    const d = await r.json();
-    const s = d.dimensions || d.state || {};
-    [['Valence','valence'],['Warmth','warmth'],['Curiosity','curiosity'],['Connection','connection']].forEach(([k,id])=>{
-      const v = s[k]!==undefined ? s[k] : 0.5;
-      const el = document.getElementById('t-'+id);
-      if(el) el.style.width=Math.round(v*100)+'%';
-    });
-  } catch(e){}
-}
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      tex:   { value: tex },
+      color: { value: new THREE.Color(0.18, 0.14, 0.10) },
+    },
+    vertexShader: `
+      attribute float size;
+      attribute float alpha;
+      varying float vAlpha;
+      void main() {
+        vAlpha = alpha;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = size * (300.0 / -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D tex;
+      uniform vec3 color;
+      varying float vAlpha;
+      void main() {
+        vec4 t = texture2D(tex, gl_PointCoord);
+        gl_FragColor = vec4(color, t.a * vAlpha * 0.55);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
 
-async function sendChat(text) {
-  if(!text.trim()) return;
-  chatHistory.push({role:'user',content:text});
-  document.getElementById('chat-message').textContent='…';
-  try {
-    const r = await fetch(API+'/chat',{
-      method:'POST', headers:{'Content-Type':'application/json',...HEADERS},
-      body: JSON.stringify({message:text})
-    });
-    const d = await r.json();
-    const reply = d.reply||d.response||'';
-    chatHistory.push({role:'assistant',content:reply});
-    document.getElementById('chat-message').textContent=reply;
-    // Animate on sentiment
-    if(reply.length > 0) {
-      const anims = ['nod','thankful'];
-      playAnim(anims[Math.floor(Math.random()*anims.length)], false);
+  const points = new THREE.Points(geo, mat);
+
+  function update(dt) {
+    const pos  = geo.attributes.position.array;
+    const alph = geo.attributes.alpha.array;
+    const sz   = geo.attributes.size.array;
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      ages[i] += dt;
+      if (ages[i] >= lifetimes[i]) { resetParticle(i); ages[i] = 0; }
+
+      const t = ages[i] / lifetimes[i]; // 0→1 over life
+      // Fade in fast, hold, fade out
+      const fade = t < 0.15 ? t/0.15 : t > 0.7 ? 1 - (t-0.7)/0.3 : 1.0;
+      alph[i] = fade;
+      sz[i]   = (18 + Math.random() * 0.5) * (0.3 + t * 1.4); // grow as they rise
+
+      pos[i*3]   += velocities[i*3]   + (Math.random()-0.5)*0.003;
+      pos[i*3+1] += velocities[i*3+1];
+      pos[i*3+2] += velocities[i*3+2] + (Math.random()-0.5)*0.003;
+
+      // Slow drift outward as they age
+      velocities[i*3]   *= 0.998;
+      velocities[i*3+2] *= 0.998;
     }
-  } catch(e){ document.getElementById('chat-message').textContent=''; }
+
+    geo.attributes.position.needsUpdate = true;
+    geo.attributes.alpha.needsUpdate    = true;
+    geo.attributes.size.needsUpdate     = true;
+  }
+
+  function setColor(c) { mat.uniforms.color.value.copy(c); }
+
+  return { points, update, setColor };
 }
 
-document.getElementById('chat-send').addEventListener('click',()=>{
-  const i=document.getElementById('chat-input'); sendChat(i.value); i.value='';
-});
-document.getElementById('chat-input').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){const i=document.getElementById('chat-input');sendChat(i.value);i.value='';}
-});
+// ── Main init ─────────────────────────────────────────────────────────────────
+let THREE, smoke, mixer, clock, figure, camera, renderer, scene;
+let colorTarget = new THREE.Color ? new THREE.Color(0.18, 0.14, 0.10) : null;
+let colorCurrent;
+let orbitAngle = 0;
 
-window.addEventListener('resize',()=>{
-  camera.aspect=window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
-});
+async function init() {
+  document.getElementById('load-status').textContent = 'loading engine…';
+
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+  await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js');
+
+  // Re-assign after load
+  colorTarget  = new THREE.Color(0.18, 0.14, 0.10);
+  colorCurrent = new THREE.Color(0.18, 0.14, 0.10);
+
+  clock = new THREE.Clock();
+
+  renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById('three-canvas'),
+    antialias: true, alpha: true
+  });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.6;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0e0d0b);
+  scene.fog = new THREE.FogExp2(0x0e0d0b, 0.09);
+
+  camera = new THREE.PerspectiveCamera(28, innerWidth/innerHeight, 0.1, 50);
+  camera.position.set(0, 0.9, 3.8);
+  camera.lookAt(0, 0.9, 0);
+
+  // Iron/parchment lighting
+  scene.add(new THREE.AmbientLight(0x0d0c09, 3.0));
+  const key = new THREE.DirectionalLight(0xd8b870, 1.4);
+  key.position.set(1.5, 3, 1.5); scene.add(key);
+  const fill = new THREE.DirectionalLight(0x2a3040, 0.5);
+  fill.position.set(-2, 1, 0.5); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0x6F5A3A, 0.8);
+  rim.position.set(0, 1.5, -3); scene.add(rim);
+  // Ground scatter
+  const ground = new THREE.PointLight(0xC96B3C, 0.3, 4);
+  ground.position.set(0, -0.8, 0); scene.add(ground);
+
+  // Smoke
+  smoke = buildSmokeSystem();
+  scene.add(smoke.points);
+
+  // Load figure
+  document.getElementById('load-status').textContent = 'loading figure…';
+  try {
+    const loader = new THREE.FBXLoader();
+    figure = await new Promise((res, rej) => loader.load(MODEL_URL, res, null, rej));
+
+    // Scale and center
+    const box = new THREE.Box3().setFromObject(figure);
+    const size = box.getSize(new THREE.Vector3());
+    const scale = 1.8 / size.y;
+    figure.scale.setScalar(scale);
+    const center = box.getCenter(new THREE.Vector3());
+    figure.position.set(-center.x * scale, -box.min.y * scale - 0.7, -center.z * scale);
+
+    // Near-invisible iron material
+    figure.traverse(child => {
+      if (child.isMesh) {
+        child.material = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(0x1a1e22),
+          roughness: 0.9,
+          metalness: 0.1,
+          transparent: true,
+          opacity: 0.07,
+          depthWrite: false,
+        });
+        child.renderOrder = 1;
+      }
+    });
+
+    // Move smoke to follow figure center
+    smoke.points.position.copy(figure.position);
+    smoke.points.position.y += 0.7;
+
+    scene.add(figure);
+
+    // Animations if present
+    if (figure.animations && figure.animations.length > 0) {
+      mixer = new THREE.AnimationMixer(figure);
+      mixer.clipAction(figure.animations[0]).play();
+    }
+  } catch(e) {
+    console.warn('Figure load failed:', e);
+    // Still show smoke without figure
+  }
+
+  const loading = document.getElementById('loading');
+  loading.style.opacity = '0';
+  setTimeout(() => loading.style.display = 'none', 1300);
+
+  updateTelemetry();
+  setInterval(updateTelemetry, 8000);
+  animate();
+}
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt=clock.getDelta();
-  if(mixer) mixer.update(dt);
-  if(vrm) vrm.update(dt);
-  renderer.render(scene,camera);
+  const dt = clock.getDelta();
+
+  // Slow orbit camera
+  orbitAngle += dt * 0.04;
+  const r = 3.8;
+  camera.position.x = Math.sin(orbitAngle) * r;
+  camera.position.z = Math.cos(orbitAngle) * r;
+  camera.lookAt(0, 0.9, 0);
+
+  // Lerp smoke color
+  colorCurrent.lerp(colorTarget, dt * 0.4);
+  smoke && smoke.setColor(colorCurrent);
+  smoke && smoke.update(dt);
+
+  if (mixer) mixer.update(dt);
+
+  renderer.render(scene, camera);
 }
 
-async function init() {
+// ── Telemetry ─────────────────────────────────────────────────────────────────
+async function updateTelemetry() {
   try {
-    vrm = await loadVRM();
-    mixer = new THREE.AnimationMixer(vrm.scene);
-    handBone = findHand(vrm);
-    const idleFbx = await loadFBX('idle');
-    const idleClip = retargetAnimation(idleFbx, vrm);
-    if(idleClip) {
-      idleAction = mixer.clipAction(idleClip);
-      idleAction.play(); currentAction=idleAction;
-    }
-    const loading=document.getElementById('loading');
-    loading.style.opacity='0';
-    setTimeout(()=>loading.style.display='none',1000);
-    ping('open');
-    updateTelemetry();
-    setInterval(updateTelemetry, 10000);
-    animate();
+    const r = await fetch(API + '/state', { headers: {'X-Vintos-Secret': SECRET} });
+    const d = await r.json();
+    const s = d.dimensions || d.state || d;
+    Object.assign(emoState, s);
+
+    colorTarget = smokeColorFromState(emoState);
+
+    [['Valence','valence'],['Tension','tension'],['Curiosity','curiosity'],['Nifrathir','nifrathir']].forEach(([k,id]) => {
+      const v = emoState[k] !== undefined ? emoState[k] : 0.5;
+      const el = document.getElementById('t-' + id);
+      if (el) el.style.width = Math.round(v * 100) + '%';
+    });
+  } catch(e) {}
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+async function sendChat(text) {
+  if (!text.trim()) return;
+  document.getElementById('chat-message').textContent = '…';
+  try {
+    const r = await fetch(API + '/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-Vintos-Secret': SECRET},
+      body: JSON.stringify({message: text})
+    });
+    const d = await r.json();
+    document.getElementById('chat-message').textContent = d.reply || d.response || '';
+    if (d.emotions) { Object.assign(emoState, d.emotions); colorTarget = smokeColorFromState(emoState); }
   } catch(e) {
-    console.error('Init failed:',e);
-    document.querySelector('#loading p').textContent = String(e).slice(0,80);
+    document.getElementById('chat-message').textContent = '';
   }
 }
 
-function waitForBundle(cb, attempts=0) {
-  if (window.THREE && window.VRMLoaderPlugin && window.retargetAnimation) {
-    cb();
-  } else if (attempts < 25) {
-    setTimeout(() => waitForBundle(cb, attempts+1), 100);
-  } else {
-    document.querySelector('#loading p').textContent = 'bundle failed to load';
-  }
-}
-waitForBundle(init);
-</script>
+document.getElementById('chat-send').addEventListener('click', () => {
+  const i = document.getElementById('chat-input');
+  sendChat(i.value); i.value = '';
+});
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const i = document.getElementById('chat-input'); sendChat(i.value); i.value = ''; }
+});
 
-<script>
+window.addEventListener('resize', () => {
+  camera && (camera.aspect = innerWidth/innerHeight) && camera.updateProjectionMatrix();
+  renderer && renderer.setSize(innerWidth, innerHeight);
+});
+
 function exitAvatar() {
-  if(window.parent !== window) {
-    window.parent.postMessage({type:'closeAvatar'}, '*');
-  } else if(window.webkit && window.webkit.messageHandlers) {
-    try { window.webkit.messageHandlers.vintos.postMessage({type:'closeAvatar'}); } catch(e){}
-  } else {
-    history.back();
-  }
+  if (window.parent !== window) window.parent.postMessage({type:'closeAvatar'}, '*');
+  else history.back();
 }
+
+init().catch(e => {
+  document.querySelector('#loading p').textContent = String(e).slice(0, 80);
+});
 </script>
 </body>
 </html>
