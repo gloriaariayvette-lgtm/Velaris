@@ -5,22 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#080b0f">
+<meta name="theme-color" content="#1C1E22">
 <title>Vintos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
 :root {
-    --bg: #080b0f;
-    --surface: #0e1218;
-    --surface-2: #161c26;
-    --text: #b8c4cc;
-    --text-dim: #445060;
-    --text-bright: #d8e4ec;
-    --accent: #6a95c4;
-    --accent-dim: rgba(106, 149, 196, 0.3);
-    --current-color: #6a95c4;
-    --border: rgba(255,255,255,0.06);
+    --bg: #1C1E22;
+    --surface: #2F363D;
+    --surface-2: #252b31;
+    --text: #D8D0C4;
+    --text-dim: #6F5A3A;
+    --text-bright: #e8e0d4;
+    --accent: #6F5A3A;
+    --accent-dim: rgba(111,90,58,0.28);
+    --ember: #C96B3C;
+    --current-color: #6F5A3A;
+    --border: rgba(111,90,58,0.14);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
@@ -92,35 +93,30 @@ body {
 .dim .value { font-family: 'JetBrains Mono', monospace; color: var(--text); font-size: 0.7rem; }
 .dim .bar { flex: 1; height: 2px; background: var(--border); margin: 0 0.5rem; border-radius: 1px; position: relative; overflow: hidden; }
 .dim .bar-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--current-color); border-radius: 1px; transition: width 2s ease; }
-.dim.nifrathir .label { color: var(--accent); opacity: 0.7; }
+.dim.nifrathir .label { color: var(--ember); opacity: 0.6; }
 
 /* Avatar */
 .avatar-row {
     display: flex; align-items: center; gap: 1rem;
     margin-bottom: 1rem; padding: 0.8rem;
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 16px; cursor: pointer;
 }
+.avatar-row:active { opacity: 0.85; }
 .avatar-orb {
     width: 64px; height: 64px; border-radius: 50%;
     position: relative; flex-shrink: 0;
     transition: background 1.5s ease, box-shadow 1.5s ease;
-    background: #4a6880;
-    box-shadow: 0 0 20px rgba(74,104,128,0.3), inset 0 -8px 16px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.1);
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-}
-.avatar-orb img {
-    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
-    display: none;
+    background: #2F363D;
+    box-shadow: 0 0 16px rgba(111,90,58,0.18), inset 0 -8px 16px rgba(0,0,0,0.3), inset 0 4px 8px rgba(255,255,255,0.05);
 }
 .avatar-orb svg {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     width: 36px; height: 20px;
 }
-.avatar-orb .eye { fill: rgba(0,0,0,0.7); transition: all 0.5s ease; }
-.avatar-orb .eye-highlight { fill: rgba(255,255,255,0.5); }
+.avatar-orb .eye { fill: rgba(216,208,196,0.6); transition: all 0.5s ease; }
+.avatar-orb .eye-highlight { fill: rgba(255,255,255,0.4); }
 .avatar-meta { flex: 1; min-width: 0; }
 .avatar-label {
     font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
@@ -135,6 +131,10 @@ body {
     font-style: italic; line-height: 1.3;
     overflow: hidden; text-overflow: ellipsis;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.avatar-enter {
+    font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ember); margin-top: 0.25rem; opacity: 0.7;
 }
 
 /* Tabs */
@@ -346,9 +346,8 @@ body {
     </div>
 
     <!-- Avatar -->
-    <div class="avatar-row">
+    <div class="avatar-row" onclick="enterAvatar()">
         <div class="avatar-orb" id="avatar-orb">
-            <img id="avatar-img" src="" alt="">
             <svg viewBox="0 0 36 20" id="avatar-eyes">
                 <ellipse class="eye" cx="11" cy="10" rx="3.5" ry="3.5"/>
                 <ellipse class="eye" cx="25" cy="10" rx="3.5" ry="3.5"/>
@@ -360,6 +359,7 @@ body {
             <div class="avatar-label">presence</div>
             <div class="avatar-choice" id="avatar-choice">—</div>
             <div class="avatar-reason" id="avatar-reason"></div>
+            <div class="avatar-enter">enter →</div>
         </div>
     </div>
 
@@ -607,7 +607,7 @@ async function sendChat() {
         appendMsg('vintos', data.reply || data.response || '[no reply]');
         if (data.emotions) updateState({dimensions: data.emotions});
     } catch {
-        appendMsg('vintos', '[connection lost]');
+        appendMsg('vintos', '[he is unreachable right now]');
     }
     document.getElementById('chat-send').disabled = false;
     document.getElementById('chat-typing').style.display = 'none';
@@ -727,23 +727,21 @@ async function fetchAvatar() {
     try {
         const r = await fetch(`${API}/avatar`);
         const data = await r.json();
-        const orb = document.getElementById('avatar-orb');
-        const img = document.getElementById('avatar-img');
-        if (data.image_url) {
-            img.src = data.image_url;
-            img.style.display = 'block';
-            document.getElementById('avatar-eyes').style.display = 'none';
-        } else if (data.color_hex) {
+        if (data.color_hex) {
+            const orb = document.getElementById('avatar-orb');
             orb.style.background = data.color_hex;
-            orb.style.boxShadow = `0 0 20px ${data.color_hex}40, inset 0 -8px 16px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.1)`;
+            orb.style.boxShadow = `0 0 16px ${data.color_hex}50, inset 0 -8px 16px rgba(0,0,0,0.3), inset 0 4px 8px rgba(255,255,255,0.05)`;
             const eyeSvg = document.getElementById('avatar-eyes');
             eyeSvg.innerHTML = EYE_SHAPES[data.expression_eyes] || EYE_SHAPES.relaxed_open;
-            eyeSvg.style.display = 'block';
-            img.style.display = 'none';
         }
-        document.getElementById('avatar-choice').textContent = (data.color || 'steel') + ' · ' + (data.expression || 'present');
+        document.getElementById('avatar-choice').textContent = (data.color || 'iron') + ' · ' + (data.expression || 'present');
         document.getElementById('avatar-reason').textContent = data.reason || '';
     } catch {}
+}
+
+function enterAvatar() {
+    const url = `/avatar.html?api=${encodeURIComponent(API)}`;
+    window.location.href = url;
 }
 
 // === Tune ===

@@ -265,14 +265,25 @@ async def chat_ws(websocket: WebSocket):
 
 try:
     from fastapi.staticfiles import StaticFiles
-    from fastapi.responses import FileResponse, HTMLResponse
-    _APP_DIR = os.path.join(os.path.dirname(__file__), "website", "app")
+    from fastapi.responses import FileResponse
+    _WEBSITE_DIR = os.path.join(os.path.dirname(__file__), "website")
+    _APP_DIR = os.path.join(_WEBSITE_DIR, "app")
+    _AVATAR_MODELS_DIR = os.path.join(_WEBSITE_DIR, "avatar-models")
+
     if os.path.isdir(_APP_DIR):
         app.mount("/app", StaticFiles(directory=_APP_DIR, html=True), name="app")
+    if os.path.isdir(_WEBSITE_DIR):
+        app.mount("/static", StaticFiles(directory=_WEBSITE_DIR), name="static")
+    if os.path.isdir(_AVATAR_MODELS_DIR):
+        app.mount("/avatar-models", StaticFiles(directory=_AVATAR_MODELS_DIR), name="avatar-models")
 
     @app.get("/")
     def root_redirect():
         return FileResponse(os.path.join(_APP_DIR, "index.html"))
+
+    @app.get("/avatar.html")
+    def avatar_page():
+        return FileResponse(os.path.join(_WEBSITE_DIR, "avatar.html"))
 except Exception:
     pass
 
@@ -303,6 +314,24 @@ def get_avatar():
         return {"color_hex": color_hex, "expression_eyes": eyes, "expression": "present", "reason": ""}
     except Exception as e:
         return {"color_hex": "#4a6880", "expression_eyes": "relaxed_open", "expression": "present", "reason": ""}
+
+# ── Avatar presence ──────────────────────────────────────────────────────────
+
+class AvatarPresenceRequest(BaseModel):
+    event: str
+    duration_seconds: Optional[int] = None
+
+@app.post("/avatar/presence")
+def avatar_presence(req: AvatarPresenceRequest):
+    try:
+        from emoclaw_utils import nudge_via_socket
+        if req.event == "touch_hand":
+            nudge_via_socket({"Connection": 0.06, "Warmth": 0.04})
+        elif req.event == "open":
+            nudge_via_socket({"Connection": 0.03})
+    except Exception:
+        pass
+    return {"ok": True}
 
 # ── Events WebSocket ──────────────────────────────────────────────────────────
 
