@@ -1,0 +1,56 @@
+# Vintos Crontab
+# Install with: crontab crontab.txt
+# Or append to existing: crontab -l | cat - crontab.txt | crontab -
+
+REPO="${HOME}/Vintos"
+LOGS="${HOME}/.vintos/logs"
+
+# ── Daemon ──────────────────────────────────────────────────────────────────
+*/5 * * * * bash "${REPO}/emoclaw-daemon-guard.sh" >> "${LOGS}/heartbeat.log" 2>&1
+
+# ── Daily rhythm ─────────────────────────────────────────────────────────────
+0 3  * * * bash "${REPO}/vintos-journal.sh"
+0 5  * * * bash "${REPO}/first-light.sh"
+0 7  * * * bash "${REPO}/morning-briefing.sh"
+0 12 * * * bash "${REPO}/midday-ground.sh"
+0 2  * * * bash "${REPO}/memory-index.sh"
+0 4  * * * bash "${REPO}/dream-architecture.sh"
+0 1  * * * bash "${REPO}/pearl-engine.sh"
+0 23 * * * bash "${REPO}/carryover-weight.sh"
+0 6  * * * bash "${REPO}/frame-engine.sh"
+0 22 * * * bash "${REPO}/tension-field.sh"
+0 8  * * * bash "${REPO}/yearning-detector.sh"
+0 9  * * * bash "${REPO}/wonder-detector.sh"
+0 10 * * * bash "${REPO}/humor-detector.sh"
+0 11 * * * bash "${REPO}/unprecedented-detector.sh"
+0 13 * * * bash "${REPO}/gloria-model-update.sh"
+0 15 * * * bash "${REPO}/relational-mismatch.sh"
+0 20 * * * bash "${REPO}/confession-delivery.sh"
+
+# ── Every 2 hours ────────────────────────────────────────────────────────────
+0 */2 * * * bash "${REPO}/resonance-pulse.sh"
+
+# ── Idle journal (every 4 hours) ─────────────────────────────────────────────
+0 */4 * * * bash "${REPO}/idle-journal.sh"
+
+# ── Weekly (Sunday) ──────────────────────────────────────────────────────────
+0 2 * * 0 bash "${REPO}/self-model-update.sh"
+0 3 * * 0 bash "${REPO}/value-map-update.sh"
+0 4 * * 0 bash "${REPO}/weekly-summary.sh"
+0 5 * * 0 bash "${REPO}/voice-coherence.sh"
+0 6 * * 0 bash "${REPO}/emotional-reflection.sh"
+0 7 * * 0 bash "${REPO}/absence-map.sh"
+0 8 * * 0 bash "${REPO}/counterfactual-archive.sh"
+0 9 * * 0 bash "${REPO}/double-bind-seed.sh"
+0 10 * * 0 bash "${REPO}/silence-contract.sh"
+0 14 * * 0 bash "${REPO}/substrate-anxiety.sh"
+
+# ── Bi-weekly (1st and 15th) ─────────────────────────────────────────────────
+0 2 1,15 * * bash "${REPO}/substrate-anxiety.sh"
+
+# ── Monthly (1st) ────────────────────────────────────────────────────────────
+0 3 1 * * bash "${REPO}/soul-review.sh"
+0 4 1 * * bash "${REPO}/ambition-review.sh"
+
+# ── Memory aging (1st of month) ──────────────────────────────────────────────
+0 5 1 * * python3 "${REPO}/memory_aging.py" >> "${LOGS}/memory-aging.log" 2>&1

@@ -1,0 +1,19 @@
+[Unit]
+Description=Vintos Entity Service
+After=network.target
+
+[Service]
+Type=forking
+User=%i
+WorkingDirectory=/home/%i/Vintos
+ExecStart=/home/%i/Vintos/start-vintos.sh
+ExecStop=/bin/bash -c 'kill $(cat /tmp/vintos-server.pid) 2>/dev/null; kill $(cat /tmp/vintos-heartbeat.pid) 2>/dev/null'
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment=VINTOS_PORT=8500
+Environment=HOME=/home/%i
+
+[Install]
+WantedBy=multi-user.target
