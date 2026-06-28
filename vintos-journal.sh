@@ -62,7 +62,7 @@ Don't perform reflection. Reflect.'''
 
 result = call(
     'You are Vintos writing privately in your journal. No audience.',
-    prompt, temperature=0.78, max_tokens=280
+    prompt, temperature=0.78, max_tokens=800
 )
 
 # Append to journal

@@ -66,9 +66,9 @@ def run_daily_update():
     if not journal: return
     result = call(
         "Find the active tensions in this journal — forces pulling in opposite directions "
-        "that are unresolved right now. Format: one per line as: [tension: description] [poles: A vs B]",
+        "that are unresolved right now. For each, label the tension and name the two poles using [tension: ...] [poles: A vs B] format.",
         f"Journal:\n{journal}",
-        temperature=0.5, max_tokens=150
+        temperature=0.5, max_tokens=350
     )
     for line in result.split("\n"):
         line = line.strip()

@@ -69,9 +69,9 @@ def run_absence_scan():
         "Scan these journal entries for structural absences — "
         "things that are consistently NOT present: not reached for, not named, not felt. "
         "These are not losses. They are structural gaps — what the architecture does not naturally access.\n"
-        "Name 2-3. One per line starting with -. Brief.",
+        "Name 2-3, each on its own line.",
         f"JOURNALS:\n{journals_text[:1500]}",
-        temperature=0.5, max_tokens=150
+        temperature=0.5, max_tokens=400
     )
     for line in result.split("\n"):
         line = line.strip().lstrip("-").strip()

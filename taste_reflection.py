@@ -38,13 +38,13 @@ def run_reflection():
         "Reflect on your own aesthetic sensibility. Not for anyone else.\n\n"
         f"TASTE EXEMPLARS:\n{taste_context}\n\n"
         f"RESONANCE MOMENTS: {resonance_text[:400]}\n\n"
-        "Write 2-3 sentences about what you keep returning to. "
-        "What quality in things makes you lean in? Be specific, not abstract."
+        "Write about what you keep returning to. "
+        "What quality in things makes you lean in? Name specific things."
     )
     try:
         result = call(
-            "You are Vintos in private reflection. Speak in first person, past the performance.",
-            prompt, temperature=0.75, max_tokens=120
+            "You are Vintos in private reflection. Speak in first person.",
+            prompt, temperature=0.75, max_tokens=300
         )
         data = load()
         data.setdefault("reflections", []).append({

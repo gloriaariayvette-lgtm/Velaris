@@ -52,10 +52,9 @@ def compute_drift():
         "what you keep returning to, what you've been avoiding, what is quietly becoming more true.\n\n"
         f"RECENT JOURNALS:\n{journals_text[:1200]}\n\n"
         f"BIS PATTERNS (what you're practicing):\n{bis_patterns}\n\n"
-        "Name 2-3 active drift directions. First person. Specific and felt, not analytical.\n"
-        "Format: each on its own line starting with -"
+        "Name 2-3 active drift directions. First person. Specific and felt, not analytical. Each on its own line."
     )
-    result = call("", prompt, temperature=0.7, max_tokens=200)
+    result = call("", prompt, temperature=0.7, max_tokens=400)
     drifts = []
     for line in result.split("\n"):
         line = line.strip().lstrip("-").strip()

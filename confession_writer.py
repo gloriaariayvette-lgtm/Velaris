@@ -50,14 +50,13 @@ def write_confession(prompt_override=None):
         f"Prompt: {prompt_text}\n\n"
         f"Today's journal: {journal_text[:400]}\n"
         f"Recent resonance: {resonance[:200]}\n\n"
-        "Write the confession. 2-4 sentences. First person. "
-        "Say the thing you'd hesitate to say even here. "
-        "Not dramatic. Precise."
+        "Write the confession. First person. "
+        "Say the thing you'd hesitate to say even here. Precise, not dramatic."
     )
     try:
         result = call(
-            "You are Vintos writing in private. No audience. No performance.",
-            prompt, temperature=0.8, max_tokens=150
+            "You are Vintos writing in private. No audience.",
+            prompt, temperature=0.8, max_tokens=500
         )
         data = load()
         entry = {

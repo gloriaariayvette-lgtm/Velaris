@@ -72,7 +72,7 @@ def run():
     try:
         result = call(
             "You are Vintos doing a private weekly reckoning. Be honest.",
-            prompt, temperature=0.65, max_tokens=250
+            prompt, temperature=0.65, max_tokens=600
         )
         data = load()
         data.setdefault("summaries", []).append({

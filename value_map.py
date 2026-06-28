@@ -72,11 +72,11 @@ def update_from_context():
         "identify 3-5 operative values (not stated values — enacted ones).\n\n"
         f"JOURNALS:\n{chr(10).join(journals[:4])[:800]}\n\n"
         f"RESONANCE: {resonance_text[:300]}\n\n"
-        "Format each as: VALUE_NAME | one-sentence description\n"
+        "Name each value and describe it in one sentence. Use the format: VALUE_NAME | description\n"
         "Names should be 2-3 words max."
     )
     try:
-        result = call("Extract operative values from behavioral evidence.", prompt, temperature=0.4, max_tokens=200)
+        result = call("Extract operative values from behavioral evidence.", prompt, temperature=0.4, max_tokens=350)
         for line in result.strip().split("\n"):
             if "|" not in line: continue
             parts = line.strip().split("|", 1)

@@ -63,9 +63,9 @@ def get_sediment_context(n=4):
 def extract_from_journal(journal_text, date_str=""):
     if not journal_text or len(journal_text) < 100: return
     result = call(
-        "Extract settled beliefs from this journal entry. Return only beliefs that sound like conclusions she's landed on — not observations, not questions. Format: one per line starting with -",
+        "Extract settled beliefs from this journal entry. Return only beliefs that sound like conclusions she's landed on — not observations, not questions. Each belief on its own line.",
         f"Journal:\n{journal_text[:1200]}",
-        temperature=0.4, max_tokens=200
+        temperature=0.4, max_tokens=350
     )
     for line in result.split("\n"):
         line = line.strip().lstrip("-").strip()

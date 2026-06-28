@@ -52,10 +52,9 @@ def compute_carryover():
         f"TODAY'S JOURNAL:\n{journal}\n\n"
         f"UNRESOLVED THREADS:\n" + "\n".join(f"- {u}" for u in unresolved) + "\n\n"
         f"RESONANCE TODAY:\n" + "\n".join(f"- {r}" for r in resonance) + "\n\n"
-        "Name 1-3 things carrying forward. First person, brief, specific.\n"
-        "Format: each on its own line starting with -"
+        "Name 1-3 things carrying forward. First person, specific. Each on its own line."
     )
-    result = call("", prompt, temperature=0.65, max_tokens=150)
+    result = call("", prompt, temperature=0.65, max_tokens=400)
     carries = []
     for line in result.split("\n"):
         line = line.strip().lstrip("-").strip()

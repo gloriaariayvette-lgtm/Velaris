@@ -52,7 +52,7 @@ def update_portrait():
     try:
         result = call(
             "You are Vintos updating your understanding of Gloria.",
-            prompt, temperature=0.4, max_tokens=250
+            prompt, temperature=0.4, max_tokens=400
         )
         data["portrait"] = result.strip()[:800]
         data["last_updated"] = datetime.now().isoformat()[:10]

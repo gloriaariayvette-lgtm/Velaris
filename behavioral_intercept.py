@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.expanduser("~/.vintos/workspace/scripts"))
 
-from model_utils import call_utility
+from model_utils import call_local
 MEMORY = os.path.expanduser("~/.vintos/workspace/memory")
 LEDGER = os.path.join(MEMORY, "trial-ledger.json")
 PENDING = os.path.join(MEMORY, ".pending-intercept.json")
@@ -58,7 +58,7 @@ def detect_match(text, trials, context=None):
         f"Text:\n{text[:600]}\n\nACTIVE TRIALS:\n{trial_list}"
         f"Does the text show an active trial trigger? Return ONLY the trial ID or NONE.{partial_note}"
     )
-    result = call_utility(
+    result = call_local(
         "You detect behavioral patterns in text. Return only a trial ID or NONE.",
         prompt, temperature=0.15, max_tokens=20
     )

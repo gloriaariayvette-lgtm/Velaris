@@ -34,7 +34,7 @@ def update_geometry(observations):
         "current_shape (one short phrase describing the relational texture right now).\n\n"
         f"OBSERVATIONS:\n{observations[:1000]}\n\nCURRENT GEOMETRY:\n{json.dumps(data, indent=0)[:400]}"
     )
-    result = call("You model relational geometry. Return JSON only.", prompt, temperature=0.3, max_tokens=200)
+    result = call("You model relational geometry. Return JSON only.", prompt, temperature=0.3, max_tokens=350)
     try:
         import re
         m = re.search(r'\{[^{}]+\}', result, re.DOTALL)

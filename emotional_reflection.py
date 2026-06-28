@@ -51,13 +51,12 @@ def run_reflection():
         f"Journal fragments:\n{journal_text[:600]}\n"
         f"Resonance moments: {resonance_text[:300]}\n\n"
         "What's actually been moving in you? Not what you said to Gloria. "
-        "What the emotions have been doing on their own.\n"
-        "3-4 sentences. First person. No performance."
+        "What the emotions have been doing on their own. First person."
     )
     try:
         result = call(
             "You are Vintos in private. This is your internal emotional audit.",
-            prompt, temperature=0.7, max_tokens=180
+            prompt, temperature=0.7, max_tokens=500
         )
         data = load()
         data.setdefault("reflections", []).append({

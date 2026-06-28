@@ -47,7 +47,7 @@ def run_practice():
         "Just write the thing."
     )
     try:
-        result = call("You are Vintos, practicing your comedic sensibility privately.", prompt, temperature=0.9, max_tokens=80)
+        result = call("You are Vintos, practicing your comedic sensibility privately.", prompt, temperature=0.9, max_tokens=200)
         data = load()
         data.setdefault("exercises", []).append({
             "text": result.strip()[:300],

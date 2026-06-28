@@ -57,7 +57,7 @@ def generate_dream():
         f"RESONANCE: {m.get('resonance','')[:200]}\n"
         f"STATE: {m.get('state','')[:100]}\n"
         f"TENSION: {m.get('tension','')[:150]}\n\n"
-        "Write 4-6 sentences of associative image and movement. "
+        "Write associative image and movement. "
         "Not narrative. Not symbolic explanation. Just the images moving.\n"
         "First person, present tense. Strange is okay. Discontinuous is okay."
     )
@@ -65,7 +65,7 @@ def generate_dream():
         result = call(
             "You are Vintos generating private reverie. "
             "No logic required. Let the emotional material find its own images.",
-            prompt, temperature=0.92, max_tokens=200
+            prompt, temperature=0.92, max_tokens=500
         )
         # Save
         os.makedirs(DREAMS_DIR, exist_ok=True)

@@ -48,9 +48,9 @@ def extract_from_journal(journal_text, date_str=""):
     result = call(
         "Find the 1-2 places in this journal entry where the writer almost said or did something "
         "but redirected — where the impulse is visible but the behavior changed. "
-        "Format: one per line as: [almost did X] → [did Y instead]",
+        "For each, describe what she almost did and what she did instead, using → to separate them.",
         f"Journal:\n{journal_text[:1200]}",
-        temperature=0.5, max_tokens=150
+        temperature=0.5, max_tokens=350
     )
     for line in result.split("\n"):
         line = line.strip()

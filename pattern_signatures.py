@@ -71,7 +71,7 @@ def run_extraction():
         "Names: 2-4 words, snake_case"
     )
     try:
-        result = call("Extract recurring behavioral signatures.", prompt, temperature=0.5, max_tokens=200)
+        result = call("Extract recurring behavioral signatures.", prompt, temperature=0.5, max_tokens=400)
         for line in result.strip().split("\n"):
             parts = line.strip().split("|")
             if len(parts) >= 2:

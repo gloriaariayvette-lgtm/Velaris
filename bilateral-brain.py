@@ -90,7 +90,7 @@ def run(system_text, user_text):
         subcon, emo
     )
     log("A1 generating...")
-    a1_text = call(a1_system, user_text, temperature=0.5, max_tokens=2048)
+    a1_text = call(a1_system, user_text, temperature=0.5, max_tokens=600)
     log(f"A1 done ({len(a1_text)} chars)")
 
     # B1 — intuitive hemisphere: emotional, associative, alive
@@ -99,7 +99,7 @@ def run(system_text, user_text):
         subcon, emo
     )
     log("B1 generating...")
-    b1_text = call(b1_system, user_text, temperature=1.0, max_tokens=2048)
+    b1_text = call(b1_system, user_text, temperature=1.0, max_tokens=600)
     log(f"B1 done ({len(b1_text)} chars)")
 
     ghost_lean = get_ghost_lean(a1_text, b1_text)
@@ -117,7 +117,7 @@ def run(system_text, user_text):
     )
     absorb_prompt = f"DRAFT A (analytical):\n{a1_text[:1200]}\n\nDRAFT B (intuitive):\n{b1_text[:1200]}\n\nUser said: {user_text[:400]}"
     log("Absorbing...")
-    absorbed = call(absorb_system, absorb_prompt, temperature=0.7, max_tokens=2048)
+    absorbed = call(absorb_system, absorb_prompt, temperature=0.7, max_tokens=600)
     log(f"Absorbed ({len(absorbed)} chars)")
 
     # BIS 2.5 — intercept on absorbed draft

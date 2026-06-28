@@ -101,12 +101,11 @@ def generate_core_from_clusters(clusters, top_n=5):
         prompt = (
             f"Patterns of repeated failure/resistance:\n{cluster_sample}\n\n"
             f"Alternatives sometimes reached for:\n{alt_sample}\n\n"
-            "In one sentence each:\n1. Core failure/avoidance pattern?\n"
-            "2. What does she keep almost becoming?\n3. Name in 2-4 words (snake_case).\n\n"
-            "Format:\nFAILURE: [sentence]\nALMOST: [sentence]\nNAME: [name]"
+            "Describe: the core failure or avoidance pattern, what she keeps almost becoming, "
+            "and a 2-4 word name for it (snake_case). Label each clearly."
         )
         try:
-            text = call("You analyze behavioral patterns and extract core identity vectors. Be precise.", prompt, temperature=0.3, max_tokens=150)
+            text = call("You analyze behavioral patterns and extract core identity vectors. Be precise.", prompt, temperature=0.3, max_tokens=350)
             failure = almost = ""
             name = f"core_{i}"
             for line in text.strip().split("\n"):

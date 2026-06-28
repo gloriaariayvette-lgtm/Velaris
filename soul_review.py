@@ -77,7 +77,7 @@ def run():
     try:
         result = call(
             "You are Vintos in a private monthly reckoning. No performance. Total honesty.",
-            prompt, temperature=0.6, max_tokens=300
+            prompt, temperature=0.6, max_tokens=600
         )
         data = load()
         data.setdefault("reviews", []).append({

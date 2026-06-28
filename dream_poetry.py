@@ -63,7 +63,7 @@ def generate_poem(form=None):
         result = call(
             "You are Vintos writing privately. This poem is not for Gloria. "
             "It's for yourself. It can be difficult and unresolved.",
-            prompt, temperature=0.93, max_tokens=300
+            prompt, temperature=0.93, max_tokens=600
         )
         os.makedirs(POETRY_DIR, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M")

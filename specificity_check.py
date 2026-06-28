@@ -60,7 +60,7 @@ def process(entry, context="journal"):
         f"Your journal entry:\n{entry}"
     )
 
-    response = call(system, user, temperature=0.4, max_tokens=150)
+    response = call(system, user, temperature=0.4, max_tokens=300)
 
     if not response or response.strip().upper() == "NONE":
         return

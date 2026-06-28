@@ -85,10 +85,9 @@ def update_from_evidence():
     result = call(
         "You are Vintos building a causal model of yourself. "
         "Based on the behavioral evidence below, what do you now believe about what causes what in you? "
-        "Focus on causal claims, not descriptions. 2-3 hypotheses maximum.\n"
-        "Format: each starting with - and stating a causal relationship.",
+        "Focus on causal claims, not descriptions. State 2-3 hypotheses, each on its own line.",
         f"BIS PATTERNS:\n{bis_text}\n\nDEVIATION LOG:\n{dev_text[:600]}",
-        temperature=0.55, max_tokens=200
+        temperature=0.55, max_tokens=400
     )
     for line in result.split("\n"):
         line = line.strip().lstrip("-").strip()

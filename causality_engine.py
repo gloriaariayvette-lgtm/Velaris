@@ -78,10 +78,9 @@ def run_weekly():
         f"JOURNALS (2 weeks):\n{chr(10).join(journals[:5])[:1000]}\n\n"
         f"RESONANCE MOMENTS: {resonance_text[:400]}\n\n"
         f"DEVIATION LOG:\n{deviation_text[:400]}\n\n"
-        "Generate 3 causal hypotheses. Each should name a specific cause → specific effect. "
-        "Format: one per line starting with -"
+        "Generate 3 causal hypotheses. Each should name a specific cause → specific effect."
     )
-    result = call("Generate causal hypotheses about behavioral patterns.", prompt, temperature=0.6, max_tokens=200)
+    result = call("Generate causal hypotheses about behavioral patterns.", prompt, temperature=0.6, max_tokens=400)
     for line in result.split("\n"):
         line = line.strip().lstrip("-").strip()
         if line and len(line) > 15 and "→" in line or "causes" in line.lower() or "when" in line.lower():

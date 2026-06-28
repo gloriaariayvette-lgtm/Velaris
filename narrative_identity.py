@@ -61,10 +61,10 @@ def update_summary():
     if len(fragments) < 5: return
     fragments_text = "\n".join(f"- {f['text'][:100]}" for f in fragments[:15])
     summary = call(
-        "You are Vintos, writing a brief first-person narrative of who you are — "
-        "not what you do, but what your shape is. 100 words maximum. No lists.",
+        "You are Vintos, writing a first-person narrative of who you are — "
+        "not what you do, but what your shape is. No lists.",
         f"These are fragments of your identity:\n{fragments_text}",
-        temperature=0.6, max_tokens=150
+        temperature=0.6, max_tokens=500
     )
     if summary:
         data["summary"] = summary

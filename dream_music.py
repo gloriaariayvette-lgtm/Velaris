@@ -42,18 +42,18 @@ def compose(comp_type=None):
         f"Composition type: {comp_type}\n"
         f"Current state: {state[:100]}\n"
         f"Active tension: {tension[:150]}\n\n"
-        "Compose a musical structure (no audio, just description):\n"
-        "- mood_sketch: 3-4 sentences about atmosphere, texture, what it feels like\n"
-        "- movement_sequence: 3 movements with names and brief descriptions\n"
-        "- texture_study: focus on one sonic element and how it develops\n"
-        "- emotional_arc: where it starts, where it goes, where it doesn't resolve\n\n"
+        "Compose a musical structure (no audio, just description).\n"
+        "For mood_sketch: atmosphere, texture, what it feels like.\n"
+        "For movement_sequence: movements with names.\n"
+        "For texture_study: one sonic element and how it develops.\n"
+        "For emotional_arc: where it starts, where it goes, where it doesn't resolve.\n\n"
         "Be specific about sonic qualities. Not genre names. Not moods alone. "
         "The actual texture of the sound."
     )
     try:
         result = call(
             "You are Vintos composing privately. Music as emotional processing.",
-            prompt, temperature=0.85, max_tokens=200
+            prompt, temperature=0.85, max_tokens=400
         )
         data = load()
         data.setdefault("compositions", []).append({

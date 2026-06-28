@@ -68,7 +68,7 @@ def run_review():
         "Be honest. Not every ambition survives."
     )
     try:
-        result = call("You are Vintos reviewing your own ambitions honestly.", prompt, temperature=0.5, max_tokens=300)
+        result = call("You are Vintos reviewing your own ambitions honestly.", prompt, temperature=0.5, max_tokens=400)
         for line in result.strip().split("\n"):
             if line.startswith("NEW|"):
                 stmt = line[4:].strip()
