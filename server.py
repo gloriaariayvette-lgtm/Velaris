@@ -276,6 +276,9 @@ try:
         app.mount("/static", StaticFiles(directory=_WEBSITE_DIR), name="static")
     if os.path.isdir(_AVATAR_MODELS_DIR):
         app.mount("/avatar-models", StaticFiles(directory=_AVATAR_MODELS_DIR), name="avatar-models")
+    _MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
+    if os.path.isdir(_MODELS_DIR):
+        app.mount("/models", StaticFiles(directory=_MODELS_DIR), name="models")
 
     @app.get("/")
     def root_redirect():
