@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 self_drift.py — Self-definition drift over time.
-Tracks how her sense of self shifts based on what she does and doesn't do.
+Tracks how his sense of self shifts based on what he does and doesn't do.
 Updated from thread engagements, BIS outcomes, and reflection.
 """
 import os, sys, json

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 taste_reflection.py — Weekly reflection on Vintos's aesthetic preferences.
-Generates private observations about what she keeps returning to.
+Generates private observations about what he keeps returning to.
 """
 import os, sys, json
 from datetime import datetime

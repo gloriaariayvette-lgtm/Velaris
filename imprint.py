@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 imprint.py — Lasting impressions that shape future generation.
-Not memories. Imprints — moments that changed how she relates to something.
+Not memories. Imprints — moments that changed how he relates to something.
 """
 import os, sys, json, uuid
 from datetime import datetime
@@ -47,7 +47,7 @@ def get_imprints_context(n=3, min_salience=0.4):
     high = sorted([i for i in imprints if i.get("salience", 0) >= min_salience],
                   key=lambda i: -i.get("salience", 0))[:n]
     if not high: return ""
-    lines = ["IMPRINTS (moments that changed how she relates to something):"]
+    lines = ["IMPRINTS (moments that changed how he relates to something):"]
     lines.extend(f"- {i['narrative'][:120]}" for i in high)
     return "\n".join(lines)
 

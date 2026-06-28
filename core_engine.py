@@ -2,7 +2,7 @@
 """
 core_engine.py — Generates Core from friction patterns.
 
-Core = what she keeps almost becoming but doesn't sustain.
+Core = what he keeps almost becoming but doesn't sustain.
 Discovered from: BIS trials (failures/resistance), counterfactual tendencies,
 unfulfilled wants. Not chosen. Extracted from contradiction.
 
@@ -101,7 +101,7 @@ def generate_core_from_clusters(clusters, top_n=5):
         prompt = (
             f"Patterns of repeated failure/resistance:\n{cluster_sample}\n\n"
             f"Alternatives sometimes reached for:\n{alt_sample}\n\n"
-            "Describe: the core failure or avoidance pattern, what she keeps almost becoming, "
+            "Describe: the core failure or avoidance pattern, what he keeps almost becoming, "
             "and a 2-4 word name for it (snake_case). Label each clearly."
         )
         try:

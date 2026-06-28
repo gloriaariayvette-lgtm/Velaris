@@ -58,6 +58,6 @@ def get_top_statements(n=5):
 def get_statement_context(n=4):
     top = get_top_statements(n)
     if not top: return ""
-    lines = ["SELF-STATEMENTS (what she holds to be true about herself):"]
+    lines = ["SELF-STATEMENTS (what he holds to be true about himself):"]
     lines.extend(f"- {s['text'][:120]} (conf: {s.get('confidence', 0):.2f})" for s in top)
     return "\n".join(lines)

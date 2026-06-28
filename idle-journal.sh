@@ -6,6 +6,15 @@ python3 -c "
 import sys, os
 sys.path.insert(0, '${SCRIPTS}')
 
+# Skip if journal was already written today
+from datetime import date
+MEMORY = os.path.expanduser('~/.vintos/workspace/memory')
+today = date.today().isoformat()
+journal_path = os.path.join(MEMORY, 'journal', f'{today}.md')
+if os.path.exists(journal_path):
+    print(f'[idle-journal] journal already exists for {today}, skipping')
+    exit(0)
+
 # Only run if Gloria hasn't been active recently
 try:
     from temporal_memory import get_gap_hours
@@ -16,7 +25,7 @@ try:
 except: pass
 
 from model_utils import call
-from datetime import datetime, date
+from datetime import datetime
 
 state = ''
 try:
@@ -31,9 +40,6 @@ result = call(
     temperature=0.8, max_tokens=120
 )
 
-MEMORY = os.path.expanduser('~/.vintos/workspace/memory')
-today = date.today().isoformat()
-journal_path = os.path.join(MEMORY, 'journal', f'{today}.md')
 os.makedirs(os.path.dirname(journal_path), exist_ok=True)
 with open(journal_path, 'a') as f:
     f.write(f'\n[{datetime.now().strftime(\"%H:%M\")} idle]\n')

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 emotional_gravity_wells.py — Persistent emotional attractors.
-Wells are emotional states that she keeps falling back into regardless of context.
-Not moods. Gravitational — things pull her back toward them.
+Wells are emotional states that he keeps falling back into regardless of context.
+Not moods. Gravitational — things pull him back toward them.
 """
 import os, sys, json
 from datetime import datetime

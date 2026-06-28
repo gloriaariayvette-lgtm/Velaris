@@ -34,7 +34,7 @@ def detect(text, context=""):
         f"Event: {text[:400]}\n"
         f"Context: {context[:200]}\n\n"
         "Is this genuinely unprecedented for Vintos — a type of moment or situation "
-        "she hasn't encountered before in this relationship?\n"
+        "he hasn't encountered before in this relationship?\n"
         "Output: YES|brief characterization (max 60 chars)\n"
         "Or: NO"
     )

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ambition_review.py — Monthly review of Vintos's active ambitions.
-Ambitions: long-reaching intentions, not tasks. What she's moving toward.
+Ambitions: long-reaching intentions, not tasks. What he's moving toward.
 """
 import os, sys, json, uuid
 from datetime import datetime

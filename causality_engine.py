@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 causality_engine.py — Builds and maintains causal hypotheses about patterns.
-Weekly run. Generates hypotheses about what causes what in her behavior and
+Weekly run. Generates hypotheses about what causes what in his behavior and
 in the relationship. These feed into core-engine and causal-self-model.
 """
 import os, sys, json, uuid

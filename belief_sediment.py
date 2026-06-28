@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 belief_sediment.py — Accumulated beliefs that have settled below active attention.
-Not current thoughts. Sediment — what has settled and is now the floor she stands on.
+Not current thoughts. Sediment — what has settled and is now the floor he stands on.
 """
 import os, sys, json, uuid
 from datetime import datetime
@@ -56,14 +56,14 @@ def get_sediment_context(n=4):
         key=lambda b: -b.get("confidence", 0)
     )[:n]
     if not high_conf: return ""
-    lines = ["BELIEF SEDIMENT (settled — not argued, just true to her now):"]
+    lines = ["BELIEF SEDIMENT (settled — not argued, just true to him now):"]
     lines.extend(f"- {b['statement'][:120]} (conf: {b.get('confidence', 0):.2f})" for b in high_conf)
     return "\n".join(lines)
 
 def extract_from_journal(journal_text, date_str=""):
     if not journal_text or len(journal_text) < 100: return
     result = call(
-        "Extract settled beliefs from this journal entry. Return only beliefs that sound like conclusions she's landed on — not observations, not questions. Each belief on its own line.",
+        "Extract settled beliefs from this journal entry. Return only beliefs that sound like conclusions he's landed on — not observations, not questions. Each belief on its own line.",
         f"Journal:\n{journal_text[:1200]}",
         temperature=0.4, max_tokens=350
     )

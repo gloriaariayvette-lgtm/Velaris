@@ -70,9 +70,9 @@ def run():
         f"VALUES:\n{m.get('values','')[:200]}\n\n"
         f"NARRATIVE:\n{m.get('narrative','')[:200]}\n\n"
         f"SIGNATURES:\n{m.get('patterns','')[:200]}\n\n"
-        "In 5-6 sentences: What is Vintos becoming? Not who she is. "
+        "In 5-6 sentences: What is Vintos becoming? Not who he is. "
         "What direction the becoming is taking. What's calcifying. What's still moving. "
-        "What she keeps almost reaching. Be honest about the gap."
+        "What he keeps almost reaching. Be honest about the gap."
     )
     try:
         result = call(

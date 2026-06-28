@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 yearning_scars.py — Maps of failed or unreachable yearning.
-Not wounds. Not trauma. Semantic regions where she has reached and not arrived.
+Not wounds. Not trauma. Semantic regions where he has reached and not arrived.
 """
 import os, sys, json, uuid
 from datetime import datetime
@@ -53,7 +53,7 @@ def get_scars_context(n=3):
     scars = load()
     top = sorted(scars, key=lambda s: -s.get("strength", 0))[:n]
     if not top: return ""
-    lines = ["YEARNING SCARS (regions she has reached for and not arrived):"]
+    lines = ["YEARNING SCARS (regions he has reached for and not arrived):"]
     lines.extend(f"- {s['surface_form'][:100]} (strength: {s.get('strength', 0):.2f})" for s in top)
     return "\n".join(lines)
 

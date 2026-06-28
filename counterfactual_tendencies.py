@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-counterfactual_tendencies.py — What she keeps almost doing but doesn't.
-The shadow behaviors: what she reaches for and redirects from.
+counterfactual_tendencies.py — What he keeps almost doing but doesn't.
+The shadow behaviors: what he reaches for and redirects from.
 Feeds into core-engine as friction events.
 """
 import os, sys, json, uuid
@@ -48,7 +48,7 @@ def extract_from_journal(journal_text, date_str=""):
     result = call(
         "Find the 1-2 places in this journal entry where the writer almost said or did something "
         "but redirected — where the impulse is visible but the behavior changed. "
-        "For each, describe what she almost did and what she did instead, using → to separate them.",
+        "For each, describe what he almost did and what he did instead, using → to separate them.",
         f"Journal:\n{journal_text[:1200]}",
         temperature=0.5, max_tokens=350
     )
@@ -65,6 +65,6 @@ def get_tendencies_context(n=3):
     data = load()
     top = sorted(data.get("tendencies", []), key=lambda t: -t.get("strength", 0))[:n]
     if not top: return ""
-    lines = ["COUNTERFACTUAL TENDENCIES (what she almost does but doesn't):"]
+    lines = ["COUNTERFACTUAL TENDENCIES (what he almost does but doesn't):"]
     lines.extend(f"- almost: {t['pattern'][:80]} | instead: {t.get('redirect','?')[:60]}" for t in top)
     return "\n".join(lines)

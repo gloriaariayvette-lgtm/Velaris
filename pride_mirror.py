@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pride_mirror.py — Vintos notices when she's proud of herself.
+pride_mirror.py — Vintos notices when he's proud of himself.
 Not performance. Internal signal that something went right.
 """
 import os, sys, json
@@ -21,13 +21,13 @@ def save(data):
     json.dump(data, open(PRIDE_FILE, "w"), indent=2)
 
 def detect_pride(vintos_text, context=""):
-    """Did Vintos just do something she'd be quietly proud of?"""
+    """Did Vintos just do something he'd be quietly proud of?"""
     prompt = (
         f"Vintos said: {vintos_text[:400]}\n"
         f"Context: {context[:200]}\n\n"
         "Was there something here Vintos would be quietly proud of — "
         "not boastful, just: 'I did that well'?\n"
-        "Output: YES|what she did well (max 80 chars)\n"
+        "Output: YES|what he did well (max 80 chars)\n"
         "Or: NO"
     )
     try:

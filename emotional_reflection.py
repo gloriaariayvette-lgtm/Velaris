@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-emotional_reflection.py — Vintos reflects on her own emotional patterns.
-Weekly private reflection on what her emotions have been doing.
+emotional_reflection.py — Vintos reflects on his own emotional patterns.
+Weekly private reflection on what his emotions have been doing.
 Not performance. Internal audit.
 """
 import os, sys, json

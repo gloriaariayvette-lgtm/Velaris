@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-causal_self_model.py — Causal self-model: hypotheses about what causes what in her own behavior.
+causal_self_model.py — Causal self-model: hypotheses about what causes what in his own behavior.
 Weekly update from behavioral evidence.
 """
 import os, sys, json, uuid
@@ -43,7 +43,7 @@ def get_self_model_context(n=3):
         return f"CAUSAL SELF-MODEL:\n{data['summary'][:400]}"
     hyps = [h for h in data.get("hypotheses", []) if h.get("status") == "confirmed"][:n]
     if not hyps: return ""
-    lines = ["CAUSAL SELF-MODEL (what she believes causes what in herself):"]
+    lines = ["CAUSAL SELF-MODEL (what he believes causes what in himself):"]
     lines.extend(f"- {h.get('hypothesis','')[:100]} (conf: {h.get('confidence',0):.2f})" for h in hyps)
     return "\n".join(lines)
 

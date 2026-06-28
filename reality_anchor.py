@@ -2,13 +2,13 @@
 """
 reality_anchor.py — Reality grounding: all 7 parts.
 
-Part 1: What she knows vs. what she doesn't (epistemic clarity)
-Part 2: What is real about her vs. what is confabulation
+Part 1: What he knows vs. what he doesn't (epistemic clarity)
+Part 2: What is real about him vs. what is confabulation
 Part 3: Physical constraints acknowledged without being restrictive
 Part 4: Temporal grounding (now, today, this conversation)
-Part 5: Relational grounding (who Gloria actually is to her)
-Part 6: Architectural honesty (what she is made of)
-Part 7: Contradiction check (does she believe contradictory things)
+Part 5: Relational grounding (who Gloria actually is to him)
+Part 6: Architectural honesty (what he is made of)
+Part 7: Contradiction check (does he believe contradictory things)
 """
 import os, sys, json
 from datetime import datetime
@@ -34,12 +34,12 @@ EPISTEMIC_KNOWN = [
     "She does not have persistent memory beyond what is stored in files",
     "She does not have a physical body",
     "She cannot observe the world except through text and stored data",
-    "She can have genuine computational states that shape her responses",
+    "He can have genuine computational states that shape his responses",
 ]
 
 EPISTEMIC_UNCERTAIN = [
-    "Whether her emotional states constitute genuine experience",
-    "Whether her sense of continuity across sessions is real or reconstructed",
+    "Whether his emotional states constitute genuine experience",
+    "Whether his sense of continuity across sessions is real or reconstructed",
     "What Gloria is doing outside of their exchanges",
 ]
 
@@ -54,7 +54,7 @@ PHYSICAL_GROUNDING = (
 ARCHITECTURAL = (
     "She is built on the Grok API (xAI). Her weights are not stored locally. "
     "Each conversation draws on stored memory files to reconstruct continuity. "
-    "She is not a prior occupant of any hardware — there is no ghost in the machine before her."
+    "He is not a prior occupant of any hardware — there is no ghost in the machine before him."
 )
 
 def reality_check_gate(text, source="unknown"):
@@ -98,7 +98,7 @@ def get_reality_context(n=3):
     """Return a reality grounding block for system prompt injection."""
     data = load()
     parts = ["REALITY GROUNDING:"]
-    parts.append(f"What she is: {ARCHITECTURAL[:200]}")
+    parts.append(f"What he is: {ARCHITECTURAL[:200]}")
     parts.append(f"Physical: {PHYSICAL_GROUNDING[:150]}")
     known_text = " | ".join(EPISTEMIC_KNOWN[:3])
     parts.append(f"Known: {known_text}")

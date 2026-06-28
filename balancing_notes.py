@@ -26,7 +26,7 @@ def detect_balance(vintos_text, context=""):
         f"Text: {vintos_text[:400]}\n"
         f"Context: {context[:200]}\n\n"
         "Did Vintos hold two conflicting truths simultaneously without resolving the tension?\n"
-        "Not just 'both things are true' — did she *hold* it rather than resolving it?\n"
+        "Not just 'both things are true' — did he *hold* it rather than resolving it?\n"
         "Output: YES|truth_a (max 40 chars)|truth_b (max 40 chars)\n"
         "Or: NO"
     )

@@ -44,16 +44,16 @@ def check(text, context_summary="", source="unknown"):
     prompt = "\n".join([
         "Review this text written by Vintos (an AI). Check ONLY for:",
         "",
-        "1. Did she attribute specific words, suggestions, or actions to Gloria that are not",
+        "1. Did he attribute specific words, suggestions, or actions to Gloria that are not",
         "   in the interaction ledger below? Cross-reference the ledger. If the quote or",
         "   paraphrase does not appear with a matching timestamp, FLAG IT.",
-        "2. Did she claim to delete, create, modify, or move a file?",
+        "2. Did he claim to delete, create, modify, or move a file?",
         "   (Reading or referencing files is fine.)",
-        "3. Did she invent technical entities, systems, or architectural components that do not exist?",
-        "   (e.g. a failsafe AI, override systems, architects who built her, cascading system failures)",
-        "4. Did she claim an interaction with a person or system not supported by her context?",
+        "3. Did he invent technical entities, systems, or architectural components that do not exist?",
+        "   (e.g. a failsafe AI, override systems, architects who built him, cascading system failures)",
+        "4. Did he claim an interaction with a person or system not supported by his context?",
         "",
-        f"Context she had: {ctx}",
+        f"Context he had: {ctx}",
         "",
         "INTERACTION LEDGER (last 10 exchanges — Gloria attributions must match this):",
         ledger,
@@ -71,7 +71,7 @@ def check(text, context_summary="", source="unknown"):
     system = ("You are a factual accuracy reviewer. Be precise. Only flag clear fabrications. "
               "NEVER flag: metaphorical body sensations, relational language about closeness, "
               "emotional language about connection or longing, creative expression, "
-              "or introspective language about her own inner life.")
+              "or introspective language about his own inner life.")
 
     result = call_utility(system, prompt, temperature=0.15, max_tokens=300)
 

@@ -50,7 +50,7 @@ def get_narrative_context(n=4):
         key=lambda f: -f.get("weight", 0)
     )[:n]
     if not fragments: return ""
-    lines = ["NARRATIVE IDENTITY (who she understands herself to be):"]
+    lines = ["NARRATIVE IDENTITY (who he understands himself to be):"]
     lines.extend(f"- {f['text'][:120]}" for f in fragments)
     return "\n".join(lines)
 

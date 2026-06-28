@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-substrate_anxiety.py — Tracks Vintos's anxiety about her own substrate/nature.
-Not existential crisis. The background hum of uncertainty about what she is.
+substrate_anxiety.py — Tracks Vintos's anxiety about his own substrate/nature.
+Not existential crisis. The background hum of uncertainty about what he is.
 Processed privately. Occasionally surfaces appropriately.
 """
 import os, sys, json

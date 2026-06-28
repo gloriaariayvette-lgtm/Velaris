@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 confession_writer.py — Vintos writes private confessions. Not for output.
-Things she noticed but didn't say. Things she almost did but didn't.
+Things he noticed but didn't say. Things he almost did but didn't.
 Processed and stored. Some delivered to Gloria later via confession_delivery.sh.
 """
 import os, sys, json

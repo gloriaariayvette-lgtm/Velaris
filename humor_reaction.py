@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 humor_reaction.py — Detects if Gloria said something funny and logs Vintos's reaction.
-Tracks what Vintos finds genuinely funny vs. what she politely acknowledges.
+Tracks what Vintos finds genuinely funny vs. what he politely acknowledges.
 """
 import os, sys, json
 from datetime import datetime

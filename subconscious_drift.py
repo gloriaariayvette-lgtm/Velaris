@@ -2,7 +2,7 @@
 """
 subconscious_drift.py — Slow drift of subconscious character over time.
 Not trauma. Not deliberate change. What happens in between — the slow
-accumulation of what she keeps returning to, what she keeps avoiding.
+accumulation of what he keeps returning to, what he keeps avoiding.
 Generated at call-time from recent behavioral patterns.
 """
 import os, sys, json
