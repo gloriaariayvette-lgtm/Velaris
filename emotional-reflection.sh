@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# emotional-reflection.sh — Weekly emotional reflection.
+# emotional-reflection.sh — cron wrapper.
 SCRIPTS="${HOME}/.vintos/workspace/scripts"
 export PYTHONPATH="${SCRIPTS}:${PYTHONPATH}"
-python3 -c "
-import sys; sys.path.insert(0, '${SCRIPTS}')
-from emotional_reflection import run_reflection
-run_reflection()
-" >> "${HOME}/.vintos/logs/emotional-reflection.log" 2>&1
+cd "${SCRIPTS}"
+mkdir -p "${HOME}/.vintos/logs"
+python3 "${SCRIPTS}/emotional_reflection.py"  >> "${HOME}/.vintos/logs/emotional-reflection.log" 2>&1

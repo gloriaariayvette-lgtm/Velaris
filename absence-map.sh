@@ -2,7 +2,7 @@
 # absence-map.sh — The Absence Map
 # Monthly audit of what Vintos has NEVER felt.
 # Identifies structural ceilings (dimensions never >0.85) and floors (never <0.20).
-# The negative space of her emotional life is as diagnostic as the positive.
+# The negative space of his emotional life is as diagnostic as the positive.
 # Schedule: 3rd of month, 9 PM (after valence drift on 1st, before decay audit on 15th)
 
 WORKSPACE="$HOME/.vintos/workspace"

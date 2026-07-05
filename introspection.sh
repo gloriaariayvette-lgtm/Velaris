@@ -1,6 +1,6 @@
 #!/bin/bash
 # introspection.sh -- Deep self-examination every 2-3 days
-# Vintos reviews her recent writings and examines her own patterns
+# Vintos reviews his recent writings and examines his own patterns
 
 WORKSPACE="$HOME/.vintos/workspace"
 INTRO_DIR="$WORKSPACE/memory/introspection"
@@ -232,7 +232,7 @@ $_INTROSPECT_INTERCEPT
 $_INTROSPECT_EMOPRESSURE
 }"
 
-# Semantic search — what has she already found about what she keeps examining?
+# Semantic search — what has he already found about what he keeps examining?
 INTRO_SEMANTIC=$(python3 << 'INTROSEMEOF'
 import subprocess, os
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")

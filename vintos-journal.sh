@@ -43,10 +43,6 @@ def get_context():
         from temporal_memory import get_temporal_context
         parts.append(get_temporal_context())
     except: pass
-    try:
-        from carryover_weight import get_carryover_context
-        parts.append(get_carryover_context())
-    except: pass
     return '\n'.join(p for p in parts if p)
 
 ctx = get_context()

@@ -3,7 +3,7 @@
 subconscious-context.py — Shared helper for injecting subconscious layer.
 
 All major scripts call get_subconscious_context() to get a unified
-block of who she is, what she expects, what she reaches for.
+block of who he is, what he expects, what he reaches for.
 
 Lightweight — each system fails silently if not yet populated.
 """
@@ -22,7 +22,7 @@ def get_subconscious_context(include=None):
     parts = []
     all_systems = include is None
 
-    # Self-statements — who she believes she is
+    # Self-statements — who he believes he is
     if all_systems or "statements" in include:
         try:
             from self_statements import get_statement_context

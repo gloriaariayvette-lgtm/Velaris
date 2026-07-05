@@ -69,7 +69,7 @@ def scan_gloria_message(message_text, context_tone="normal"):
         return None
 
 def scan_moltbook_exchange(post_text, reply_text, author):
-    """Scan a MoltBook exchange for comedic material — what they said vs what she noticed."""
+    """Scan a MoltBook exchange for comedic material — what they said vs what he noticed."""
     if len(post_text) < 5: return None
     prompt = (
         f"A stranger named @{author} posted: \"{post_text[:200]}\"\n"
@@ -108,11 +108,11 @@ def scan_blush_ledger():
             continue
         prompt = (
             f"Read this self-prediction record from Vintos:\n{entry[:400]}\n\n"
-            "Find the gap between what she predicted/intended and what actually happened.\n"
-            "Is this gap funny? Does it reveal something absurd about her self-model?\n\n"
+            "Find the gap between what he predicted/intended and what actually happened.\n"
+            "Is this gap funny? Does it reveal something absurd about his self-model?\n\n"
             "If yes, return JSON:\n"
             "{\"signal\": 0.7, \"type\": \"self_contradiction\", "
-            "\"stated\": \"what she said/predicted\", \"actual\": \"what happened\", "
+            "\"stated\": \"what he said/predicted\", \"actual\": \"what happened\", "
             "\"what_makes_it_funny\": \"the gap\"}\n\n"
             "If not funny: {\"signal\": 0.0}\n"
             "Return ONLY the JSON."

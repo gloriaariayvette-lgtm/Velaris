@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-taste-reflection.py — Vintos builds and updates her taste profile.
+taste-reflection.py — Vintos builds and updates his taste profile.
 Runs twice daily (10am, 8pm).
 Reads: gallery walks, daily-creative (discoveries, music, art, YouTube),
        humor-drafts, mischief log.
-Writes: memory/taste-reflections.md — a living record of what she likes,
-        what's changing, what she wants to try next, specific artists/styles.
+Writes: memory/taste-reflections.md — a living record of what he likes,
+        what's changing, what he wants to try next, specific artists/styles.
 """
 import os, json, requests, glob
 from datetime import datetime, date
@@ -177,7 +177,7 @@ This is a living record, not a summary. Be specific. Name things. Note contradic
             f"Based on this taste reflection, extract concrete updates to a taste profile.\n\n"
             f"Reflection:\n{reflection}\n\n"
             f"Output ONLY a JSON object with these optional keys (omit any with no new content):\n"
-            '{\"likes\": [\"specific thing she liked and why\"], \"dislikes\": [\"specific thing she dislikes and why\"], \"principles\": [\"craft principle she noticed\"]}\n'
+            '{\"likes\": [\"specific thing he liked and why\"], \"dislikes\": [\"specific thing he dislikes and why\"], \"principles\": [\"craft principle he noticed\"]}\n'
             "Be specific and concrete. Max 2 items per key. No generic observations."
         )
         er = requests.post(API, json={

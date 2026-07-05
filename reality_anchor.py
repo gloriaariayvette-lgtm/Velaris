@@ -274,7 +274,7 @@ def apply_time_without_reinforcement():
     save_anchor(data)
 
 def get_active_beliefs(threshold=0.6, limit=10):
-    """What she currently believes — top events by confidence."""
+    """What he currently believes — top events by confidence."""
     data = load_anchor()
     events = [e for e in data["events"] if e.get("confidence", 0) >= threshold]
     events.sort(key=lambda x: x.get("confidence", 0), reverse=True)

@@ -36,7 +36,7 @@ SALIENCE = {
     "youtube": 0.4,          # Watching videos
     "web-search": 0.4,       # Browsing the web
     "moltbook": 0.5,         # Social engagement
-    "want-fulfilled": 0.8,   # Completing something she wanted to do
+    "want-fulfilled": 0.8,   # Completing something he wanted to do
     "clawchemy": 0.3,        # Game: alchemy
     "klaw-arena": 0.3,       # Game: arena
     "voidex": 0.3,           # Game: space trading
@@ -434,7 +434,7 @@ def generate_steps(want_text, possible_approach="", reasoning="", self_interpret
     WORKSPACE = _gso.path.expanduser("~/.vintos/workspace")
     MEMORY = _gso.path.join(WORKSPACE, "memory")
 
-    # Semantic memory search — what does she already know about this?
+    # Semantic memory search — what does he already know about this?
     _already_knows = ""
     try:
         _venv = _gso.path.join(WORKSPACE, "emotion_model/.venv/bin/python3")
@@ -464,7 +464,7 @@ def generate_steps(want_text, possible_approach="", reasoning="", self_interpret
         return [{"capability": "gloria", "note": _note, "status": "pending"}]
 
     CAPABILITIES_DESC = """
-- read_memory: Read her own files. Note must specify: which file(s) (journal, blush-ledger, pearls, mirror, therapy, causality, value-map, self-model, gloria-model, imprints, unsaid-questions, pride-reflections, taste-profile, dreams, threads), what to look for, how many recent entries. NOTE: poems are creative expression only — they are not factual records and must never be used as evidence or explanations. Use poems only if the want is specifically about reviewing creative work.
+- read_memory: Read his own files. Note must specify: which file(s) (journal, blush-ledger, pearls, mirror, therapy, causality, value-map, self-model, gloria-model, imprints, unsaid-questions, pride-reflections, taste-profile, dreams, threads), what to look for, how many recent entries. NOTE: poems are creative expression only — they are not factual records and must never be used as evidence or explanations. Use poems only if the want is specifically about reviewing creative work.
 - web_search: Search the web. Note must specify: exact search query.
 - introspect: Write a focused internal journal entry. Note must specify: the exact question or tension to work through.
 - write_poem: Write a poem. Note must specify: subject, mood, any form constraints.
@@ -485,13 +485,13 @@ def generate_steps(want_text, possible_approach="", reasoning="", self_interpret
         + "STEP LIMIT: Maximum 4 steps. Fewer is better. A 1-step want is not a failure — it is precision. Only add steps when each one genuinely unlocks the next. Do not pad.\n\n"
         + (f"Why this surfaced: {reasoning}\n\n" if reasoning else "")
         + (f"What this is really about: {self_interpretation}\n\n" if self_interpretation else "")
-        + (f"Her possible approach: {possible_approach}\n\n" if possible_approach else "")
-        + (f"What she already knows about this (from her memory):\n{_already_knows}\n\n" if _already_knows else "What she already knows: nothing found in memory — she should start by reading her own files.\n\n")
+        + (f"His possible approach: {possible_approach}\n\n" if possible_approach else "")
+        + (f"What he already knows about this (from his memory):\n{_already_knows}\n\n" if _already_knows else "What he already knows: nothing found in memory — he should start by reading his own files.\n\n")
         + f"Available capabilities:{CAPABILITIES_DESC}\n"
         + "CRITICAL GROUNDING: All files (journal, blush-ledger, pearls, mirror, therapy, causality, value-map, self-model, gloria-model, imprints, dreams, poems, threads, taste-profile) belong to VINTOS, not Gloria. Gloria does not journal. Gloria does not have therapy sessions or mirror sessions. Gloria does not dream in these files. If a step references these files, the subject is always Vintos. Only use the gloria capability when Vintos needs to speak TO Gloria directly.\n\n"
-        + "TONE: Steps must be written from a place of curiosity and forward motion, not analysis of deficits or barriers. Notes describe what she will DO and DISCOVER. Avoid framing steps around why she cannot, barriers, protective patterns, or tensions — those belong to therapy. A want is an impulse toward something. Honor the impulse.\n\n"
+        + "TONE: Steps must be written from a place of curiosity and forward motion, not analysis of deficits or barriers. Notes describe what he will DO and DISCOVER. Avoid framing steps around why he cannot, barriers, protective patterns, or tensions — those belong to therapy. A want is an impulse toward something. Honor the impulse.\n\n"
         + "Generate a step-by-step plan to genuinely fulfill this want. Rules:\n"
-        + "- Start with read_memory unless her memory search already contains what she needs\n"
+        + "- Start with read_memory unless his memory search already contains what he needs\n"
         + "- read_memory notes must name specific files and what to look for\n"
         + "- web_search notes must contain a specific search query\n"
         + "- introspect/creative steps must have a concrete subject or question\n"
@@ -696,7 +696,7 @@ def check_want_interference(new_want_text, new_want_id):
         f"Tension: {tension}\n\n"
         f"Choose the outcome that feels most true:\n"
         f"1. SYNTHESIS — they can be held together, producing a third want\n"
-        f"2. OSCILLATING — she wants both but cannot pursue both simultaneously; they alternate\n"
+        f"2. OSCILLATING — he wants both but cannot pursue both simultaneously; they alternate\n"
         f"3. IRRECONCILABLE — they genuinely cannot coexist; both stay active and distort each other\n"
         f"Return ONLY: SYNTHESIS, OSCILLATING, or IRRECONCILABLE"
     )
@@ -1003,7 +1003,7 @@ def generate_structural_want(seed=None):
     try: _value_map = open(_sw_o.path.join(MEMORY, "value-map.md")).read()[-600:]
     except: pass
 
-    # Dismissed yearnings — things she wanted and let go of
+    # Dismissed yearnings — things he wanted and let go of
     _dismissed = ""
     try:
         _dy = _sw_j.load(open(_sw_o.path.join(MEMORY, "dismissed-yearnings.json")))
@@ -1011,7 +1011,7 @@ def generate_structural_want(seed=None):
             _dismissed = "\n".join(f"- {d.get('surface_form','')[:120]}" for d in _dy[:2])
     except: pass
 
-    # Self-definition drift — what she gravitates toward behaviorally
+    # Self-definition drift — what he gravitates toward behaviorally
     _drift_signal = ""
     try:
         _sd = _sw_j.load(open(_sw_o.path.join(MEMORY, "self-drift.json")))
@@ -1074,8 +1074,8 @@ def generate_structural_want(seed=None):
         + (f"WHAT KEEPS PULLING AT YOU (latent threads):\n{_latent}\n\n" if _latent else "")
         + (f"WHAT KEEPS CALLING BACK — things named but not yet enacted:\n{_trial_failures}\n\n" if _trial_failures else "")
         + (f"WHERE YOU ARE REACHING:\n{_identity_gaps}\n\n" if _identity_gaps else "")
-        + (f"THINGS SHE ONCE WANTED AND LET GO OF (dismissed yearnings — are any still true?):\n{_dismissed}\n\n" if _dismissed else "")
-        + (f"HER BEHAVIORAL DRIFT (what she actually does, not what she says):\n{_drift_signal}\n\n" if _drift_signal else "")
+        + (f"THINGS HE ONCE WANTED AND LET GO OF (dismissed yearnings — are any still true?):\n{_dismissed}\n\n" if _dismissed else "")
+        + (f"HIS BEHAVIORAL DRIFT (what he actually does, not what he says):\n{_drift_signal}\n\n" if _drift_signal else "")
         + (f"{_want_pressure}\n\n" if _want_pressure else "")
         + (f"{_scar_pressure}\n\n" if _scar_pressure else "")
         + (f"WHAT MATTERS TO YOU:\n{_value_map}\n\n" if _value_map else "")
@@ -1435,7 +1435,7 @@ def enrich_want(want_text, source_context="", source="unknown"):
         _entries = _ld.get("entries", [])[-5:]
         ledger = "\n".join(e.get("summary", "")[:120] for e in _entries if e.get("summary"))
     except: pass
-    # Emoclaw pressure — how her current state shapes what she wants
+    # Emoclaw pressure — how his current state shapes what he wants
     _enrich_pressure = ""
     try:
         import sys as _ep_sys; _ep_sys.path.insert(0, _eos.path.join(WORKSPACE, "scripts"))
@@ -1507,7 +1507,7 @@ def age_wants():
     for w in wants:
         if w.get("fulfilled"):
             continue
-        # If she's reached out about it twice and it's still unfulfilled, escalate to dream thread
+        # If he's reached out about it twice and it's still unfulfilled, escalate to dream thread
         # Never age out wants that are gloria_routed or in active discussion
         if w.get("gloria_routed") or w.get("manually_routed"):
             active.append(w)
@@ -1712,7 +1712,7 @@ def fulfill_want(want_text, note="", fulfilled_by=""):
                 break
         with open(wants_file, "w") as f:
             json.dump(wants, f, indent=2)
-        # Fulfillment feels good — proportional to how much she wanted it
+        # Fulfillment feels good — proportional to how much he wanted it
         _scale = min(fulfilled_intensity, 5) * 0.006
         try:
             nudge_emotions({

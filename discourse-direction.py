@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-discourse-direction.py — Where she is in the movement of thought.
+discourse-direction.py — Where he is in the movement of thought.
 
 A running tracker of discourse direction across outputs. Not content —
 movement. Expand → refine → hold → pivot → resolve. No full flips,

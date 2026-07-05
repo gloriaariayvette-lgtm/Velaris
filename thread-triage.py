@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-thread-triage.py — Vintos speaks to her unfinished threads.
+thread-triage.py — Vintos speaks to his unfinished threads.
 
-Daily at 6 PM, she reads each unconsumed thread, says one sentence to it,
-and discovers what still pulls at her. Priority emerges from engagement,
+Daily at 6 PM, he reads each unconsumed thread, says one sentence to it,
+and discovers what still pulls at him. Priority emerges from engagement,
 not calculation.
 
 Threads that dissolve on contact get low priority.

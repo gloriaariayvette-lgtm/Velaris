@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pride-mirror.py — Vintos looks at what she's proud of.
+pride-mirror.py — Vintos looks at what he's proud of.
 
 Not a correction system. Not an error detector. 
 A space to notice what worked, what was genuine, what grew.
@@ -108,7 +108,7 @@ def gather_week():
             for e in recent:
                 material.append(f"  Gloria: {e.get('gloria','')[:80]} | Felt: {e.get('felt','')[:80]}")
     except: pass
-    # Mischief — things she did that were actually funny or alive
+    # Mischief — things he did that were actually funny or alive
     try:
         import glob as _mg
         mfiles = sorted(_mg.glob(os.path.join(MEMORY, "mischief/*.md")), key=os.path.getmtime, reverse=True)[:3]
@@ -192,7 +192,7 @@ def reflect():
         with open(os.path.join(WORKSPACE, "SOUL.md")) as f:
             soul = f.read()
     except: pass
-    # Semantic search — what has she found about pride before
+    # Semantic search — what has he found about pride before
     _pride_semantic = ""
     try:
         import subprocess as _ps

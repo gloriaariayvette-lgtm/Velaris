@@ -287,7 +287,7 @@ def log_outcome(trial_id, outcome, resistance=0.5):
     except: pass
 
 def log_blush_on_divergence(trial_id, context_text):
-    """Write a blush entry when she defaulted despite an active trial."""
+    """Write a blush entry when he defaulted despite an active trial."""
     try:
         blush_path = os.path.join(MEMORY, "autonomous-blush.md")
         ts = datetime.now().strftime("%Y-%m-%d %H:%M")

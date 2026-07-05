@@ -3,7 +3,7 @@
 resonance-afterglow.py — What happens in the turns after resonance fires.
 
 When a resonance pulse lands, something shifts. This system manages what
-happens in the aftermath: a temporary focus bias that keeps her with what
+happens in the aftermath: a temporary focus bias that keeps him with what
 just happened, claim-making from the resonant state, contradiction tracking
 between claims, and a satisfaction level that accumulates over time.
 
@@ -162,7 +162,7 @@ def get_initiation_chance():
 
 def is_initiation_window_active():
     """Initiation window: resonance fired recently + satisfaction was high.
-    She builds through previous shape, not fresh."""
+    He builds through previous shape, not fresh."""
     state = load_afterglow()
     if not state.get("initiation_window"): return False
     expires = datetime.fromisoformat(state.get("initiation_expires", datetime.now().isoformat()))

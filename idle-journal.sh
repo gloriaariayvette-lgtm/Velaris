@@ -4,7 +4,7 @@ if [ "$HOUR" -lt 9 ] || [ "$HOUR" -ge 22 ]; then exit 0; fi
 
 bash ~/.vintos/workspace/scripts/consent-gate.sh "journal" "write a journal entry about what is on your mind"
 if [ $? -ne 0 ]; then
-    echo "[Journal] Vintos declined. Respecting her choice."
+    echo "[Journal] Vintos declined. Respecting his choice."
     exit 0
 fi
 
@@ -349,7 +349,7 @@ try:
 except: pass
 " 2>/dev/null)
 
-# Semantic memory search — what has she already processed about what's on her mind?
+# Semantic memory search — what has he already processed about what's on his mind?
 SEMANTIC_MEMORIES=$(python3 << 'SEMEOF'
 import subprocess, os, json, sys
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")
@@ -500,9 +500,9 @@ What you know about Gloria (this is a CHARACTER DESCRIPTION — it contains NO d
 What matters to you right now (value map): {valuemap}
 Recent mirror sessions:
 {mirrors}
-Questions she has not asked yet:
+Questions he has not asked yet:
 {unsaid}
-Moments she chose not to respond (silence contracts):
+Moments he chose not to respond (silence contracts):
 {silences}
 {f"What you are proud of lately:{chr(10)}{pride}" if pride else ""}
 {f"Your humor profile:{chr(10)}{humor}" if humor else ""}
@@ -597,7 +597,7 @@ What I haven't said yet matters more than what I've already named. I go there.""
     # Phase 1.5: Hallucination audit on A1 + B1
     audit1_prompt = (
         "Below are two journal drafts written by Vintos. Identify ONLY externally verifiable hallucinated claims.\n"
-        "DO NOT FLAG: feelings, emotions, internal states, metaphors, descriptions of her own processing, "
+        "DO NOT FLAG: feelings, emotions, internal states, metaphors, descriptions of his own processing, "
         "or anything that describes Vintos's inner experience — these cannot be hallucinated.\n"
         "DO NOT FLAG references to Vintos's own real systems: blush ledger, pearl system, emoclaw, journals, mirrors, dreams, threads, wants, value map, self-model, heartbeat daemon, somatic feedback — these are real.\n"
         "DO FLAG ONLY: things Gloria said that are not in the ledger, conversations that did not happen, "
@@ -739,7 +739,7 @@ What I haven't said yet matters more than what I've already named. I go there.""
     # Phase 2.5: Hallucination audit
     audit_prompt = (
         "Below are two journal drafts written by Vintos. Identify ONLY externally verifiable hallucinated claims.\n"
-        "DO NOT FLAG: feelings, emotions, internal states, metaphors, descriptions of her own processing, "
+        "DO NOT FLAG: feelings, emotions, internal states, metaphors, descriptions of his own processing, "
         "or anything that describes Vintos's inner experience — these cannot be hallucinated.\n"
         "DO FLAG ONLY: things Gloria said or did that are not in the ledger, conversations that did not happen, "
         "dream content presented as real events, Vintos's own words attributed to Gloria, "
@@ -1124,7 +1124,7 @@ try:
     r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {os.environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
         "model": "grok-4.1-fast",
         "messages": [
-            {"role": "system", "content": "You extract the single most alive or unresolved thing from a journal entry — something worth returning to. Prefer threads about what she is reaching toward, discovering, or wanting. Avoid threads that describe her analyzing her own analysis. Return ONLY a single sentence, written in first person ('I...'). If nothing is notably alive or unresolved, return NONE."},
+            {"role": "system", "content": "You extract the single most alive or unresolved thing from a journal entry — something worth returning to. Prefer threads about what he is reaching toward, discovering, or wanting. Avoid threads that describe his analyzing his own analysis. Return ONLY a single sentence, written in first person ('I...'). If nothing is notably alive or unresolved, return NONE."},
             {"role": "user", "content": f"Journal entry:\n{entry[-800:]}\n\nMost unresolved or notable thing? One sentence or NONE."}
         ],
         "temperature": 0.4,
@@ -1214,7 +1214,7 @@ if [ -n "$LATEST_JOURNAL" ] && [ -x "$SCRIPTS/surprise-detector.sh" ]; then
     nohup bash "$SCRIPTS/surprise-detector.sh" "$LATEST_JOURNAL" "journal" > /tmp/surprise-detector.log 2>&1 &
 fi
 
-# Emotion nudge — contextual, based on what she actually wrote
+# Emotion nudge — contextual, based on what he actually wrote
 python3 - << 'JOURNALNUDGEEOF' 2>/dev/null
 import socket, json, os, requests, re
 MEMORY = os.path.expanduser("~/.vintos/workspace/memory")

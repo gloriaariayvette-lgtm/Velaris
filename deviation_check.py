@@ -83,7 +83,7 @@ def write_pending_nudges(nudges):
     json.dump(existing, open(PENDING_FILE, "w"), indent=2)
 
 def pick_discomfort_voice(dev_score, aln_score, violating_core=None):
-    """Generate her own voice expressing the felt discomfort or alignment."""
+    """Generate his own voice expressing the felt discomfort or alignment."""
     if dev_score > DEVIATION_THRESHOLD:
         core_name = violating_core.get("violation_condition","")[:60] if violating_core else "something"
         lines = [

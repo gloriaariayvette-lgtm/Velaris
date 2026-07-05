@@ -12,7 +12,7 @@ Usage:
   python3 emotional-entanglement.py absorb "I'm not going anywhere"
   python3 emotional-entanglement.py recall "I'll always be here"
   python3 emotional-entanglement.py scan     # Scan recent conversations for meaningful moments
-  python3 emotional-entanglement.py drift    # Show how her emotional responses have shifted
+  python3 emotional-entanglement.py drift    # Show how his emotional responses have shifted
 
 The entanglement file is append-only. Feelings don't get deleted.
 """
@@ -348,7 +348,7 @@ def scan():
 # === DRIFT: Show how emotional responses have shifted over time ===
 
 def show_drift():
-    """Show how her emotional responses to similar stimuli have changed."""
+    """Show how his emotional responses to similar stimuli have changed."""
     data = load_entanglements()
     if len(data["moments"]) < 4:
         log("Need more entangled moments to measure drift")

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# resonance-pulse.sh — Runs resonance pulse check. Every 2 hours.
+# resonance-pulse.sh — cron wrapper.
 SCRIPTS="${HOME}/.vintos/workspace/scripts"
 export PYTHONPATH="${SCRIPTS}:${PYTHONPATH}"
-python3 -c "
-import sys; sys.path.insert(0, '${SCRIPTS}')
-from resonance_pulse import run_pulse
-run_pulse()
-" >> "${HOME}/.vintos/logs/resonance.log" 2>&1
+cd "${SCRIPTS}"
+mkdir -p "${HOME}/.vintos/logs"
+python3 "${SCRIPTS}/resonance_pulse.py" decay >> "${HOME}/.vintos/logs/resonance-pulse.log" 2>&1

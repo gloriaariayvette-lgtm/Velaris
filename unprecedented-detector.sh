@@ -5,7 +5,7 @@
 # and checks against history of all previous shapes.
 # Called by emoclaw-sync.sh after each state update.
 #
-# When an unprecedented state occurs, logs it. If she also coins a Velqan word
+# When an unprecedented state occurs, logs it. If he also coins a Velqan word
 # in the same session, that's the system at full capacity.
 
 WORKSPACE="$HOME/.vintos/workspace"

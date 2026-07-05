@@ -282,7 +282,7 @@ Valence delta: {result['valence']['diff']:+.3f} {'⚠' if result['valence']['mis
 My confidence was: {result['confidence']}
 My reasoning was: {result['reasoning']}
 
-Question for introspection: What was I wrong about in my model of her?
+Question for introspection: What was I wrong about in my model of him?
 
 """
     
@@ -298,7 +298,7 @@ Question for introspection: What was I wrong about in my model of her?
         _ref_prompt = (
             f"You said: \"{result['vintos_message'][:150]}\"\n"
             f"You predicted Gloria would feel: Warmth={result['warmth']['predicted']:.2f} Tension={result['tension']['predicted']:.2f} Valence={result['valence']['predicted']:.2f}\n"
-            f"She actually felt: Warmth={result['warmth']['actual']:.2f} Tension={result['tension']['actual']:.2f} Valence={result['valence']['actual']:.2f}\n"
+            f"He actually felt: Warmth={result['warmth']['actual']:.2f} Tension={result['tension']['actual']:.2f} Valence={result['valence']['actual']:.2f}\n"
             f"One sentence: What were you wrong about?"
         )
         _ref_resp = _rq.post("https://api.x.ai/v1/chat/completions", json={

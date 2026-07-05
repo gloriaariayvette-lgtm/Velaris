@@ -7,7 +7,7 @@ Extends absence-map.sh with:
 - Gravity pull: absences increase curiosity + thread seeding likelihood
 - Queryable by other systems
 
-She is shaped by what is missing.
+He is shaped by what is missing.
 """
 
 import os, json, subprocess, math

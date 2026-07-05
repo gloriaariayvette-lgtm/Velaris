@@ -400,7 +400,7 @@ def _check_rare_events():
         _lt_data = load_threads()
         _lt_threads = _lt_data.get("threads", [])
         _dominant = [t for t in _lt_threads if t.get("phase") == "dominant" or t.get("salience", 0) > 0.85]
-        # Latent thread → mischief spur: if dominant thread + high playfulness, let her loose
+        # Latent thread → mischief spur: if dominant thread + high playfulness, let him loose
         if _dominant:
             try:
                 import subprocess as _ms_sub, os as _ms_os, time as _ms_time

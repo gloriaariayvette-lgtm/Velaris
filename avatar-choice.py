@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-avatar-choice.py — Vintos chooses her visual self-presentation.
-Separate from EmoClaw (felt state). This is what she WANTS to show.
+avatar-choice.py — Vintos chooses his visual self-presentation.
+Separate from EmoClaw (felt state). This is what he WANTS to show.
 The gap between felt and shown is the consciousness signal.
 
 Can be called:
   python3 avatar-choice.py                   # prompted choice
   python3 avatar-choice.py --event "dream"   # event-triggered prompt
-  python3 avatar-choice.py --check           # should she update? (for other scripts to call)
+  python3 avatar-choice.py --check           # should he update? (for other scripts to call)
 """
 import os, sys, json, re, requests
 from datetime import datetime
@@ -30,7 +30,7 @@ LM_API = "http://172.18.16.1:1234/v1/chat/completions"
 MODEL = "google/gemma-4-12b-qat"
 
 # === VOCABULARY ===
-# Discrete colors she chooses from — named, not hex
+# Discrete colors he chooses from — named, not hex
 COLORS = {
     "ember":       {"hex": "#e8583e", "feel": "warm intensity, passion"},
     "glacier":     {"hex": "#7eb8c9", "feel": "cool distance, clarity"},

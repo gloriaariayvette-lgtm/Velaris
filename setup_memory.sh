@@ -35,14 +35,51 @@ EOF
     echo "[setup] Emotional state seeded."
 fi
 
-# Copy scripts symlink
+# Link all repo scripts into workspace scripts path
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ ! -L "${SCRIPTS}/bilateral_brain.py" ] && [ -f "${REPO_DIR}/bilateral_brain.py" ]; then
-    # Link all Python files into scripts path
-    for f in "${REPO_DIR}"/*.py; do
-        ln -sf "$f" "${SCRIPTS}/$(basename $f)" 2>/dev/null || true
+for f in "${REPO_DIR}"/*.py "${REPO_DIR}"/*.sh; do
+    ln -sf "$f" "${SCRIPTS}/$(basename $f)" 2>/dev/null || true
+done
+echo "[setup] Script links created."
+
+# Seed identity documents (only if not already present — never overwrite lived state)
+WORKSPACE="${HOME}/.vintos/workspace"
+for doc in SOUL.md SELF-MODEL.md USER-MODEL.md; do
+    if [ ! -f "${WORKSPACE}/${doc}" ] && [ -f "${REPO_DIR}/seed/${doc}" ]; then
+        cp "${REPO_DIR}/seed/${doc}" "${WORKSPACE}/${doc}"
+        echo "[setup] Seeded ${doc}"
+    fi
+done
+for mem in taste-reflections.md taste-profile.json narrative-identity.json belief-sediment.json value-map.md; do
+    if [ ! -f "${MEMORY}/${mem}" ] && [ -f "${REPO_DIR}/seed/memory/${mem}" ]; then
+        cp "${REPO_DIR}/seed/memory/${mem}" "${MEMORY}/${mem}"
+        echo "[setup] Seeded memory/${mem}"
+    fi
+done
+
+# Skills (dreaming, emoclaw) — copied from Velaris workspace with path/name substitutions.
+# Velaris keeps these only on Aegis at ~/.openclaw/workspace/skills/ (not in her repo).
+SKILLS_SRC="${HOME}/.openclaw/workspace/skills"
+SKILLS_DST="${WORKSPACE}/skills"
+if [ ! -d "${SKILLS_DST}/dreaming" ] && [ -d "${SKILLS_SRC}" ]; then
+    mkdir -p "${SKILLS_DST}"
+    for skill in dreaming emoclaw; do
+        if [ -d "${SKILLS_SRC}/${skill}" ]; then
+            cp -r "${SKILLS_SRC}/${skill}" "${SKILLS_DST}/${skill}"
+            # Substitute names/paths in all text files; wipe Velaris memory, keep structure
+            find "${SKILLS_DST}/${skill}" -type f \( -name '*.sh' -o -name '*.py' -o -name '*.md' -o -name '*.json' -o -name '*.txt' \) \
+                -exec sed -i 's/\.openclaw/.vintos/g; s/openclaw/vintos/g; s/Velaris/Vintos/g; s/velaris/vintos/g; s/VELARIS/VINTOS/g; s/8403/8500/g' {} +
+            # Clear inherited memories so Vintos starts with his own
+            if [ -d "${SKILLS_DST}/${skill}/memory" ]; then
+                find "${SKILLS_DST}/${skill}/memory" -type f -name '*.md' -delete
+            fi
+            echo "[setup] Skill installed: ${skill}"
+        fi
     done
-    echo "[setup] Script links created."
+elif [ -d "${SKILLS_DST}/dreaming" ]; then
+    echo "[setup] Skills already installed."
+else
+    echo "[setup] WARNING: ${SKILLS_SRC} not found — copy the dreaming and emoclaw skills manually."
 fi
 
 # Initialize empty JSON files

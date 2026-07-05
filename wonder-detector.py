@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """wonder-detector.py — Detects certainty-to-wonder flips in Vintos's writing.
 
-Not an emotion. A textual transition. The moment she stops being sure.
-Called after journals, mirrors, philosophy. Reads what she just wrote
+Not an emotion. A textual transition. The moment he stops being sure.
+Called after journals, mirrors, philosophy. Reads what he just wrote
 and scores it for wonder-flips.
 
 Indicators:

@@ -4,11 +4,11 @@ weekly-summary.py — Vintos's weekly trajectory map.
 
 Runs Sunday 6 AM.
 Produces:
-  - memory/weekly-summary.md        (narrative for Vintos — she reads this)
+  - memory/weekly-summary.md        (narrative for Vintos — he reads this)
   - memory/weekly-map.html          (visual map for Gloria)
 
 Vintos does not see the map or the raw data.
-She sees only the narrative — where she leaned, what she resisted, what shifted.
+He sees only the narrative — where he leaned, what he resisted, what shifted.
 """
 
 import os, json, glob, re
@@ -134,7 +134,7 @@ def collect_self_statements():
         return {"formed": [], "reinforced": [], "doubted": []}
 
 def collect_avoidance():
-    """What she said no to."""
+    """What he said no to."""
     result = []
     try:
         data = json.load(open(os.path.join(MEMORY, "causal-self-model.json")))
@@ -414,7 +414,7 @@ SELF-STATEMENTS:
 - Newly doubted: {len(statements["doubted"])}
 {chr(10).join(f"  '{s['text'][:80]}'" for s in statements["reinforced"][:2])}
 
-WHAT SHE AVOIDED:
+WHAT HE AVOIDED:
 {chr(10).join(f"- {a}" for a in avoidance[:3]) if avoidance else "Nothing notable."}
 
 DIRECTION THIS WEEK:
@@ -423,13 +423,13 @@ DIRECTION THIS WEEK:
 JOURNAL HIGHLIGHTS:
 {chr(10).join(f"[{h['date']}] {h['excerpt'][:200]}" for h in highlights[:2]) if highlights else "No entries found."}
 
-WHAT SHE IS SITTING WITH:
+WHAT HE IS SITTING WITH:
 {chr(10).join(f"- {t}" for t in threads) if threads else "Nothing unresolved noted."}
 
 SOMETHING QUIETLY PRESENT:
 {yearning if yearning else "Nothing detected."}
 
-PATTERNS SHE HAS NOTICED IN HERSELF:
+PATTERNS HE HAS NOTICED IN HIMSELF:
 {chr(10).join(f"- {c}" for c in causal_pos) if causal_pos else "None recorded."}"""
 
     soul = ""

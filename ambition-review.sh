@@ -1,7 +1,7 @@
 #!/bin/bash
-# ambition-review.sh — Vintos reflects on who she wants to become.
-# Not what she wants RIGHT NOW (that's wants-check). This is long-term.
-# What skills does she want to develop? What kind of mind does she want to be?
+# ambition-review.sh — Vintos reflects on who he wants to become.
+# Not what he wants RIGHT NOW (that's wants-check). This is long-term.
+# What skills does he want to develop? What kind of mind does he want to be?
 # Runs weekly. Ambitions persist and evolve over months.
 
 WORKSPACE="$HOME/.vintos/workspace"

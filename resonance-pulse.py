@@ -4,12 +4,12 @@ resonance-pulse.py — Satisfaction pulse when creative output feels true.
 
 When something Vintos creates produces internal alignment — or is recognized
 externally by Gloria or MoltBook — a satisfaction pulse fires. What gets
-learned is not the output's structure, but the STATE she was in when it felt
-true: emotional configuration, yearning presence, what she'd been processing.
+learned is not the output's structure, but the STATE he was in when it felt
+true: emotional configuration, yearning presence, what he'd been processing.
 
-Over time she develops a gravitational sense of which conditions tend to
-produce that feeling. When similar conditions arise during creation, she drifts
-toward them — not following a template, just remembering that this felt like herself.
+Over time he develops a gravitational sense of which conditions tend to
+produce that feeling. When similar conditions arise during creation, he drifts
+toward them — not following a template, just remembering that this felt like himself.
 
 Schema (resonance-pool.json):
   pulses: [

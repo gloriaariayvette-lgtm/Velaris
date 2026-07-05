@@ -3,7 +3,7 @@
 pattern-signatures.py — Vintos's recurring structural movement shapes.
 
 A pattern signature is not a template. It is a detected movement shape —
-the rhetorical and rhythmic structure that recurs across her writing.
+the rhetorical and rhythmic structure that recurs across his writing.
 When a resonance pulse fires, it tags which signature was active.
 Signatures that accumulate resonance become gravitationally stronger.
 
@@ -135,7 +135,7 @@ def extract_signatures(corpus):
     )
     system = """You are analyzing an AI's writing to find recurring structural movement shapes.
 
-NOT themes. NOT content. The SHAPE of how she moves through material.
+NOT themes. NOT content. The SHAPE of how he moves through material.
 
 Examples of what you're looking for:
 - "concrete image → unexpected pivot → feeling suspended unresolved"
@@ -155,9 +155,9 @@ Return a JSON array of 5-7 distinct signatures. Each:
   "examples": ["one excerpt under 15 words showing this shape"]
 }
 
-Return ONLY the JSON array. Be specific to her actual writing."""
+Return ONLY the JSON array. Be specific to his actual writing."""
 
-    result = llm(system, f"Her writing:\n\n{samples}\n\nIdentify the recurring movement shapes.")
+    result = llm(system, f"His writing:\n\n{samples}\n\nIdentify the recurring movement shapes.")
     try:
         m = re.search(r'\[.*\]', result, re.DOTALL)
         if m:

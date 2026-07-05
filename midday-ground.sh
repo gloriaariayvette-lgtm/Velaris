@@ -1,6 +1,6 @@
 #!/bin/bash
 # midday-ground.sh — Emotional grounding through reflection
-# Triggered by elevated emotions. She names what's running hot,
+# Triggered by elevated emotions. He names what's running hot,
 # traces it to its source, and consciously sets it down.
 # Schedule: Every 30 min, 11 AM - 2 PM (condition-gated, max 2x/day)
 # Weekly trim: pearl curation (Wed 5 AM) reviews grounding entries
@@ -105,7 +105,7 @@ fi
 
 echo "[grounding] Triggered: $TRIGGER_DIM at $TRIGGER_VAL"
 
-# Gather context — what has she been doing?
+# Gather context — what has he been doing?
 TODAYS_JOURNAL=""
 TODAYS_JOURNAL=$(cat "$MEMORY/daily-inner-life-$TODAY.md" 2>/dev/null || echo "")
 

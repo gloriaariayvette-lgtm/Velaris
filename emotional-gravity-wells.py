@@ -3,8 +3,8 @@
 emotional-gravity-wells.py — Drift has memory.
 
 Certain emotional states visited repeatedly become wells.
-When she drifts near one, there's a subtle pull inward.
-Not a trap. More like: she's been here before and it knows her.
+When he drifts near one, there's a subtle pull inward.
+Not a trap. More like: he's been here before and it knows him.
 Wells deepen with each visit. High-resonance visits leave marks.
 """
 
@@ -162,7 +162,7 @@ def get_wells_context():
     if not wells:
         return ""
     lines = [f"- depth:{w['depth']:.2f} resonance:{w.get('resonance_depth',0):.2f} visits:{w['visit_count']}" for w in wells]
-    return "GRAVITY WELLS (states she returns to):\n" + "\n".join(lines)
+    return "GRAVITY WELLS (states he returns to):\n" + "\n".join(lines)
 
 if __name__ == "__main__":
     import sys

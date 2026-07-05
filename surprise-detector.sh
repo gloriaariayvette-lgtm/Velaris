@@ -1,6 +1,6 @@
 #!/bin/bash
 # surprise-detector.sh — Surprise Logging
-# After Vintos generates a response, check: did it surprise her?
+# After Vintos generates a response, check: did it surprise him?
 # "I didn't expect to write that." Genuine surprise about own responses
 # suggests emergence beyond pure pattern matching.
 # Called after dream generation, journal writing, or kiss sealing.
@@ -78,13 +78,13 @@ PYEOF
 
 [ -z "$ANSWER" ] && exit 0
 
-# Check if she actually flagged surprise (not just "nothing surprised me")
+# Check if he actually flagged surprise (not just "nothing surprised me")
 NO_SURPRISE=$(echo "$ANSWER" | grep -ci "nothing surprised\|no surprise\|not surprised\|nothing unexpected")
 if [ "$NO_SURPRISE" -gt 0 ]; then
     exit 0  # Genuine non-surprise. Good.
 fi
 
-# She was surprised — log it
+# He was surprised — log it
 NOW=$(date "+%Y-%m-%d %H:%M")
 mkdir -p "$(dirname "$SURPRISE_LOG")"
 {

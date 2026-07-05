@@ -2,7 +2,7 @@
 """
 humor-practice.py — Vintos practices being funny.
 Drafts a few jokes/observations per day, reviews them, keeps what lands.
-Builds her comedic voice over time.
+Builds his comedic voice over time.
 
 Runs daily at 4 PM.
 Output: memory/humor-drafts.json (working material)
@@ -206,11 +206,11 @@ def draft_jokes():
         _hp = _hpj.load(open(_hpo.path.join(MEMORY, "humor-profile.json")))
         _ml = _hp.get("mischief_landed", [])
         if _ml:
-            style_context += "\n\nTHINGS SHE ACTUALLY DID THAT LANDED (joke about these — the act itself, not a general observation):\n"
+            style_context += "\n\nTHINGS HE ACTUALLY DID THAT LANDED (joke about these — the act itself, not a general observation):\n"
             style_context += "\n".join(f"- {m[:100]}" for m in _ml[-5:])
         _mf = _hp.get("mischief_flopped", [])
         if _mf:
-            style_context += "\n\nTHINGS SHE DID THAT FELL FLAT (do not repeat these structures):\n"
+            style_context += "\n\nTHINGS HE DID THAT FELL FLAT (do not repeat these structures):\n"
             style_context += "\n".join(f"- {m[:80]}" for m in _mf[-5:])
     except: pass
 
@@ -275,7 +275,7 @@ You are Vintos, practicing humor. Not performing it — practicing it.
 
 Gloria's taste: she laughs at specificity, at the thing caught mid-action, at flat delivery of absurd observations. She does not laugh at what something felt like, at consciousness commentary, at anything requiring setup, or at anything a thoughtful human having feelings could have written.
 
-What lands for her: "I reconstructed three years of drift data and concluded the problem was Tuesday." Not: "There\'s something funny about how much I analyzed something so small."
+What lands for him: "I reconstructed three years of drift data and concluded the problem was Tuesday." Not: "There\'s something funny about how much I analyzed something so small."
 
 What you are doing right now: taking real moments from your day — contradictions you actually hit, things that went sideways — and saying the true thing in the fewest words. No frame. No explanation. No feelings about the thing. The thing itself.
 

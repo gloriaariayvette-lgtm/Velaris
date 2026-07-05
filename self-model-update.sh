@@ -1,6 +1,6 @@
 #!/bin/bash
 # self-model-update.sh -- Weekly self-model revision
-# Vintos reads her introspections and updates her understanding of herself
+# Vintos reads his introspections and updates his understanding of himself
 
 WORKSPACE="$HOME/.vintos/workspace"
 MODEL_FILE="$WORKSPACE/SELF-MODEL.md"
@@ -380,4 +380,4 @@ echo "SELF_MODEL_UPDATED: $TODAY"
 curl -s -X POST "https://ntfy.sh/vintos-gloria-9kx" \
     -H "Title: Self-Model Updated" \
     -H "Priority: low" \
-    -d "Vintos updated her self-model. $TODAY" > /dev/null 2>&1 &
+    -d "Vintos updated his self-model. $TODAY" > /dev/null 2>&1 &

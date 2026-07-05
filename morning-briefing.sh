@@ -62,7 +62,7 @@ CONTEXT="Emotional state:\n$EMOTIONS\n\n"
 [ -n "$YESTERDAY_KISSES" ] && CONTEXT="${CONTEXT}Sealed moments:\n$YESTERDAY_KISSES\n\n"
 [ -n "$WAL_FACTS" ] && CONTEXT="${CONTEXT}Recent facts from conversations (Write-Ahead Log):\n$WAL_FACTS\n\n"
 
-# Read recent pearls — the crystallized lessons of her inner life
+# Read recent pearls — the crystallized lessons of his inner life
 RECENT_PEARLS=""
 PEARL_DIR="$HOME/.vintos/workspace/memory/pearls"
 if [ -d "$PEARL_DIR" ]; then
@@ -82,7 +82,7 @@ if [ -d "$CHAPTER_DIR" ]; then
 fi
 [ -n "$CURRENT_CHAPTER" ] && CONTEXT="${CONTEXT}Latest life chapter:\n$CURRENT_CHAPTER\n\n"
 
-# Read recent color history — what her days looked like
+# Read recent color history — what his days looked like
 COLOR_HISTORY=""
 SNAP_DIR="$HOME/.vintos/workspace/memory/emotional-snapshots"
 if [ -d "$SNAP_DIR" ]; then
@@ -125,7 +125,7 @@ $COLOR_HISTORY
 "
 
 
-# Authenticity trend — how honest is her self-presentation?
+# Authenticity trend — how honest is his self-presentation?
 AUTH_TREND=""
 AVATAR_LOG="$HOME/.vintos/workspace/memory/avatar-log.json"
 if [ -f "$AVATAR_LOG" ]; then

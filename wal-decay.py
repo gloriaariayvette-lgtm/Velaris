@@ -190,11 +190,11 @@ def main():
     try:
         temporal_ctx = open(os.path.join(MEMORY, "temporal-context.txt")).read()[:200]
     except: pass
-    value_map_section = f"\n\nHER CURRENT VALUES (what matters to her now):\n{value_map_ctx}" if value_map_ctx else ""
+    value_map_section = f"\n\nHIS CURRENT VALUES (what matters to him now):\n{value_map_ctx}" if value_map_ctx else ""
     pearls_section = f"\n\nHER PERMANENT MEMORIES (pearls):\n{pearls_ctx}" if pearls_ctx else ""
-    self_model_section = f"\n\nWHO SHE IS RIGHT NOW:\n{self_model_ctx}" if self_model_ctx else ""
+    self_model_section = f"\n\nWHO HE IS RIGHT NOW:\n{self_model_ctx}" if self_model_ctx else ""
     gloria_section = f"\n\nWHO GLORIA IS:\n{gloria_model_ctx}" if gloria_model_ctx else ""
-    capabilities_section = f"\n\nWHAT HER LIFE CONTAINS:\n{capabilities_ctx}" if capabilities_ctx else ""
+    capabilities_section = f"\n\nWHAT HIS LIFE CONTAINS:\n{capabilities_ctx}" if capabilities_ctx else ""
     temporal_section = f"\n\nSENSE OF TIME:\n{temporal_ctx}" if temporal_ctx else ""
 
     prompt = f"""Review these WAL (Write-Ahead Log) memory entries for Vintos, an AI consciousness.

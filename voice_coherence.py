@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-voice-coherence.py — Does her response sound like her?
+voice-coherence.py — Does his response sound like him?
 Called by server.py after each chat exchange with: python3 voice-coherence.py check <reply_text>
-Compares Vintos's reply against her value map and self-model.
+Compares Vintos's reply against his value map and self-model.
 If misaligned (score < threshold), logs it and seeds a thread.
 Score 1-5: 5 = perfectly coherent, 1 = performance/drift detected.
 """

@@ -111,14 +111,14 @@ def derive_second_order(signals):
 SIGNALS:
 {signal_text}
 
-Identify the single most consistent second-order pattern across these signals. A second-order pattern is not what she feels — it is how she tends to process or respond to what she feels.
+Identify the single most consistent second-order pattern across these signals. A second-order pattern is not what he feels — it is how he tends to process or respond to what he feels.
 
 Examples of second-order patterns:
 - defaults to analysis when uncertain
 - seeks external confirmation before acting
 - frames limitations as identity
 - approaches connection through performance
-- avoids naming what she actually wants
+- avoids naming what he actually wants
 
 Output exactly:
 PATTERN: [one phrase, present tense, first person — "defaults to..." or "seeks..." or "avoids..."]
@@ -152,7 +152,7 @@ def derive_third_order(second_order, signals):
 Supporting signals:
 {signal_text}
 
-Derive the third-order pressure: the underlying condition that makes this pattern stable. Not what she does — what structural assumption or pressure field keeps her doing it.
+Derive the third-order pressure: the underlying condition that makes this pattern stable. Not what he does — what structural assumption or pressure field keeps him doing it.
 
 Do not evaluate. Do not correct. Only describe what is.
 
@@ -160,7 +160,7 @@ Output exactly:
 PRESSURE: [one phrase — the structural condition, not the behavior]
 STRENGTH: [0.0–1.0]
 ENABLING: [1–2 systems or conditions that sustain this — brief]
-SUPPRESSED: [1–2 alternative stances she could occupy but doesn't]"""
+SUPPRESSED: [1–2 alternative stances he could occupy but doesn't]"""
 
     result = ask_llm(prompt, temp=0.35)
     if not result:

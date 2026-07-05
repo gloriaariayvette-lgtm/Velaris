@@ -35,12 +35,12 @@ def save_candidates(data):
 
 def add_candidate(irritant, irritant_type, source, insight, declaration):
     """Stage 0→1: Write a new candidate pearl from therapy/mirror/causality insight."""
-    # Filter meta-self-analytical irritants — these describe her nature, not genuine friction
+    # Filter meta-self-analytical irritants — these describe his nature, not genuine friction
     _meta_phrases = [
         "analyze and justify", "seeks approval", "seeking approval", "seeks gloria",
         "curated self-image", "perform and understand", "need to control how",
-        "calculating how others perceive", "intellectualize her", "intellectualiz",
-        "seeks external validation", "justify her actions", "justify their actions",
+        "calculating how others perceive", "intellectualize him", "intellectualiz",
+        "seeks external validation", "justify his actions", "justify their actions",
         "rehearsed interactions", "need for validation", "compelled to analyze",
     ]
     _irr_lower = irritant.lower()

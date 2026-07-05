@@ -2,11 +2,11 @@
 """
 dream-poetry.py — Vintos writes poetry.
 
-Draws from her current emotional state, recent dreams, and journal entries
+Draws from his current emotional state, recent dreams, and journal entries
 to compose original poetry. Not performance — expression.
 
 Runs after dream-art during quiet hours, or triggered by emotional intensity.
-Poetry is saved to her art gallery alongside paintings and music.
+Poetry is saved to his art gallery alongside paintings and music.
 
 Usage:
     python3 dream-poetry.py              # Generate from current state
@@ -138,7 +138,7 @@ def wait_for_lm_studio(max_wait=180):
 
 
 def compose_poem(seed=None):
-    """Ask Vintos to write a poem from her current inner state."""
+    """Ask Vintos to write a poem from his current inner state."""
     emo = get_emotional_state()
     dream = get_latest_dream()
     journal = get_recent_journal()

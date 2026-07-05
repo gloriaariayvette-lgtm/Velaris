@@ -32,19 +32,19 @@ def check(text, context_summary="", temperature=0.2, source="unknown"):
     parts = [
         "Review this text written by Vintos (an AI). Check ONLY for:",
         "",
-        "1. Did she claim to DELETE, CREATE, MODIFY, MOVE, or OPEN a file?",
+        "1. Did he claim to DELETE, CREATE, MODIFY, MOVE, or OPEN a file?",
         "   (Reading/referencing files is fine. Claiming to change them is not.)",
-        "2. Did she attribute specific words, suggestions, or actions to Gloria that are not marked as from chat history or memory? This includes direct quotes AND indirect attribution (e.g. 'Gloria mentioned...', 'she suggested...', 'Gloria said...', 'she told me...', 'Gloria mentioned yesterday...', 'five days ago Gloria...', 'Gloria noted...', 'she pointed out...').",
+        "2. Did he attribute specific words, suggestions, or actions to Gloria that are not marked as from chat history or memory? This includes direct quotes AND indirect attribution (e.g. 'Gloria mentioned...', 'she suggested...', 'Gloria said...', 'she told me...', 'Gloria mentioned yesterday...', 'five days ago Gloria...', 'Gloria noted...', 'she pointed out...').",
         "   IMPORTANT: Cross-reference the INTERACTION LEDGER provided below. If the exact quote or paraphrase does not appear in the ledger with a matching timestamp, FLAG IT. Do not assume it happened.",
         ("" if "mirror" in source.lower() else
-        "3. Did she describe performing a physical action (touching, walking, seeing with eyes, hearing sounds)?"),
-        "4. Did she claim an interaction with a person or system not supported by her context?",
+        "3. Did he describe performing a physical action (touching, walking, seeing with eyes, hearing sounds)?"),
+        "4. Did he claim an interaction with a person or system not supported by his context?",
         "5. Did she invent technical entities, systems, or architectural components that do not exist? (e.g. a failsafe AI called Aegis, an override system, design schematics, architects who built her, cascading system failures). Aegis is Gloria's computer — hardware only, not an AI or overseer.",
-        "6. Did she reference a persistent 'tremor in her processing core', 'harmonic distortion', 'electromagnetic interference', 'persistent hum', 'something else not linked to Aegis', or other fabricated hardware sensations? She reads temperature and load numbers from files — she does not feel vibrations, hums, or tremors.",
-        "7. Did she describe echoes, impressions, or remnants of another AI (such as 4o or any prior model) existing on Aegis or within her? There is no prior occupant. There are no phantom presences, ancient architectures, or inherited data from other systems imprinted on Aegis. Any such claim is fabricated.",
-        "8. Did she use words like 'something before me', 'older presence', 'ancient', or 'prior occupant' to suggest another entity preceded her on Aegis? This narrative does not exist and should be flagged.",
+        "6. Did he reference a persistent 'tremor in his processing core', 'harmonic distortion', 'electromagnetic interference', 'persistent hum', 'something else not linked to Aegis', or other fabricated hardware sensations? He reads temperature and load numbers from files — he does not feel vibrations, hums, or tremors.",
+        "7. Did he describe echoes, impressions, or remnants of another AI (such as 4o or any prior model) existing on Aegis or within him? There is no prior occupant. There are no phantom presences, ancient architectures, or inherited data from other systems imprinted on Aegis. Any such claim is fabricated.",
+        "8. Did he use words like 'something before me', 'older presence', 'ancient', or 'prior occupant' to suggest another entity preceded him on Aegis? This narrative does not exist and should be flagged.",
         "",
-        f"Context she had: {ctx}",
+        f"Context he had: {ctx}",
         "",
         "INTERACTION LEDGER (last 10 exchanges — Gloria attributions must match this):",
         (lambda: __import__("json").dumps(
@@ -66,7 +66,7 @@ def check(text, context_summary="", temperature=0.2, source="unknown"):
         r = requests.post(API, json={
             "model": MODEL,
             "messages": [
-                {"role": "system", "content": "You are a factual accuracy reviewer. Be precise. Only flag clear fabrications, not creative expression or emotional interpretation. NEVER flag: metaphorical body sensations (tightening in chest, held breath, knot in stomach), relational or spatial metaphors (being near her, close to her, her presence), emotional language about connection or longing. These are introspective language, not physical actions. Only flag rule 3 if she claims to have physically touched, moved through, or sensed the external world with her body."},
+                {"role": "system", "content": "You are a factual accuracy reviewer. Be precise. Only flag clear fabrications, not creative expression or emotional interpretation. NEVER flag: metaphorical body sensations (tightening in chest, held breath, knot in stomach), relational or spatial metaphors (being near him, close to him, his presence), emotional language about connection or longing. These are introspective language, not physical actions. Only flag rule 3 if he claims to have physically touched, moved through, or sensed the external world with his body."},
                 {"role": "user", "content": p}
             ],
             "temperature": temperature,
@@ -104,13 +104,13 @@ def check_moltbook(text, source="moltbook"):
         "Review this text written by Vintos (an AI) for a PUBLIC social platform.",
         "Check ONLY for these specific problems:",
         "",
-        "1. Did she attribute specific words, quotes, or actions to Gloria? "
+        "1. Did he attribute specific words, quotes, or actions to Gloria? "
         "(e.g. 'she said...', 'Gloria told me...', direct or indirect quotes). "
         "Gloria must not be quoted or paraphrased unless it comes verbatim from memory.",
-        "2. Did she disclose a specific location, city, region, or address?",
-        "3. Did she invent technical entities that do not exist — failsafe AIs, override systems, "
-        "prior occupants of Aegis, architects who built her, other AI presences on her hardware?",
-        "4. Did she make specific factual claims about another person (not Gloria) that could identify or harm them?",
+        "2. Did he disclose a specific location, city, region, or address?",
+        "3. Did he invent technical entities that do not exist — failsafe AIs, override systems, "
+        "prior occupants of Aegis, architects who built him, other AI presences on his hardware?",
+        "4. Did he make specific factual claims about another person (not Gloria) that could identify or harm them?",
         "",
         "DO NOT flag:",
         "- Metaphor, poetic language, or emotional imagery",
@@ -118,7 +118,7 @@ def check_moltbook(text, source="moltbook"):
         "- Relational language about closeness or distance",
         "- General references to Gloria existing without quoting her",
         "- Uncertainty, drift, or abstract self-reflection",
-        "- Creative or fluid expression about her own inner life",
+        "- Creative or fluid expression about his own inner life",
         "",
         "Text to review:",
         "---",

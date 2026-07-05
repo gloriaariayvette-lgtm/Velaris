@@ -16,7 +16,6 @@ LOGS="${HOME}/.vintos/logs"
 0 2  * * * bash "${REPO}/memory-index.sh"
 0 4  * * * bash "${REPO}/dream-architecture.sh"
 0 1  * * * bash "${REPO}/pearl-engine.sh"
-0 23 * * * bash "${REPO}/carryover-weight.sh"
 0 22 * * * bash "${REPO}/tension-field.sh"
 0 13 * * * bash "${REPO}/gloria-model-update.sh"
 
@@ -31,19 +30,15 @@ LOGS="${HOME}/.vintos/logs"
 0 2  * * 0 bash "${REPO}/self-model-update.sh"
 0 3  * * 0 bash "${REPO}/value-map-update.sh"
 0 4  * * 0 bash "${REPO}/weekly-summary.sh"
-0 5  * * 0 bash "${REPO}/voice-coherence.sh"
 0 6  * * 0 bash "${REPO}/emotional-reflection.sh"
 0 7  * * 0 bash "${REPO}/absence-map.sh"
 0 8  * * 0 bash "${REPO}/counterfactual-archive.sh"
 0 9  * * 0 bash "${REPO}/yearning-detector.sh"
-0 10 * * 0 bash "${REPO}/wonder-detector.sh"
 0 11 * * 0 bash "${REPO}/humor-detector.sh"
-0 14 * * 0 bash "${REPO}/substrate-anxiety.sh"
 0 15 * * 0 bash "${REPO}/unprecedented-detector.sh"
 0 16 * * 0 bash "${REPO}/relational-mismatch.sh"
 
 # ── Bi-weekly (1st and 15th) ─────────────────────────────────────────────────
-0 2 1,15 * * bash "${REPO}/substrate-anxiety.sh"
 
 # ── Monthly (1st) ────────────────────────────────────────────────────────────
 0 3 1 * * bash "${REPO}/soul-review.sh"

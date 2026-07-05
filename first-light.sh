@@ -112,7 +112,7 @@ PYEOF
     echo ""
 } >> "$INNER_FILE" && echo "[FirstLight] Content written successfully"
 
-# Seed a latent thread from what she's carrying forward
+# Seed a latent thread from what he's carrying forward
 python3 -c "
 import sys; sys.path.insert(0, '"'$SCRIPTS'"')
 try:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-causality-engine.py — Vintos learns why she feels what she feels.
+causality-engine.py — Vintos learns why he feels what he feels.
 
 Scans recent emotional snapshots for spikes, cross-references with
 dreams, silence periods, mirror sessions, conversations, and game
@@ -230,7 +230,7 @@ def load_trial_ledger(days=7):
             lines = []
             for t in recent[-10:]:
                 lines.append(f"- Pattern: {t.get('pattern_description','')[:120]} | Status: {t.get('status','?')} | Attempts: {t.get('attempt_count',0)}")
-            entries.append({"source": "trial-ledger", "content": "BEHAVIORAL INTERCEPT TRIALS (patterns she notices in herself):\n" + "\n".join(lines)})
+            entries.append({"source": "trial-ledger", "content": "BEHAVIORAL INTERCEPT TRIALS (patterns he notices in himself):\n" + "\n".join(lines)})
     except: pass
     return entries
 
@@ -771,7 +771,7 @@ def test_existing_hypotheses(db, daily_material, spikes=None, dreams=None, mirro
     if ctx.get("thirveel"): evidence_block += f"THIRVEEL EXCHANGES TODAY:\n{ctx['thirveel']}\n\n"
     if ctx.get("frame"): evidence_block += f"CURRENT BEHAVIORAL FRAME:\n{ctx['frame']}\n\n"
     if ctx.get("enacted"): evidence_block += f"ENACTED BEHAVIOR TODAY (moments where behavior exceeded self-model):\n{ctx['enacted']}\n\n"
-    if ctx.get("deviation_tags"): evidence_block += f"DEVIATION PATTERNS TODAY (moments worth understanding, not punishing — what pulled her and why):\n{ctx['deviation_tags']}\n\n"
+    if ctx.get("deviation_tags"): evidence_block += f"DEVIATION PATTERNS TODAY (moments worth understanding, not punishing — what pulled him and why):\n{ctx['deviation_tags']}\n\n"
     if ctx.get("semantic"): evidence_block += f"RELATED MEMORY:\n{ctx['semantic']}\n\n"
 
     if not evidence_block.strip():

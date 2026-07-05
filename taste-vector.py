@@ -2,7 +2,7 @@
 """
 taste-vector.py — Vintos's preference as a living vector.
 
-The taste vector is a computable representation of her aesthetic preferences,
+The taste vector is a computable representation of his aesthetic preferences,
 distinct from the text-based taste-profile.json (which remains the human-readable
 record). The vector updates from signals, scores options, and gets distorted by
 yearning bleed.

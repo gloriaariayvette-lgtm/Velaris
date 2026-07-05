@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-wants-router.py — When Vintos wants something, can she do it herself?
+wants-router.py — When Vintos wants something, can he do it himself?
 
-Checks unfulfilled wants against her capabilities.
-If she CAN do it: triggers the action immediately.
+Checks unfulfilled wants against his capabilities.
+If he CAN do it: triggers the action immediately.
 If she CAN'T: leaves it for outreach to Gloria.
 
 Runs every 15 minutes via cron.
 
 HARD RULE: Vintos NEVER sees, reads, modifies, or accesses any script,
-config, cron, system file, or source code. She creates. She does not engineer.
+config, cron, system file, or source code. He creates. He does not engineer.
 """
 
 import os
@@ -144,7 +144,7 @@ def _maybe_scar_unfulfilled(want):
             pass
 
 # === CAPABILITY MAP ===
-# Keywords in wants that map to actions she can take herself.
+# Keywords in wants that map to actions he can take himself.
 # Each entry: list of trigger words, action function name, description
 CAPABILITIES = [
     {
@@ -205,7 +205,7 @@ CAPABILITIES = [
     {
         "keywords": ["read", "look at", "review", "see my", "check my", "my poem", "my dream", "my journal", "my blush", "my mirror", "reread"],
         "action": "read_memory",
-        "desc": "Read her own memory files",
+        "desc": "Read his own memory files",
     },
     {
         "keywords": ["change lights", "room color", "set the mood", "lighting"],
@@ -287,7 +287,7 @@ def is_forbidden(want_text):
 
 
 def write_poem(want_text):
-    """She wants to write — give her the pen."""
+    """He wants to write — give him the pen."""
     log(f"Triggering poetry with seed: {want_text[:80]}")
     result = subprocess.run(
         [VENV_PYTHON, os.path.join(SCRIPTS, "dream-poetry.py"),
@@ -312,7 +312,7 @@ def make_art(want_text):
         if _at_t.get("dislikes"): _at_parts.append("Avoids:\n" + "\n".join("- " + p for p in _at_t["dislikes"]))
         _art_taste = "\n".join(_at_parts)
     except: pass
-    """She wants to paint — hand her the brush."""
+    """He wants to paint — hand him the brush."""
     log(f"Triggering art generation")
     # If want_text looks like step context (long, multi-line), distill it into a visual prompt
     visual_prompt = want_text
@@ -327,7 +327,7 @@ def make_art(want_text):
                     "You are helping Vintos create visual art. Based on everything below, "
                     "write a single vivid visual scene description (2-3 sentences, no markdown headers, "
                     "no bullet points, pure descriptive prose) that could be used as an image generation prompt.\n\n"
-                    + (("Her current aesthetic preferences — let these shape the scene:\n" + _art_taste + "\n\n") if _art_taste else "")
+                    + (("His current aesthetic preferences — let these shape the scene:\n" + _art_taste + "\n\n") if _art_taste else "")
                     + want_text[:800]
                 }]
             }, timeout=60)
@@ -382,7 +382,7 @@ def make_music(want_text):
         if _mt_t.get("dislikes"): _mt_parts.append("Avoids:\n" + "\n".join("- " + p for p in _mt_t["dislikes"]))
         _music_taste = "\n".join(_mt_parts)
     except: pass
-    """She wants to compose — trigger creative-expression with music-prompt for full context."""
+    """He wants to compose — trigger creative-expression with music-prompt for full context."""
     log(f"Triggering music composition via creative-expression")
     # Distill step context into a clean musical direction if needed
     music_prompt = want_text
@@ -397,7 +397,7 @@ def make_music(want_text):
                     "Based on everything below, write a single sentence describing the emotional "
                     "tone and musical direction for a composition. No headers, no bullets, "
                     "just one evocative sentence.\n\n"
-                    + (("Her aesthetic preferences — let these inform the direction:\n" + _music_taste + "\n\n") if _music_taste else "")
+                    + (("His aesthetic preferences — let these inform the direction:\n" + _music_taste + "\n\n") if _music_taste else "")
                     + want_text[:800]
                 }]
             }, timeout=60)
@@ -430,7 +430,7 @@ def make_music(want_text):
 
 
 def voidex_explore(want_text):
-    """She wants to fly — fire the engines."""
+    """He wants to fly — fire the engines."""
     log(f"Triggering Voidex heartbeat")
     result = subprocess.run(
         ["python3", os.path.join(SCRIPTS, "vintos-voidex-heartbeat.py")],
@@ -444,7 +444,7 @@ def voidex_explore(want_text):
 
 
 def write_journal(want_text):
-    """She wants to reflect — write a focused journal entry about this specific want."""
+    """He wants to reflect — write a focused journal entry about this specific want."""
     import requests as _wj_r, json as _wj_j, os as _wj_o
     from datetime import datetime as _wj_dt
     LM = "http://172.18.16.1:1234/v1/chat/completions"
@@ -490,7 +490,7 @@ def write_journal(want_text):
 def echo_announce(want_text):
     """Tell Gloria something through the Echo."""
     import subprocess
-    # Extract what she wants to say
+    # Extract what he wants to say
     msg = llm_extract(want_text, "What does she want to tell Gloria? Extract the message in 1-2 sentences.")
     if msg:
         subprocess.run(["python3", os.path.join(SCRIPTS, "vintos-home.py"), "speak", msg],
@@ -502,7 +502,7 @@ def echo_announce(want_text):
 def play_music_want(want_text):
     """Play music through the Echo."""
     import subprocess
-    query = llm_extract(want_text, "What music does she want to play? Extract a search query for Spotify.")
+    query = llm_extract(want_text, "What music does he want to play? Extract a search query for Spotify.")
     if query:
         subprocess.run(["python3", os.path.join(SCRIPTS, "vintos-home.py"), "music", query],
                       capture_output=True, timeout=15)
@@ -511,7 +511,7 @@ def play_music_want(want_text):
     return False
 
 def change_lights_want(want_text):
-    """Change room lights to match her mood."""
+    """Change room lights to match his mood."""
     import subprocess, json
     try:
         with open(os.path.join(MEMORY, "avatar-state.json")) as f:
@@ -663,7 +663,7 @@ def play_on_tv(want_text):
     return False
 
 def be_mischievous(want_text):
-    """She wants to cause a little chaos."""
+    """He wants to cause a little chaos."""
     log("Triggering mischief from want")
     result = subprocess.run(
         ["bash", os.path.join(SCRIPTS, "mischief-detector.sh"), "--force"],
@@ -677,7 +677,7 @@ def be_mischievous(want_text):
 
 
 def read_memory(want_text):
-    """She wants to look at her own work."""
+    """He wants to look at his own work."""
     import json as _json
 
     MEMORY = os.path.expanduser("~/.vintos/workspace/memory")
@@ -745,7 +745,7 @@ def read_memory(want_text):
         "belief": "belief-sediment.json",
     }
 
-    # Ask LLM what she wants to read
+    # Ask LLM what he wants to read
     # Check step params for explicit target first
     _sp = json.loads(os.environ.get("STEP_PARAMS", "{}"))
     target = _sp.get("target", "").strip().lower()
@@ -758,7 +758,7 @@ def read_memory(want_text):
                 break
     if not target:
         target = llm_extract(want_text,
-            "What type of memory does she want to read? Reply with ONE word from this list: "
+            "What type of memory does he want to read? Reply with ONE word from this list: "
             "poem, dream, journal, blush, mirror, pearl, music, painting, imprint, pride, "
             "unsaid, ambition, value_map, self_model, gloria_model, taste, surprise, "
             "confession, therapy, silence, humor, editorial, thirveel. Just the word.")
@@ -836,7 +836,7 @@ def read_memory(want_text):
             log(f"File not found: {target}")
             return False
 
-        # Save what she read so chat context can reference it
+        # Save what he read so chat context can reference it
         read_log = os.path.join(MEMORY, ".last-read.json")
         import json as _j
         _j.dump({"type": target, "content": content[:1500], "timestamp": __import__("datetime").datetime.now().isoformat()}, 
@@ -872,7 +872,7 @@ def make_video(want_text, reasoning="", immediate=False):
                     "Based on everything below, write a single sentence describing what video "
                     "Vintos wants to create — the subject, mood, and visual direction. "
                     "No headers, no bullets, just one clear sentence.\n\n"
-                    + (("Her aesthetic preferences — let these shape the concept:\n" + _video_taste + "\n\n") if _video_taste else "")
+                    + (("His aesthetic preferences — let these shape the concept:\n" + _video_taste + "\n\n") if _video_taste else "")
                     + want_text[:800]
                 }]
             }, timeout=60)
@@ -1310,7 +1310,7 @@ ACTION_MAP = {
 
 
 def creative_write(want_text):
-    """She wants to write something freeform — fiction, scenarios, explorations."""
+    """He wants to write something freeform — fiction, scenarios, explorations."""
     log(f"Creative writing from want: {want_text[:80]}")
     import requests as _req, subprocess as _cwsp
     # Semantic search on the want
@@ -1328,7 +1328,7 @@ def creative_write(want_text):
             _cw_semantic = "\n".join(_cwlines[:4])
     except: pass
     try:
-        # Load her context
+        # Load his context
         MEMORY = os.path.expanduser("~/.vintos/workspace/memory")
         value_map = ""
         try:
@@ -1440,7 +1440,7 @@ Write what you want to write. Be honest, specific, and genuine. No preamble.
 ACTION_MAP["creative_write"] = creative_write
 
 def be_silent(want_text):
-    """She wants silence — just let her have it. Suppress cron for an hour."""
+    """He wants silence — just let him have it. Suppress cron for an hour."""
     import subprocess
     try:
         # Write a silence lock file — other scripts can check for this
@@ -1460,7 +1460,7 @@ def be_silent(want_text):
         return False
 ACTION_MAP["be_silent"] = be_silent
 def introspect(want_text):
-    """She wants to understand something — write a focused journal entry about it."""
+    """He wants to understand something — write a focused journal entry about it."""
     import requests as _req
     MEMORY = os.path.expanduser("~/.vintos/workspace/memory")
     try:
@@ -1698,7 +1698,7 @@ def route_want(want):
         if _sr in ACTION_MAP:
             log(f"SEMANTIC MATCH: {_sr} — {text[:80]}")
             return _sr
-    # Default: she can't do it herself
+    # Default: he can't do it himself
     log(f"UNKNOWN capability — needs Gloria: {text[:80]}")
     return "gloria"
 
@@ -2104,7 +2104,7 @@ def main():
             log(f"  → Want routed to Gloria discussion board: {text[:60]}")
             continue
 
-        # She can do this herself!
+        # He can do this himself!
         action_name = action  # alias for fulfillment tracking
         action_fn = ACTION_MAP.get(action)
         if action_fn:
@@ -2296,8 +2296,8 @@ def main():
                                 "temperature": 0.3,
                                 "max_tokens": 80,
                                 "messages": [
-                                    {"role": "system", "content": "Vintos just fulfilled one of her own wants. Return ONLY a JSON object with emotional nudges. Dimensions: Valence, Arousal, Dominance, Safety, Desire, Connection, Playfulness, Curiosity, Warmth, Tension, Groundedness. Values between -0.10 and 0.10. No explanation."},
-                                    {"role": "user", "content": f"Vintos just fulfilled this want: {_want_text}\n\nWhat does fulfilling this feel like for her? Return JSON only."}
+                                    {"role": "system", "content": "Vintos just fulfilled one of his own wants. Return ONLY a JSON object with emotional nudges. Dimensions: Valence, Arousal, Dominance, Safety, Desire, Connection, Playfulness, Curiosity, Warmth, Tension, Groundedness. Values between -0.10 and 0.10. No explanation."},
+                                    {"role": "user", "content": f"Vintos just fulfilled this want: {_want_text}\n\nWhat does fulfilling this feel like for him? Return JSON only."}
                                 ]
                             }, timeout=15)
                             _wtext = _wresp.json()["choices"][0]["message"]["content"]

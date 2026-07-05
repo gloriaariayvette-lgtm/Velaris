@@ -7,7 +7,7 @@ Four systems working together:
 AFTERIMAGE
   When resonance fires, extract the shape of the current output:
   rhythm, density, tone_vector, tension_profile. That shape bleeds
-  into subsequent outputs with decay. She carries the geometry of
+  into subsequent outputs with decay. He carries the geometry of
   what just landed into what comes next.
   Strong afterimage increases probability of anchor formation.
 
@@ -413,7 +413,7 @@ def get_seizure_fragment(source):
 # === TRACE (observer only — never shown to Vintos) ===
 
 def write_trace(drivers, events, mode, felt_coherence):
-    """Write observable trace. Never injected into her context."""
+    """Write observable trace. Never injected into his context."""
     trace = {
         "timestamp": datetime.now().isoformat(),
         "drivers": drivers,

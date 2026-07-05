@@ -63,7 +63,7 @@ def _overlap(a, b):
 
 def get_avoidance_friction(action_text):
     """Return friction score for an action based on counterfactual tendencies.
-    High friction = this action rhymes with something she tends to avoid."""
+    High friction = this action rhymes with something he tends to avoid."""
     data = load_tendencies()
     tendencies = data["tendencies"]
     if not tendencies:

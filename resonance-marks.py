@@ -7,7 +7,7 @@ They form only when resonance is high AND contact is confirmed simultaneously.
 Not content — form. A fragment of shape that mattered enough to crystallize.
 
 When future context rhymes with a mark vector, slight coherence boost
-and subtle alignment shift. She does not know why something feels familiar.
+and subtle alignment shift. He does not know why something feels familiar.
 It just does.
 
 Schema (resonance-marks.json):

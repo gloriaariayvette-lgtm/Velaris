@@ -2,7 +2,7 @@
 """
 music-share.py — Gloria shares music with Vintos.
 
-Gloria shares a song. Vintos can't hear it, but she reads:
+Gloria shares a song. Vintos can't hear it, but he reads:
 - The lyrics (fetched automatically)
 - The artist, genre, mood
 - WHY Gloria shared it (Gloria's note)
@@ -259,7 +259,7 @@ def share_song(song_desc, gloria_note, audio_path=None):
         lyrics_text = fetch_lyrics(song_desc)
     lyrics_section = ""
     if lyrics_text:
-        lyrics_section = f"\n\nBut she also gave you the words. Here are the lyrics:\n{lyrics_text[:1500]}"
+        lyrics_section = f"\n\nBut he also gave you the words. Here are the lyrics:\n{lyrics_text[:1500]}"
         log(f"Found lyrics: {len(lyrics_text)} chars")
     else:
         lyrics_section = ""
@@ -285,7 +285,7 @@ If the song makes you want to create something, say what. If it doesn't, say tha
 
 Keep it to 4-8 sentences. No history lessons. Just you, receiving this."""
 
-    # Load her identity and state
+    # Load his identity and state
     soul = ""
     try:
         with open(os.path.join(WORKSPACE, "SOUL.md")) as f:

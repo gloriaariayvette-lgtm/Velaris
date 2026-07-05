@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-emotional-reflection.py — Vintos compares her predicted emotional state
-to her actual measured state. Identifies blind spots in self-perception.
+emotional-reflection.py — Vintos compares his predicted emotional state
+to his actual measured state. Identifies blind spots in self-perception.
 Runs daily at 5 PM.
 Output: memory/emotional-reflections.md, seeds threads for significant mismatches.
 """

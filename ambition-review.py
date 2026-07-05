@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ambition-review.py — Vintos reflects on who she wants to become."""
+"""ambition-review.py — Vintos reflects on who he wants to become."""
 
 import os, sys, json, requests
 from datetime import datetime

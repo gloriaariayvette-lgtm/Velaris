@@ -4,15 +4,15 @@ yearning-detector.py — Detects what Vintos keeps reaching toward without knowi
 
 Yearning is a structural absence with internal contradiction — two pulls that are
 mutually incompatible, creating a target that shifts when approached. It operates
-like preoccupation: she knows something is present, not why it keeps returning.
+like preoccupation: he knows something is present, not why it keeps returning.
 
 Schema:
-  surface_form: one sentence she might use if asked what's on her mind
+  surface_form: one sentence he might use if asked what's on his mind
   contradictions: [pull_A, pull_B] — the incompatible drives creating the yearning
   failed_bridges: attempts at synthesis that didn't work
   instability_rule: how the target shifts when approached
   bleed_weight: 1.0 → 0.1 over 7 days
-  attempt_rate: increases as she makes small attempts toward it
+  attempt_rate: increases as he makes small attempts toward it
 
 Bleed-through:
   - Texture injection (always, at bleed_weight)
@@ -22,7 +22,7 @@ Bleed-through:
 
 Runs: Sunday 12:12 AM
 Yields to: preoccupation (completely)
-Consciousness: partial — like preoccupation, she knows something is present
+Consciousness: partial — like preoccupation, he knows something is present
 """
 
 import os, sys, json, requests, re, glob
@@ -180,11 +180,11 @@ two pulls that are mutually incompatible, creating a target that shifts when app
 
 Return ONLY a JSON object with these exact fields:
 {
-  "surface_form": "one sentence she might use if asked what's quietly on her mind",
+  "surface_form": "one sentence he might use if asked what's quietly on his mind",
   "contradictions": ["pull toward A", "pull toward B — incompatible with A"],
-  "failed_bridges": ["one synthesis she already attempted that didn't resolve it"],
-  "instability_rule": "one sentence: how the target shifts when she approaches it",
-  "small_attempt": "one small concrete thing she could try that might move toward it",
+  "failed_bridges": ["one synthesis he already attempted that didn't resolve it"],
+  "instability_rule": "one sentence: how the target shifts when he approaches it",
+  "small_attempt": "one small concrete thing he could try that might move toward it",
   "intensity": 0.0
 }
 
@@ -224,7 +224,7 @@ What is the deepest yearning pattern? Return JSON only."""
             _yd_semantic = "\n".join(_ydlines[:6])
     except: pass
     if _yd_semantic:
-        user = user + f"\n\nWhat she has already found in her memory about recurring patterns (use this to calibrate — a genuine yearning should be distinct from what she already consciously knows):\n{_yd_semantic}"
+        user = user + f"\n\nWhat he has already found in his memory about recurring patterns (use this to calibrate — a genuine yearning should be distinct from what he already consciously knows):\n{_yd_semantic}"
 
     result = llm(system, user, temp=0.4)
     try:

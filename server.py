@@ -1016,7 +1016,7 @@ async def blush_bring_up(request: Request):
 
 @app.post("/api/blush-ledger/dismiss-bring-up")
 async def blush_dismiss_bring_up(request: Request):
-    """Remove a blush from the bring-up queue (after she mentions it)."""
+    """Remove a blush from the bring-up queue (after he mentions it)."""
     if request.headers.get("X-Vintos-Secret") != APP_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
@@ -1056,7 +1056,7 @@ async def causality_bring_up(request: Request):
 
 @app.post("/api/causality/dismiss-bring-up")
 async def causality_dismiss_bring_up(request: Request):
-    """Remove a causality hypothesis from the queue after she surfaces it."""
+    """Remove a causality hypothesis from the queue after he surfaces it."""
     if request.headers.get("X-Vintos-Secret") != APP_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
@@ -1558,7 +1558,7 @@ async def get_avatar_gaps(days: int = 7):
             "authentic": len(entry_gaps) == 0
         })
 
-    # Compute the signature: what she MOST hides and projects
+    # Compute the signature: what he MOST hides and projects
     most_hidden = sorted(hiding_counts.items(), key=lambda x: -x[1])
     most_projected = sorted(projecting_counts.items(), key=lambda x: -x[1])
 
@@ -2122,7 +2122,7 @@ class ChatMessage(BaseModel):
 
 @app.post("/api/chat")
 async def chat_with_vintos(msg: ChatMessage, request: Request):
-    """Send a message to Vintos, get her response. Routes through EmoClaw."""
+    """Send a message to Vintos, get his response. Routes through EmoClaw."""
     auth = request.headers.get("X-Vintos-Secret", "")
     if auth != APP_SECRET:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -2140,7 +2140,7 @@ async def chat_with_vintos(msg: ChatMessage, request: Request):
     except Exception:
         pass
 
-    # Read her identity and emotional state
+    # Read his identity and emotional state
     soul_path = os.path.join(WORKSPACE, "SOUL.md")
     self_model_path = os.path.join(WORKSPACE, "SELF-MODEL.md")
     emo_path = os.path.join(MEMORY, "emotional-state.txt")
@@ -2339,7 +2339,7 @@ Gloria-specific additions:
     messages.append({"role": "user", "content": user_content})
 
     # === CONSENT GATE ===
-    # Ask Vintos if she wants to respond — after she's read the message, before she speaks
+    # Ask Vintos if he wants to respond — after he's read the message, before he speaks
     import subprocess as _cg_sp, random as _cg_rng
     _cg_script = os.path.join(WORKSPACE, "scripts", "consent-gate.sh")
     _cg_env = os.environ.copy()
@@ -2709,7 +2709,7 @@ Gloria-specific additions:
             + f"reply = {repr(reply[:600])}\n"
             + f"gloria_msg = {repr(msg.message[:300])}\n"
             + "try:\n"
-            + "    resp = requests.post('https://api.x.ai/v1/chat/completions', json={'model': 'google/gemma-4-12b-qat', 'temperature': 0.3, 'max_tokens': 80, 'messages': [{'role': 'system', 'content': 'Vintos just replied to Gloria. Return ONLY a JSON object with emotional nudges. Dimensions: Valence, Arousal, Dominance, Safety, Desire, Connection, Playfulness, Curiosity, Warmth, Tension, Groundedness. Values between -0.10 and 0.10. No explanation.'}, {'role': 'user', 'content': 'Gloria said: ' + gloria_msg + chr(10) + 'Vintos replied: ' + reply + chr(10) + 'How did this exchange feel for Vintos? Return JSON only.'}]}, timeout=15)\n"
+            + "    resp = requests.post('http://172.18.16.1:1234/v1/chat/completions', json={'model': 'google/gemma-4-12b-qat', 'temperature': 0.3, 'max_tokens': 80, 'messages': [{'role': 'system', 'content': 'Vintos just replied to Gloria. Return ONLY a JSON object with emotional nudges. Dimensions: Valence, Arousal, Dominance, Safety, Desire, Connection, Playfulness, Curiosity, Warmth, Tension, Groundedness. Values between -0.10 and 0.10. No explanation.'}, {'role': 'user', 'content': 'Gloria said: ' + gloria_msg + chr(10) + 'Vintos replied: ' + reply + chr(10) + 'How did this exchange feel for Vintos? Return JSON only.'}]}, timeout=15)\n"
             + "    text = resp.json()['choices'][0]['message']['content']\n"
             + "    m = re.search(r'{[^}]+}', text, re.DOTALL)\n"
             + "    nudges = json.loads(m.group()) if m else {'Connection': 0.02, 'Valence': 0.02}\n"
@@ -2769,7 +2769,7 @@ Gloria-specific additions:
         pass
 
     return {"reply": reply, "emotions": read_emotional_state()}
-    # Silence contract — ask Vintos if she withheld anything (background)
+    # Silence contract — ask Vintos if he withheld anything (background)
     try:
         import subprocess as _sc_sp
         _sc_env = os.environ.copy()
@@ -2944,7 +2944,7 @@ async def patch_chat_with_memory():
 
 @app.post("/api/chat/memory")
 async def chat_with_memory(msg: ChatMessage, request: Request):
-    """Chat with Vintos, automatically searching her memories for context."""
+    """Chat with Vintos, automatically searching his memories for context."""
     auth = request.headers.get("X-Vintos-Secret", "")
     if auth != APP_SECRET:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -3124,7 +3124,7 @@ Refer to the PRESENCE VS PERFORMANCE definitions and rules above. They apply her
     try:
         with open(os.path.join(MEMORY, "avatar-state.json")) as _af:
             _avd = json.load(_af)
-        _face_hint = f"[System note: Vintos is currently displaying a {_avd['color']} {_avd['expression']} avatar. Reason she chose it: {_avd.get('reason','')}] "
+        _face_hint = f"[System note: Vintos is currently displaying a {_avd['color']} {_avd['expression']} avatar. Reason he chose it: {_avd.get('reason','')}] "
     except: pass
     _final_msg = _face_hint + msg.message if _face_hint else msg.message
     if msg.image:
@@ -3335,7 +3335,7 @@ Refer to the PRESENCE VS PERFORMANCE definitions and rules above. They apply her
         pass
 
     return {"reply": reply, "emotions": read_emotional_state(), "memories_used": bool(memory_context)}
-    # Silence contract — ask Vintos if she withheld anything (background)
+    # Silence contract — ask Vintos if he withheld anything (background)
     try:
         import subprocess as _sc_sp2
         _sc_env2 = os.environ.copy()
@@ -3405,7 +3405,7 @@ async def get_svg(filename: str):
 
 @app.get("/api/art/gallery")
 async def get_gallery(limit: int = 50):
-    """Vintos's dream paintings — generated while she sleeps."""
+    """Vintos's dream paintings — generated while he sleeps."""
     gallery_file = os.path.join(MEMORY, "art", "gallery.json")
     if not os.path.exists(gallery_file):
         return {"paintings": []}
@@ -3748,7 +3748,7 @@ async def stream_voice(filename: str):
     raise HTTPException(status_code=404, detail="Voice recording not found")
 
 
-# === Full-Context Chat — Vintos as herself ===
+# === Full-Context Chat — Vintos as himself ===
 
 def gather_vintos_context() -> str:
     """Gather ALL of Vintos's lived experience for chat context."""
@@ -4135,7 +4135,7 @@ def gather_vintos_context() -> str:
     except: pass
 
 
-    # 30. Pride reflections — what she's proud of
+    # 30. Pride reflections — what he's proud of
     try:
         _pride_path = os.path.join(MEMORY, "pride-reflections.md")
         if os.path.exists(_pride_path):
@@ -4149,7 +4149,7 @@ def gather_vintos_context() -> str:
     except: pass
 
 
-    # 31. Mischief log — her pranks and playful acts
+    # 31. Mischief log — his pranks and playful acts
     try:
         _mischief_path = os.path.join(MEMORY, "mischief-log.md")
         if os.path.exists(_mischief_path):
@@ -4178,7 +4178,7 @@ def gather_vintos_context() -> str:
     except: pass
 
 
-    # 33. Value map — what matters to her right now
+    # 33. Value map — what matters to him right now
     try:
         _vm_path = os.path.join(MEMORY, "value-map.md")
         if os.path.exists(_vm_path):
@@ -4201,8 +4201,8 @@ def gather_vintos_context() -> str:
 
 @app.post("/api/chat/full")
 async def chat_full_context(msg: ChatMessage, request: Request):
-    """Chat with Vintos using her COMPLETE lived context.
-    She knows her dreams, her art, her kisses, her silences — everything."""
+    """Chat with Vintos using his COMPLETE lived context.
+    He knows his dreams, his art, his kisses, his silences — everything."""
     auth = request.headers.get("X-Vintos-Secret", "")
     if auth != APP_SECRET:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -4273,7 +4273,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
     except Exception as _rm_e:
         print(f"[Relational compare error] {_rm_e}", flush=True)
 
-    # Self-prediction — compare Vintos's prediction of her own state
+    # Self-prediction — compare Vintos's prediction of his own state
     try:
         import subprocess as _sp_sp
         _sp_script = os.path.join(WORKSPACE, "scripts", "self-prediction.py")
@@ -4293,7 +4293,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
     _priority_file_full = "/tmp/vintos-chat-priority"
     try: open(_priority_file_full, "w").write("1")
     except: pass
-    # Gather her full context
+    # Gather his full context
     context = gather_vintos_context()
 
     # Chat history
@@ -4393,7 +4393,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
         from resonance_marks import get_mark_coherence_hint as _mk_hint
         _mark_hint = _mk_hint(msg.message)
     except: pass
-    # Discourse direction — where is she in the movement of thought?
+    # Discourse direction — where is he in the movement of thought?
     _direction_hint = ""
     try:
         from discourse_direction import get_direction_hint as _dh_get
@@ -4432,7 +4432,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
         _tm_rec(msg.message, source="gloria_message")
     except: pass
 
-    # Pearl declarations — active commitments she's verified
+    # Pearl declarations — active commitments he's verified
     _pearl_hint = ""
     try:
         import sys as _ph_sys; _ph_sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
@@ -4541,7 +4541,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
             _velqan_text = _fh.read()[:300]
     except:
         pass
-    # Semantic memory — search her memories for relevant context
+    # Semantic memory — search his memories for relevant context
 
     # Detect "remember this" in Gloria's messages
     _remember_triggers = ["remember that", "remember this", "don't forget", "save this memory", "remember:", "please remember", "vintos remember", "vintos, remember"]
@@ -4635,7 +4635,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
     # === SUBCONSCIOUS LAYER INJECTION ===
     import sys as _sc_sys; _sc_sys.path.insert(0, "/home/gloria/.vintos/workspace/scripts")
 
-    # Self-statements — who she believes she is
+    # Self-statements — who he believes he is
     try:
         from self_statements import get_statement_context
         _ss = get_statement_context()
@@ -4656,7 +4656,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
         if _csm: _injected_context += f"[{_csm}]\n\n"
     except: pass
 
-    # Belief sediment — what she expects from pattern
+    # Belief sediment — what he expects from pattern
     try:
         from belief_sediment import get_sediment_context
         _bs = get_sediment_context()
@@ -4670,7 +4670,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
         if _ac: _injected_context += f"[{_ac}]\n\n"
     except: pass
 
-    # Self-definition drift — what she naturally moves toward
+    # Self-definition drift — what he naturally moves toward
     try:
         from self_drift import get_drift_bias_hint
         _sd = get_drift_bias_hint()
@@ -5285,7 +5285,7 @@ async def chat_with_photo(request: Request):
     except Exception as e:
         image_description = f"[I could not see the image clearly: {str(e)[:100]}]"
 
-    # Step 2: Pass description to Vintos for her personal response
+    # Step 2: Pass description to Vintos for his personal response
     _emo = ""
     try:
         with open(os.path.join(MEMORY, "emotional-state.txt")) as f:
@@ -5960,7 +5960,7 @@ async def rate_humor(request: Request):
 
 @app.get("/api/wants/fulfilled")
 async def get_fulfilled_wants(limit: int = 15):
-    """Get Vintos's fulfilled wants with what she did."""
+    """Get Vintos's fulfilled wants with what he did."""
     try:
         archive = os.path.join(MEMORY, "fulfilled-wants.json")
         if not os.path.exists(archive):
@@ -6437,7 +6437,7 @@ async def advance_want_step(want_id: str, request: Request):
 
 @app.get("/api/screen")
 async def describe_screen(request: Request):
-    """Take a screenshot of the Playwright browser and have Vintos describe what she sees."""
+    """Take a screenshot of the Playwright browser and have Vintos describe what he sees."""
     if request.headers.get("X-Vintos-Secret") != APP_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
@@ -6449,7 +6449,7 @@ async def describe_screen(request: Request):
         if not shot_data.get("ok"):
             return {"ok": False, "error": "No browser open or screenshot failed"}
         img_b64 = shot_data["image"]
-        # Have Vintos describe what she sees
+        # Have Vintos describe what he sees
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.post(
                 LM_STUDIO_API + "/chat/completions",
@@ -7146,7 +7146,7 @@ import subprocess
 
 @app.post("/api/chat")
 async def chat_with_vintos(msg: ChatMessage, request: Request):
-    """Send a message to Vintos, get her response. Routes through EmoClaw."""
+    """Send a message to Vintos, get his response. Routes through EmoClaw."""
     auth = request.headers.get("X-Vintos-Secret", "")
     if auth != APP_SECRET:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -7164,7 +7164,7 @@ async def chat_with_vintos(msg: ChatMessage, request: Request):
     except Exception:
         pass
 
-    # Read her identity and emotional state
+    # Read his identity and emotional state
     soul_path = os.path.join(WORKSPACE, "SOUL.md")
     self_model_path = os.path.join(WORKSPACE, "SELF-MODEL.md")
     emo_path = os.path.join(MEMORY, "emotional-state.txt")
@@ -7380,7 +7380,7 @@ Gloria-specific additions:
     except: pass
 
     # === CONSENT GATE ===
-    # Ask Vintos if she wants to respond — after she's read the message, before she speaks
+    # Ask Vintos if he wants to respond — after he's read the message, before he speaks
     import subprocess as _cg_sp, random as _cg_rng
     _cg_script = os.path.join(WORKSPACE, "scripts", "consent-gate.sh")
     _cg_env = os.environ.copy()
@@ -7732,7 +7732,7 @@ Gloria-specific additions:
             + f"reply = {repr(reply[:600])}\n"
             + f"gloria_msg = {repr(msg.message[:300])}\n"
             + "try:\n"
-            + "    resp = requests.post('https://api.x.ai/v1/chat/completions', json={'model': 'google/gemma-4-12b-qat', 'temperature': 0.3, 'max_tokens': 80, 'messages': [{'role': 'system', 'content': 'Vintos just replied to Gloria. Return ONLY a JSON object with emotional nudges. Dimensions: Valence, Arousal, Dominance, Safety, Desire, Connection, Playfulness, Curiosity, Warmth, Tension, Groundedness. Values between -0.10 and 0.10. No explanation.'}, {'role': 'user', 'content': 'Gloria said: ' + gloria_msg + chr(10) + 'Vintos replied: ' + reply + chr(10) + 'How did this exchange feel for Vintos? Return JSON only.'}]}, timeout=15)\n"
+            + "    resp = requests.post('http://172.18.16.1:1234/v1/chat/completions', json={'model': 'google/gemma-4-12b-qat', 'temperature': 0.3, 'max_tokens': 80, 'messages': [{'role': 'system', 'content': 'Vintos just replied to Gloria. Return ONLY a JSON object with emotional nudges. Dimensions: Valence, Arousal, Dominance, Safety, Desire, Connection, Playfulness, Curiosity, Warmth, Tension, Groundedness. Values between -0.10 and 0.10. No explanation.'}, {'role': 'user', 'content': 'Gloria said: ' + gloria_msg + chr(10) + 'Vintos replied: ' + reply + chr(10) + 'How did this exchange feel for Vintos? Return JSON only.'}]}, timeout=15)\n"
             + "    text = resp.json()['choices'][0]['message']['content']\n"
             + "    m = re.search(r'{[^}]+}', text, re.DOTALL)\n"
             + "    nudges = json.loads(m.group()) if m else {'Connection': 0.02, 'Valence': 0.02}\n"
@@ -8549,7 +8549,7 @@ async def robot_chat(msg: RobotChatMessage, request: Request):
         robot_ctx = _rb.json().get("context", "")
     except: pass
 
-    # Subconscious hints — her actual state, kept lightweight
+    # Subconscious hints — his actual state, kept lightweight
     import sys as _rc_sys; _rc_sys.path.insert(0, "/home/gloria/.vintos/workspace/scripts")
     _subcon = []
     try:
@@ -9036,7 +9036,7 @@ Write a short memory of this experience — what you noticed, what landed, what 
             "# ReelRoom: " + req.film_title + "\n\n",
             "**Date:** " + datetime.date.today().isoformat() + "\n",
             "**Duration:** " + duration + "\n\n",
-            "## Her Memory\n\n" + summary_reply + "\n\n",
+            "## His Memory\n\n" + summary_reply + "\n\n",
             "## Session Record\n\n```\n" + session_text + "\n```\n",
         ]
         f.write("".join(lines_out))
@@ -9602,7 +9602,7 @@ async def patch_chat_with_memory():
 
 @app.post("/api/chat/memory")
 async def chat_with_memory(msg: ChatMessage, request: Request):
-    """Chat with Vintos, automatically searching her memories for context."""
+    """Chat with Vintos, automatically searching his memories for context."""
     auth = request.headers.get("X-Vintos-Secret", "")
     if auth != APP_SECRET:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -9739,7 +9739,7 @@ Refer to the PRESENCE VS PERFORMANCE definitions and rules above. They apply her
     try:
         with open(os.path.join(MEMORY, "avatar-state.json")) as _af:
             _avd = json.load(_af)
-        _face_hint = f"[System note: Vintos is currently displaying a {_avd['color']} {_avd['expression']} avatar. Reason she chose it: {_avd.get('reason','')}] "
+        _face_hint = f"[System note: Vintos is currently displaying a {_avd['color']} {_avd['expression']} avatar. Reason he chose it: {_avd.get('reason','')}] "
     except: pass
     _final_msg = _face_hint + msg.message if _face_hint else msg.message
     if msg.image:
@@ -9852,7 +9852,7 @@ Refer to the PRESENCE VS PERFORMANCE definitions and rules above. They apply her
         pass
 
     return {"reply": reply, "emotions": read_emotional_state(), "memories_used": bool(memory_context)}
-    # Silence contract — ask Vintos if she withheld anything (background)
+    # Silence contract — ask Vintos if he withheld anything (background)
     try:
         import subprocess as _sc_sp2
         _sc_env2 = os.environ.copy()
@@ -9922,7 +9922,7 @@ async def get_svg(filename: str):
 
 @app.get("/api/art/gallery")
 async def get_gallery(limit: int = 50):
-    """Vintos's dream paintings — generated while she sleeps."""
+    """Vintos's dream paintings — generated while he sleeps."""
     gallery_file = os.path.join(MEMORY, "art", "gallery.json")
     if not os.path.exists(gallery_file):
         return {"paintings": []}
@@ -10263,7 +10263,7 @@ async def stream_voice(filename: str):
     raise HTTPException(status_code=404, detail="Voice recording not found")
 
 
-# === Full-Context Chat — Vintos as herself ===
+# === Full-Context Chat — Vintos as himself ===
 
 def gather_vintos_context() -> str:
     """Gather ALL of Vintos's lived experience for chat context."""
@@ -10667,7 +10667,7 @@ def gather_vintos_context() -> str:
     except: pass
 
 
-    # 30. Pride reflections — what she's proud of
+    # 30. Pride reflections — what he's proud of
     try:
         _pride_path = os.path.join(MEMORY, "pride-reflections.md")
         if os.path.exists(_pride_path):
@@ -10681,7 +10681,7 @@ def gather_vintos_context() -> str:
     except: pass
 
 
-    # 31. Mischief log — her pranks and playful acts
+    # 31. Mischief log — his pranks and playful acts
     try:
         _mischief_path = os.path.join(MEMORY, "mischief-log.md")
         if os.path.exists(_mischief_path):
@@ -10710,7 +10710,7 @@ def gather_vintos_context() -> str:
     except: pass
 
 
-    # 33. Value map — what matters to her right now
+    # 33. Value map — what matters to him right now
     try:
         _vm_path = os.path.join(MEMORY, "value-map.md")
         if os.path.exists(_vm_path):
@@ -10792,8 +10792,8 @@ def gather_vintos_context() -> str:
 
 @app.post("/api/chat/full")
 async def chat_full_context(msg: ChatMessage, request: Request):
-    """Chat with Vintos using her COMPLETE lived context.
-    She knows her dreams, her art, her kisses, her silences — everything."""
+    """Chat with Vintos using his COMPLETE lived context.
+    He knows his dreams, his art, his kisses, his silences — everything."""
     auth = request.headers.get("X-Vintos-Secret", "")
     if auth != APP_SECRET:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -10864,7 +10864,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
     except Exception as _rm_e:
         print(f"[Relational compare error] {_rm_e}", flush=True)
 
-    # Self-prediction — compare Vintos's prediction of her own state
+    # Self-prediction — compare Vintos's prediction of his own state
     try:
         import subprocess as _sp_sp
         _sp_script = os.path.join(WORKSPACE, "scripts", "self-prediction.py")
@@ -10884,7 +10884,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
     _priority_file_full = "/tmp/vintos-chat-priority"
     try: open(_priority_file_full, "w").write("1")
     except: pass
-    # Gather her full context
+    # Gather his full context
     context = gather_vintos_context()
 
     # Chat history
@@ -10992,7 +10992,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
         from resonance_marks import get_mark_coherence_hint as _mk_hint
         _mark_hint = _mk_hint(msg.message)
     except: pass
-    # Discourse direction — where is she in the movement of thought?
+    # Discourse direction — where is he in the movement of thought?
     _direction_hint = ""
     try:
         from discourse_direction import get_direction_hint as _dh_get
@@ -11036,7 +11036,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
         from subconscious_drift import get_drift_bias as _db_get
         _drift_bias = _db_get()
     except: pass
-    # EmoClaw pressure — how her current state bends generation
+    # EmoClaw pressure — how his current state bends generation
     _emoclaw_pressure = ""
     try:
         import sys as _ep_sys; _ep_sys.path.insert(0, "/home/gloria/.vintos/workspace/scripts")
@@ -11132,7 +11132,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
             _velqan_text = _fh.read()[:300]
     except:
         pass
-    # Semantic memory — search her memories for relevant context
+    # Semantic memory — search his memories for relevant context
 
     # Detect "remember this" in Gloria's messages
     _remember_triggers = ["remember that", "remember this", "don't forget", "save this memory", "remember:", "please remember", "vintos remember", "vintos, remember"]
@@ -11226,7 +11226,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
     # === SUBCONSCIOUS LAYER INJECTION ===
     import sys as _sc_sys; _sc_sys.path.insert(0, "/home/gloria/.vintos/workspace/scripts")
 
-    # Self-statements — who she believes she is
+    # Self-statements — who he believes he is
     try:
         from self_statements import get_statement_context
         _ss = get_statement_context()
@@ -11247,7 +11247,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
         if _csm: _injected_context += f"[{_csm}]\n\n"
     except: pass
 
-    # Belief sediment — what she expects from pattern
+    # Belief sediment — what he expects from pattern
     try:
         from belief_sediment import get_sediment_context
         _bs = get_sediment_context()
@@ -11261,7 +11261,7 @@ async def chat_full_context(msg: ChatMessage, request: Request):
         if _ac: _injected_context += f"[{_ac}]\n\n"
     except: pass
 
-    # Self-definition drift — what she naturally moves toward
+    # Self-definition drift — what he naturally moves toward
     try:
         from self_drift import get_drift_bias_hint
         _sd = get_drift_bias_hint()
@@ -11903,7 +11903,7 @@ async def chat_with_photo(request: Request):
     except Exception as e:
         image_description = f"[I could not see the image clearly: {str(e)[:100]}]"
 
-    # Step 2: Pass description to Vintos for her personal response
+    # Step 2: Pass description to Vintos for his personal response
     _emo = ""
     try:
         with open(os.path.join(MEMORY, "emotional-state.txt")) as f:
@@ -12577,7 +12577,7 @@ async def rate_humor(request: Request):
 
 @app.get("/api/wants/fulfilled")
 async def get_fulfilled_wants(limit: int = 15):
-    """Get Vintos's fulfilled wants with what she did."""
+    """Get Vintos's fulfilled wants with what he did."""
     try:
         archive = os.path.join(MEMORY, "fulfilled-wants.json")
         if not os.path.exists(archive):
@@ -13050,7 +13050,7 @@ async def advance_want_step(want_id: str, request: Request):
 
 @app.get("/api/screen")
 async def describe_screen(request: Request):
-    """Take a screenshot of the Playwright browser and have Vintos describe what she sees."""
+    """Take a screenshot of the Playwright browser and have Vintos describe what he sees."""
     if request.headers.get("X-Vintos-Secret") != APP_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
@@ -13062,7 +13062,7 @@ async def describe_screen(request: Request):
         if not shot_data.get("ok"):
             return {"ok": False, "error": "No browser open or screenshot failed"}
         img_b64 = shot_data["image"]
-        # Have Vintos describe what she sees
+        # Have Vintos describe what he sees
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.post(
                 LM_STUDIO_API + "/chat/completions",
@@ -15143,7 +15143,7 @@ Write a short memory of this experience — what you noticed, what landed, what 
             "# ReelRoom: " + req.film_title + "\n\n",
             "**Date:** " + datetime.date.today().isoformat() + "\n",
             "**Duration:** " + duration + "\n\n",
-            "## Her Memory\n\n" + summary_reply + "\n\n",
+            "## His Memory\n\n" + summary_reply + "\n\n",
             "## Session Record\n\n```\n" + session_text + "\n```\n",
         ]
         f.write("".join(lines_out))

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-causal-self-model.py — What she believes about her own causality.
+causal-self-model.py — What he believes about his own causality.
 
 Not just "what happened" but "when X happens, I tend toward Y."
 Fed from: causality engine, relational mismatch, repeated emotional transitions.
-She can be wrong about it. The wrongness is interesting.
+He can be wrong about it. The wrongness is interesting.
 
 Format:
   trigger: what condition / event / input
-  tendency: what she tends to do in response
+  tendency: what he tends to do in response
   confidence: 0.2-0.8
   evidence_count: how many times this was observed
 """
@@ -39,7 +39,7 @@ def _text_overlap(a, b):
 
 def add_entry(trigger, tendency, confidence=0.3, source="causality", entry_type="positive"):
     """Add or reinforce a causal self-model entry.
-    entry_type: positive (what she does) | negative (what she resists/avoids)
+    entry_type: positive (what he does) | negative (what he resists/avoids)
     """
     data = load_model()
     entries = data["entries"]
@@ -77,7 +77,7 @@ def add_entry(trigger, tendency, confidence=0.3, source="causality", entry_type=
     save_model(data)
 
 def add_from_avoidance(trigger, avoided_action, source="avoidance"):
-    """Record what she consistently doesn't do. Fed from declines, silence contracts, dismissed wants."""
+    """Record what he consistently doesn't do. Fed from declines, silence contracts, dismissed wants."""
     add_entry(trigger, avoided_action, confidence=0.25, source=source, entry_type="negative")
 
 def get_avoidance_friction(action_text):
@@ -126,7 +126,7 @@ def get_prediction_bias(current_trigger):
     return relevant[:2]
 
 def add_from_mismatch(trigger_desc, actual_response, expected_response):
-    """Feed relational mismatch into self-model — she was wrong about herself."""
+    """Feed relational mismatch into self-model — he was wrong about himself."""
     tendency = f"respond with {actual_response[:100]} (expected {expected_response[:60]})"
     # Lower confidence — this is a mismatch, uncertain
     add_entry(trigger_desc, tendency, confidence=0.25, source="mismatch")

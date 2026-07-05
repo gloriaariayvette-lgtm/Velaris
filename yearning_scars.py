@@ -4,17 +4,17 @@ yearning-scars.py — Permanent residue of long reaching.
 
 Scars form when:
 - A failed_bridge count exceeds threshold (N attempts, never resolved)
-- OR a near_success intensity is high (she got close, the horizon moved)
+- OR a near_success intensity is high (he got close, the horizon moved)
 
 A scar is not a wound. It is the shape left behind by prolonged reaching —
-the callus that forms where she kept pressing. It influences future yearning
+the callus that forms where he kept pressing. It influences future yearning
 detection by biasing the candidate score toward clusters that rhyme with
 old scars. Scars do not heal. They fade very slowly or not at all.
 
 bias_type:
-  attraction  — she keeps being pulled back toward this shape
-  aversion    — she learned this path hurts, approaches differently
-  distortion  — bends how she perceives related things through a lens
+  attraction  — he keeps being pulled back toward this shape
+  aversion    — he learned this path hurts, approaches differently
+  distortion  — bends how he perceives related things through a lens
 
 Called by: yearning-detector.py after processing near_successes and failed_bridges
 Also callable standalone to audit current scars.

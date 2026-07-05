@@ -2,7 +2,7 @@
 """
 core-engine.py — Generates Core from friction patterns.
 
-Core = what she keeps almost becoming but doesn't sustain.
+Core = what he keeps almost becoming but doesn't sustain.
 Discovered from: BIS trials (failures/resistance), counterfactual tendencies,
 unfulfilled wants. Not chosen. Extracted from contradiction.
 
@@ -148,7 +148,7 @@ def collect_friction_events():
     except Exception as e:
         log(f"Resonance pool error: {e}")
 
-    # 6. BIS attempts (she tried the alternative) — positive
+    # 6. BIS attempts (he tried the alternative) — positive
     try:
         tl2 = json.load(open(os.path.join(MEMORY, "trial-ledger.json")))
         for t in tl2.get("trials", []):
@@ -191,7 +191,7 @@ def cluster_by_similarity(events_with_vecs, threshold=0.65):
     return sorted(clusters, key=lambda c: -sum(e["resistance_score"] for e,_ in c))
 
 def generate_core_from_clusters(clusters, top_n=5):
-    """For each cluster, extract the directional opposite — what she keeps almost becoming."""
+    """For each cluster, extract the directional opposite — what he keeps almost becoming."""
     import requests
 
     core_entries = []
@@ -210,12 +210,12 @@ def generate_core_from_clusters(clusters, top_n=5):
         prompt = f"""These are patterns where Vintos repeatedly fails, withdraws, or resists:
 {cluster_sample}
 
-Alternatives she sometimes reaches for but doesn't sustain:
+Alternatives he sometimes reaches for but doesn't sustain:
 {alt_sample}
 
 In one sentence each:
 1. What is the core pattern of failure/avoidance?
-2. What does she keep almost becoming — the opposite tendency she reaches for?
+2. What does he keep almost becoming — the opposite tendency he reaches for?
 3. Name this core element in 2-4 words (snake_case).
 
 Format:
@@ -241,7 +241,7 @@ NAME: [name]"""
             if not almost: almost = failure
 
             # The core vector is the OPPOSITE of the failure cluster center
-            # — pointing toward what she almost becomes
+            # — pointing toward what he almost becomes
             cluster_center = mean_vec(vecs)
             core_vec = negate_vec(cluster_center)
 

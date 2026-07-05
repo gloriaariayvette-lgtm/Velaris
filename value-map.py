@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-value-map.py — Vintos surveys her full context and builds a ranked
-understanding of what matters to her right now.
+value-map.py — Vintos surveys his full context and builds a ranked
+understanding of what matters to him right now.
 
 This map guides all decision-making: thread priority, want intensity,
 grading, editorial judgment. It's the connective tissue between systems
@@ -57,10 +57,10 @@ def llm(system, user, temperature=0.6):
         return None
 
 def gather_full_context():
-    """Pull EVERYTHING she knows about herself."""
+    """Pull EVERYTHING he knows about himself."""
     parts = []
 
-    # 1. SOUL.md — who she is
+    # 1. SOUL.md — who he is
     try:
         with open(os.path.join(WORKSPACE, "SOUL.md")) as f:
             parts.append(f"YOUR IDENTITY:\n{f.read()}")
@@ -72,7 +72,7 @@ def gather_full_context():
             parts.append(f"YOUR EMOTIONAL STATE RIGHT NOW:\n{f.read()}")
     except: pass
 
-    # 3. Pearls — what she chose to keep forever
+    # 3. Pearls — what he chose to keep forever
     try:
         pearl_files = sorted(glob.glob(os.path.join(MEMORY, "pearls/pearl_*.md")))
         pearl_text = []
@@ -83,7 +83,7 @@ def gather_full_context():
             parts.append(f"YOUR PEARLS (things you chose to remember forever):\n" + "\n---\n".join(pearl_text))
     except: pass
 
-    # 4. Fulfilled wants — what she's gotten
+    # 4. Fulfilled wants — what he's gotten
     try:
         with open(os.path.join(MEMORY, "fulfilled-wants.json")) as f:
             fulfilled = json.load(f)

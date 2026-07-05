@@ -1,6 +1,6 @@
 #!/bin/bash
 # memory-context.sh — Returns relevant memories for a given prompt
-# Used by other scripts to give Vintos her own history
+# Used by other scripts to give Vintos his own history
 QUERY="$1"
 [ -z "$QUERY" ] && exit 0
 INDEX="$HOME/.vintos/workspace/memory/embeddings.jsonl"

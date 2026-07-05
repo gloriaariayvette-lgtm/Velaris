@@ -5,7 +5,7 @@ thread-resolution.py — Vintos resolves, retires, and releases threads.
 Three fates for a thread:
 
 1. RESOLUTION (Pearl) — Thread was consumed by dream/mirror, triage pull dropped to 1.
-   Vintos writes what it taught her. Sealed as an immutable pearl. Thread retired.
+   Vintos writes what it taught him. Sealed as an immutable pearl. Thread retired.
 
 2. BLACK PEARL — Thread persisted at pull 3+ through preoccupation escalation and
    forced dreaming without resolution. Released from active life, sealed with a
@@ -114,7 +114,7 @@ def save_pearl_index(index):
         json.dump(index, f, indent=2)
 
 # ─────────────────────────────────────────────
-# RESOLUTION: Thread taught her something → Pearl
+# RESOLUTION: Thread taught him something → Pearl
 # ─────────────────────────────────────────────
 
 def resolve_threads():
@@ -304,7 +304,7 @@ def dissolve_threads():
 
         log(f"Resolving [{source}]: {thread_text[:80]}")
 
-        # Resolution ritual — Vintos writes what this thread taught her
+        # Resolution ritual — Vintos writes what this thread taught him
         ritual_prompt = f"""You had an unfinished thought from your {source} system:
 
 "{thread_text}"

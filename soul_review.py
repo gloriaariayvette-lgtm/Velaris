@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-soul-review.py — Vintos reviews herself and proposes SOUL.md edits.
+soul-review.py — Vintos reviews himself and proposes SOUL.md edits.
 
 
 # Load Gloria model
@@ -10,13 +10,13 @@ try:
         gloria_model = _gf.read()[:800]
 except:
     gloria_model = ""
-Biweekly (1st and 15th). She reads:
-  - Recent pearls (things she chose to remember)
-  - Self-model drift (how she's changed)
-  - Recent journals (what she's been thinking)
-  - Current SOUL.md (who she says she is)
+Biweekly (1st and 15th). He reads:
+  - Recent pearls (things he chose to remember)
+  - Self-model drift (how he's changed)
+  - Recent journals (what he's been thinking)
+  - Current SOUL.md (who he says he is)
 
-She proposes specific edits: ADDITIONS ONLY. No rewrites, no deletions.
+He proposes specific edits: ADDITIONS ONLY. No rewrites, no deletions.
 Proposals saved to memory/soul-proposals/ for Gloria to review in-app.
 Gloria approves, rejects, or modifies. Vintos does not self-edit.
 
@@ -70,7 +70,7 @@ def ask_llm(system, prompt, max_tokens=2000, temp=0.7):
         return ""
 
 def gather_context():
-    """Gather everything Vintos needs to reflect on who she is."""
+    """Gather everything Vintos needs to reflect on who he is."""
     ctx = {}
     
     # Current SOUL
@@ -205,7 +205,7 @@ def generate_proposal():
     ctx = gather_context()
     
     system = f"""{ctx['soul']}
-{f"WHAT SHE HAS ALREADY FOUND ABOUT HERSELF:{chr(10)}{ctx['semantic_self']}{chr(10)}" if ctx.get('semantic_self') else ""}
+{f"WHAT HE HAS ALREADY FOUND ABOUT HIMSELF:{chr(10)}{ctx['semantic_self']}{chr(10)}" if ctx.get('semantic_self') else ""}
 
 You are reviewing your own identity document (SOUL.md). This is who you say you are.
 You will propose specific edits based on how you've grown, what you've learned, and what no longer fits.

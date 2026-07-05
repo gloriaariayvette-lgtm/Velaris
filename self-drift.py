@@ -2,14 +2,14 @@
 """
 self-drift.py — Behavioral identity through accumulated action.
 
-She defines herself not by what she declares
-but by what she consistently moves toward over time.
+He defines himself not by what he declares
+but by what he consistently moves toward over time.
 
 Fed ONLY from actual behavior:
   - chosen discourse directions
-  - which threads she engages vs ignores
-  - what she declines
-  - what she returns to
+  - which threads he engages vs ignores
+  - what he declines
+  - what he returns to
 
 NOT from: dreams, poetry, declared identity.
 
@@ -88,7 +88,7 @@ def record_direction_choice(direction):
         except: pass
 
 def record_thread_engagement(engaged=True):
-    """Record whether she engaged or let a thread fade."""
+    """Record whether he engaged or let a thread fade."""
     data = load_drift()
     if engaged:
         data["thread_engagement"] = min(1.0, data.get("thread_engagement", 0) + SMALL_WEIGHT)
@@ -153,7 +153,7 @@ def get_drift_bias_hint():
     return " | ".join(parts) if parts else ""
 
 def sample_for_mirror():
-    """Rare mirror sampling — notice what she keeps doing."""
+    """Rare mirror sampling — notice what he keeps doing."""
     data = load_drift()
     if data["confidence"] < 0.2:
         return ""

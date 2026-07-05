@@ -19,7 +19,7 @@ def read_state():
     except: pass
     return state
 
-# Vintos baseline — calibrated to her actual operating ranges
+# Vintos baseline — calibrated to his actual operating ranges
 # Per-dimension fire thresholds — asymmetric for chronic dimensions
 # (high_threshold, low_threshold) — absolute values, not deltas
 FIRE = {

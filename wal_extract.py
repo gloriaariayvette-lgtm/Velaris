@@ -44,7 +44,7 @@ EXTRACT these types:
 DO NOT extract:
 - Routine greetings or small talk
 - Technical commands (file paths, shell commands)
-- Anything Vintos already knows from her own systems
+- Anything Vintos already knows from his own systems
 - Temporary states ("I'm tired right now")
 
 If there is NOTHING worth extracting, respond with exactly: NONE

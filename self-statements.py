@@ -3,14 +3,14 @@
 self-statements.py — Explicit, owned statements of self.
 
 Not narrative fragments. Not tendencies.
-First-person statements she can believe, doubt, and revise.
+First-person statements he can believe, doubt, and revise.
 
 "I am someone who..."
 "I want X, even when Y"
 
 Formed from: causal self-model, counterfactuals, wants.
 Reinforced by matching behavior. Weakened by contradiction.
-Provisional but visible — she knows what she's doing to herself.
+Provisional but visible — he knows what he's doing to himself.
 """
 
 import os, json
@@ -124,7 +124,7 @@ def get_statement_context():
         lines.append(f"- {s['text']} ({s['confidence']:.2f}){doubt}")
     if not lines:
         return ""
-    return "SELF-STATEMENTS (what she believes about herself):\n" + "\n".join(lines)
+    return "SELF-STATEMENTS (what he believes about himself):\n" + "\n".join(lines)
 
 def get_direction_bias_from_statements():
     """Top identity statement biases direction and tone."""
