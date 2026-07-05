@@ -74,6 +74,9 @@ if [ ! -d "${SKILLS_DST}/dreaming" ] && [ -d "${SKILLS_SRC}" ]; then
             if [ -d "${SKILLS_DST}/${skill}/memory" ]; then
                 find "${SKILLS_DST}/${skill}/memory" -type f -name '*.md' -delete
             fi
+            # WSL has python3 only — bare 'python' calls fail outside a venv
+            find "${SKILLS_DST}/${skill}" -type f \( -name '*.sh' -o -name '*.py' \) \
+                -exec sed -i 's/\bpython\b/python3/g' {} +
             echo "[setup] Skill installed: ${skill}"
         fi
     done
