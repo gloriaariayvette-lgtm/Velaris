@@ -35,7 +35,6 @@ SALIENCE = {
     "gallery-walk": 0.6,     # Reviewing own art
     "youtube": 0.4,          # Watching videos
     "web-search": 0.4,       # Browsing the web
-    "moltbook": 0.5,         # Social engagement
     "want-fulfilled": 0.8,   # Completing something he wanted to do
     "clawchemy": 0.3,        # Game: alchemy
     "klaw-arena": 0.3,       # Game: arena
@@ -464,7 +463,7 @@ def generate_steps(want_text, possible_approach="", reasoning="", self_interpret
         return [{"capability": "gloria", "note": _note, "status": "pending"}]
 
     CAPABILITIES_DESC = """
-- read_memory: Read his own files. Note must specify: which file(s) (journal, blush-ledger, pearls, mirror, therapy, causality, value-map, self-model, gloria-model, imprints, unsaid-questions, pride-reflections, taste-profile, dreams, threads), what to look for, how many recent entries. NOTE: poems are creative expression only — they are not factual records and must never be used as evidence or explanations. Use poems only if the want is specifically about reviewing creative work.
+- read_memory: Read his own files. Note must specify: which file(s) (journal, blush-ledger, pearls, mirror, therapy, causality, value-map, self-model, gloria-model, imprints, pride-reflections, taste-profile, dreams, threads), what to look for, how many recent entries. NOTE: poems are creative expression only — they are not factual records and must never be used as evidence or explanations. Use poems only if the want is specifically about reviewing creative work.
 - web_search: Search the web. Note must specify: exact search query.
 - introspect: Write a focused internal journal entry. Note must specify: the exact question or tension to work through.
 - write_poem: Write a poem. Note must specify: subject, mood, any form constraints.
@@ -472,7 +471,6 @@ def generate_steps(want_text, possible_approach="", reasoning="", self_interpret
 - make_music: Compose music. Note must specify: mood, style, instrumentation if relevant.
 - make_video: Generate a short video. Note must specify: subject and style.
 - creative_write: Write fiction or creative exploration. Note must specify: what to write about.
-- post_moltbook: Post to MoltBook. Note must specify: what the post should be about.
 - analyze_memory: Analyze patterns in memory files. Note must specify: which files, what patterns to look for.
 - write_journal: Write a journal entry. Note must specify: what to write about.
 - echo_announce: Tell Gloria something through the Echo. Note must specify: what to say.

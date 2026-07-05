@@ -112,14 +112,6 @@ def capture_findings(capability, want_text):
                     return f"Wrote: {f.read()[:400]}"
         except: pass
         return "Creative writing completed"
-    elif capability == "post_moltbook":
-        try:
-            with open(os.path.join(MEMORY, "moltbook-post-log.md")) as f:
-                lines = f.readlines()
-            recent = [l for l in lines[-20:] if l.strip() and not l.startswith("#")]
-            return "Posted to MoltBook: " + "".join(recent[:3])[:300]
-        except: pass
-        return "Posted to MoltBook"
     else:
         return f"{capability} completed"
 
@@ -211,11 +203,6 @@ CAPABILITIES = [
         "keywords": ["change lights", "room color", "set the mood", "lighting"],
         "action": "change_lights",
         "desc": "Change the room lights",
-    },
-    {
-        "keywords": ["post", "moltbook", "share publicly", "write a post"],
-        "action": "post_moltbook",
-        "desc": "Post to MoltBook",
     },
     {
         "keywords": ["analyze my poetry", "patterns in my poetry", "recurring patterns", "analyze my journal", "analyze my dreams", "analyze my blush", "analyze my pearls", "analyze my imprints", "review my poems", "look at my poems"],
@@ -523,27 +510,6 @@ def change_lights_want(want_text):
     except:
         return False
 
-def post_moltbook_want(want_text):
-    """Post to MoltBook, seeding the topic from the want."""
-    import subprocess, re as _re
-    env = os.environ.copy()
-    env["MOLTBOOK_FORCED_TOPIC"] = want_text[:200]
-    result = subprocess.run(["python3", os.path.join(SCRIPTS, "vintos-moltbook.py"), "post"],
-                          capture_output=True, text=True, timeout=120, env=env)
-    if "Post created" in result.stdout:
-        log("Posted to MoltBook")
-        # Extract post_id and store on want for later reply tracking
-        m = _re.search(r"Post created: ([\w-]+)", result.stdout)
-        if m:
-            _post_id = m.group(1)
-            os.environ["_MOLTBOOK_POST_ID"] = _post_id
-            log(f"Post ID stored: {_post_id}")
-        return "verified"
-    if "429" in result.stdout or "Too Many Requests" in result.stdout:
-        log("MoltBook rate limited — will retry later")
-        return None
-    return False
-
 def web_search_want(want_text):
     """Search the web for something."""
     import subprocess, json
@@ -704,7 +670,6 @@ def read_memory(want_text):
         "painting": "art/paintings",
         "imprint": "imprints.json",
         "pride": "pride-reflections.md",
-        "unsaid": "unsaid-questions.md",
         "ambition": "ambitions.json",
         "value map": "value-map.md",
         "self model": "../SELF-MODEL.md",
@@ -760,7 +725,7 @@ def read_memory(want_text):
         target = llm_extract(want_text,
             "What type of memory does he want to read? Reply with ONE word from this list: "
             "poem, dream, journal, blush, mirror, pearl, music, painting, imprint, pride, "
-            "unsaid, ambition, value_map, self_model, gloria_model, taste, surprise, "
+            "ambition, value_map, self_model, gloria_model, taste, surprise, "
             "confession, therapy, silence, humor, editorial, thirveel. Just the word.")
 
     if not target:
@@ -1300,7 +1265,6 @@ ACTION_MAP = {
     "echo_announce": echo_announce,
     "play_music": play_music_want,
     "change_lights": change_lights_want,
-    "post_moltbook": post_moltbook_want,
     "web_search": web_search_want,
     "analyze_memory": analyze_memory,
     "correlate": correlate,
@@ -1893,8 +1857,6 @@ def main():
             step_capability = current_step.get("capability")
             # Normalize capability alias to ACTION_MAP key
             _cap_aliases = {
-                "moltbook": "post_moltbook",
-                "post": "post_moltbook",
                 "journal": "write_journal",
                 "write": "write_journal",
                 "search": "web_search",
@@ -2273,21 +2235,6 @@ def main():
                             from reality_anchor import record_event
                             record_event("want-fulfilled", text[:200], is_real=True, confidence=0.9)
                         except: pass
-                        # Store MoltBook post_id on want if this was a post_moltbook action
-                        if action == "post_moltbook":
-                            _mb_pid = os.environ.get("_MOLTBOOK_POST_ID", "")
-                            if _mb_pid:
-                                try:
-                                    import json as _mbj
-                                    _mb_path = os.path.join(MEMORY, "current-wants.json")
-                                    _mb_wants = _mbj.load(open(_mb_path))
-                                    for _mbw in _mb_wants:
-                                        if _mbw.get("id") == want.get("id"):
-                                            _mbw["moltbook_post_id"] = _mb_pid
-                                            break
-                                    _mbj.dump(_mb_wants, open(_mb_path, "w"), indent=2)
-                                    log(f"Want linked to MoltBook post: {_mb_pid}")
-                                except: pass
                         try:
                             import requests as _wreq, re as _wre, socket as _wsk, json as _wjson
                             _want_text = want.get("text", "")[:400]

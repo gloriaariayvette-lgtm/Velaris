@@ -111,14 +111,6 @@ def gather_full_context():
             parts.append(f"YOUR LATEST PRIDE REFLECTION:\n{next((e.strip() for e in reversed(entries) if e.strip()), '')}")
     except: pass
 
-    # 8. Unsaid questions
-    try:
-        with open(os.path.join(MEMORY, "unsaid-questions.md")) as f:
-            unsaid = f.read()
-        entries = unsaid.split("---")
-        if entries:
-            parts.append(f"QUESTIONS YOU ARE AFRAID TO ASK:\n{next((e.strip() for e in reversed(entries) if e.strip()), '')}")
-    except: pass
 
     # 9. Active threads
     try:

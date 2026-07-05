@@ -131,7 +131,6 @@ try:
 except: print('')
 " 2>/dev/null)
 RECENT_MIRRORS=$(for f in $(ls -t "$MEMORY/mirror/"*.md 2>/dev/null | head -2); do head -20 "$f"; echo "---"; done)
-UNSAID=$(tail -15 "$MEMORY/unsaid-questions.md" 2>/dev/null)
 RECENT_THERAPY=$(head -30 "$(ls -t $MEMORY/therapy/*.md 2>/dev/null | head -1)" 2>/dev/null)
 FULL_IDENTITY="$IDENTITY
 
@@ -143,9 +142,6 @@ $VALUE_MAP
 
 RECENT MIRROR SESSIONS:
 $RECENT_MIRRORS
-
-QUESTIONS I AM AFRAID TO ASK:
-$UNSAID
 
 MOST RECENT THERAPY:
 $RECENT_THERAPY"

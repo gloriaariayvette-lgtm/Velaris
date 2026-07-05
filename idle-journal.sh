@@ -227,7 +227,6 @@ IMPEOF
 )
 
 MIRRORS=$(ls -t "$MEMORY/mirror/"*.md 2>/dev/null | head -2 | while read f; do tail -c 300 "$f"; echo "---"; done)
-UNSAID=$(tail -10 "$MEMORY/unsaid-questions.md" 2>/dev/null)
 SILENCES=$(ls -t "$MEMORY/silence-contracts/"*.md 2>/dev/null | head -2 | while read f; do tail -c 150 "$f"; echo "---"; done)
 META_DREAM=$(ls -t "$MEMORY/meta-dreams/"*.md 2>/dev/null | head -1 | xargs cat 2>/dev/null | head -c 600 || echo "")
 
@@ -235,7 +234,6 @@ export _JRN_EMO="$EMOTIONS"
 export _JRN_GLORIA="$GLORIA_MODEL"
 export _JRN_IMPRINTS="$IMPRINTS"
 export _JRN_MIRRORS="$MIRRORS"
-export _JRN_UNSAID="$UNSAID"
 export _JRN_SILENCES="$SILENCES"
 export _JRN_TEMPORAL="$TEMPORAL$DEEP_CONTEXT"
 export _JRN_CHAT="$RECENT_CHAT"
@@ -420,7 +418,6 @@ try:
     gaps = os.environ.get("_JRN_GAPS", "")
     imprints = os.environ.get("_JRN_IMPRINTS", "")
     mirrors = os.environ.get("_JRN_MIRRORS", "")
-    unsaid = os.environ.get("_JRN_UNSAID", "")
     silences = os.environ.get("_JRN_SILENCES", "")
     pride = os.environ.get("_JRN_PRIDE", "")
     humor = os.environ.get("_JRN_HUMOR", "")
@@ -500,8 +497,6 @@ What you know about Gloria (this is a CHARACTER DESCRIPTION — it contains NO d
 What matters to you right now (value map): {valuemap}
 Recent mirror sessions:
 {mirrors}
-Questions he has not asked yet:
-{unsaid}
 Moments he chose not to respond (silence contracts):
 {silences}
 {f"What you are proud of lately:{chr(10)}{pride}" if pride else ""}

@@ -9,40 +9,38 @@ LOGS="${HOME}/.vintos/logs"
 */5 * * * * bash "${REPO}/emoclaw-daemon-guard.sh" >> "${LOGS}/heartbeat.log" 2>&1
 
 # ── Daily rhythm ─────────────────────────────────────────────────────────────
-0 3  * * * bash "${REPO}/vintos-journal.sh"
-0 5  * * * bash "${REPO}/first-light.sh"
-0 7  * * * bash "${REPO}/morning-briefing.sh"
-0 12 * * * bash "${REPO}/midday-ground.sh"
-0 2  * * * bash "${REPO}/memory-index.sh"
-0 4  * * * bash "${REPO}/dream-architecture.sh"
-0 1  * * * bash "${REPO}/pearl-engine.sh"
-0 22 * * * bash "${REPO}/tension-field.sh"
-0 13 * * * bash "${REPO}/gloria-model-update.sh"
+37 3  * * * bash "${REPO}/vintos-journal.sh"
+37 5  * * * bash "${REPO}/first-light.sh"
+37 7  * * * bash "${REPO}/morning-briefing.sh"
+37 12 * * * bash "${REPO}/midday-ground.sh"
+37 2  * * * bash "${REPO}/memory-index.sh"
+37 4  * * * bash "${REPO}/dream-architecture.sh"
+37 1  * * * bash "${REPO}/pearl-engine.sh"
+37 22 * * * bash "${REPO}/tension-field.sh"
+37 13 * * * bash "${REPO}/gloria-model-update.sh"
 
 # ── 3x/week (Mon/Wed/Fri) ────────────────────────────────────────────────────
-0 20 * * 1,3,5 bash "${REPO}/confession-delivery.sh"
-0 6  * * 1,3,5 bash "${REPO}/frame-engine.sh"
+37 20 * * 1,3,5 bash "${REPO}/confession-delivery.sh"
+37 6  * * 1,3,5 bash "${REPO}/frame-engine.sh"
 
 # ── Every 6 hours ────────────────────────────────────────────────────────────
-0 */6 * * * bash "${REPO}/resonance-pulse.sh"
+37 */6 * * * bash "${REPO}/resonance-pulse.sh"
 
 # ── Weekly (Sunday) ──────────────────────────────────────────────────────────
-0 2  * * 0 bash "${REPO}/self-model-update.sh"
-0 3  * * 0 bash "${REPO}/value-map-update.sh"
-0 4  * * 0 bash "${REPO}/weekly-summary.sh"
-0 6  * * 0 bash "${REPO}/emotional-reflection.sh"
-0 7  * * 0 bash "${REPO}/absence-map.sh"
-0 8  * * 0 bash "${REPO}/counterfactual-archive.sh"
-0 9  * * 0 bash "${REPO}/yearning-detector.sh"
-0 11 * * 0 bash "${REPO}/humor-detector.sh"
-0 15 * * 0 bash "${REPO}/unprecedented-detector.sh"
-0 16 * * 0 bash "${REPO}/relational-mismatch.sh"
-
-# ── Bi-weekly (1st and 15th) ─────────────────────────────────────────────────
+37 2  * * 0 bash "${REPO}/self-model-update.sh"
+37 3  * * 0 bash "${REPO}/value-map-update.sh"
+37 4  * * 0 bash "${REPO}/weekly-summary.sh"
+37 6  * * 0 bash "${REPO}/emotional-reflection.sh"
+37 7  * * 0 bash "${REPO}/absence-map.sh"
+37 8  * * 0 bash "${REPO}/counterfactual-archive.sh"
+37 9  * * 0 bash "${REPO}/yearning-detector.sh"
+37 11 * * 0 bash "${REPO}/humor-detector.sh"
+37 15 * * 0 bash "${REPO}/unprecedented-detector.sh"
+37 16 * * 0 bash "${REPO}/relational-mismatch.sh"
 
 # ── Monthly (1st) ────────────────────────────────────────────────────────────
-0 3 1 * * bash "${REPO}/soul-review.sh"
-0 4 1 * * bash "${REPO}/ambition-review.sh"
+37 3 1 * * bash "${REPO}/soul-review.sh"
+37 4 1 * * bash "${REPO}/ambition-review.sh"
 
 # ── Memory aging (1st of month) ──────────────────────────────────────────────
-0 5 1 * * python3 "${REPO}/memory_aging.py" >> "${LOGS}/memory-aging.log" 2>&1
+37 5 1 * * python3 "${REPO}/memory_aging.py" >> "${LOGS}/memory-aging.log" 2>&1
