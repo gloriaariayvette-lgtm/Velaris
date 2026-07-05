@@ -1960,7 +1960,7 @@ if os.path.isdir(WEBSITE_DIR):
 
 
 # === Avatar Models ===
-AVATAR_MODELS_DIR = "/home/gloria/eve-avatar-engine/client/dist/models"
+AVATAR_MODELS_DIR = os.path.expanduser("~/.vintos/workspace/avatar-models")
 if os.path.isdir(AVATAR_MODELS_DIR):
     app.mount("/avatar-models", StaticFiles(directory=AVATAR_MODELS_DIR), name="avatar-models")
 
@@ -6994,7 +6994,7 @@ if os.path.isdir(WEBSITE_DIR):
 
 
 # === Avatar Models ===
-AVATAR_MODELS_DIR = "/home/gloria/eve-avatar-engine/client/dist/models"
+AVATAR_MODELS_DIR = os.path.expanduser("~/.vintos/workspace/avatar-models")
 if os.path.isdir(AVATAR_MODELS_DIR):
     app.mount("/avatar-models", StaticFiles(directory=AVATAR_MODELS_DIR), name="avatar-models")
 

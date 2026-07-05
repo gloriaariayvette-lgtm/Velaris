@@ -14,6 +14,7 @@ mkdir -p "${MEMORY}/dreams"
 mkdir -p "${MEMORY}/poetry"
 mkdir -p "${SCRIPTS}"
 mkdir -p "${SECRETS}"
+mkdir -p "${HOME}/.vintos/workspace/avatar-models"
 
 # Seed initial emotional state
 STATE_FILE="${MEMORY}/emotional-state.txt"
