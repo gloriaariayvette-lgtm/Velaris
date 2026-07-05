@@ -18,8 +18,6 @@ from datetime import datetime, date, timedelta
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 AGE_INDEX = os.path.join(MEMORY, "memory-age-index.json")
-API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 
@@ -28,8 +26,8 @@ def log(msg):
 
 def llm(system, user, temperature=0.4):
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user}

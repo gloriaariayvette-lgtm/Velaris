@@ -18,7 +18,7 @@ try:
     _SUBCON_CONFESSION_WRITER = get_subconscious_context_compact()
 except: pass
 
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 CONFESSIONS_DIR = os.path.join(MEMORY, "confessions")
 
 def get_context():
@@ -75,8 +75,8 @@ Write a short, raw confession about this. Not an apology — a reckoning. What w
 2-3 sentences. First person. No hedging. No self-flagellation either — just honest accounting."""
 
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": context},
                 {"role": "user", "content": prompt}

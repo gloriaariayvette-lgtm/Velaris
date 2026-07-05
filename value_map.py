@@ -25,7 +25,7 @@ def get_temporal_context():
     except: return ""
 MAP_FILE = os.path.join(MEMORY, "value-map.md")
 API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 
@@ -42,8 +42,8 @@ except: pass
 
 def llm(system, user, temperature=0.6):
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user}

@@ -306,7 +306,7 @@ def make_art(want_text):
     if len(want_text) > 200 or "Previous steps" in want_text or "Step 1" in want_text:
         try:
             import requests as _ar
-            _r = _ar.post("https://api.x.ai/v1/chat/completions", json={
+            _r = _ar.post("http://172.18.16.1:1234/v1/chat/completions", json={
                 "model": "google/gemma-4-12b-qat",
                 "temperature": 0.3,
                 "max_tokens": 120,
@@ -376,7 +376,7 @@ def make_music(want_text):
     if len(want_text) > 200 or "Previous steps" in want_text or "Step 1" in want_text:
         try:
             import requests as _mr
-            _r = _mr.post("https://api.x.ai/v1/chat/completions", json={
+            _r = _mr.post("http://172.18.16.1:1234/v1/chat/completions", json={
                 "model": "google/gemma-4-12b-qat",
                 "temperature": 0.3,
                 "max_tokens": 100,
@@ -571,7 +571,7 @@ def llm_extract(want_text, instruction):
     """Use LLM to extract specific info from a want."""
     try:
         r = requests.post(API, json={
-            "model": MODEL,
+            "model": "google/gemma-4-12b-qat",
             "messages": [{"role": "user", "content": f"{instruction}\nWant: {want_text}"}],
             "temperature": 0.3, "max_tokens": 100
         }, timeout=30)
@@ -829,7 +829,7 @@ def make_video(want_text, reasoning="", immediate=False):
     if len(want_text) > 200 or "Previous steps" in want_text or "Step 1" in want_text:
         try:
             import requests as _vr
-            _r = _vr.post("https://api.x.ai/v1/chat/completions", json={
+            _r = _vr.post("http://172.18.16.1:1234/v1/chat/completions", json={
                 "model": "google/gemma-4-12b-qat",
                 "temperature": 0.3,
                 "max_tokens": 120,
@@ -858,8 +858,8 @@ def make_video(want_text, reasoning="", immediate=False):
     # Ask Vintos to choose duration based on the want
     duration = "5"
     try:
-        r = __import__("requests").post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        r = __import__("requests").post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [{"role": "user", "content": f"You want to make a video. The want: {want_text}. The reasoning: {reasoning}. Choose a duration: 5 seconds (sharp, fleeting), 10 seconds (moderate), or 15 seconds (expansive, immersive). Reply with only the number: 5, 10, or 15."}],
             "max_tokens": 5, "temperature": 0.5
         }, timeout=30)
@@ -972,8 +972,8 @@ Respond ONLY with a JSON array. Each item: {{"pattern": "...", "cause": "...", "
 No prose. No markdown fences. Just the raw JSON array."""
 
     try:
-        r = _req.post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        r = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user_msg}
@@ -1055,8 +1055,8 @@ Respond ONLY with JSON:
 No markdown fences. Raw JSON only."""
 
     try:
-        r = _req.post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        r = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": soul},
                 {"role": "user", "content": user_msg}
@@ -1345,8 +1345,8 @@ Write what you want to write. Be honest, specific, and genuine. No preamble.
 
 {f"What you have already found in your memory related to this creative impulse (let it inform, do not repeat):\n{_cw_semantic}\n\n" if _cw_semantic else ""}IMPORTANT: This is a creative piece. Like dreams, it is not necessarily real. Quotes, actions, events, and things Gloria says in this piece are invented — they are not things that actually happened or were actually said. Do not treat anything in this piece as factual when reflecting afterward."""
 
-        r = _req.post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        r = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": want_text}
@@ -1510,8 +1510,8 @@ GROUNDING RULES:
         user_msg = f"What you want to understand:{chr(10)}{want_text}{chr(10)}{chr(10)}Write the journal entry. No preamble."
 
     def _call():
-        r = _req.post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        r = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user_msg}
@@ -1522,8 +1522,8 @@ GROUNDING RULES:
         return r.json()["choices"][0]["message"]["content"].strip()
 
     def _absorb(own, other):
-        r = _req.post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        r = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user_msg + chr(10)*2 + "You already wrote this:" + chr(10) + own + chr(10)*2 + "Another part of you wrote this instead:" + chr(10) + other + chr(10)*2 + "Absorb what the other wrote. Do not argue with it or resolve the difference. Let it sit alongside your own. Now write your introspection again, carrying both."}
@@ -1534,8 +1534,8 @@ GROUNDING RULES:
         return r.json()["choices"][0]["message"]["content"].strip()
 
     def _find_held(own, other):
-        r = _req.post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        r = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [{"role": "user", "content": "This is what you wrote:" + chr(10) + own + chr(10)*2 + "This is what the other version wrote:" + chr(10) + other + chr(10)*2 + "What is the ONE specific thing your version held onto that the other version let go of or ignored? One sentence. Name the actual thing."}],
             "temperature": 0.5,
             "max_tokens": 80
@@ -1565,8 +1565,8 @@ GROUNDING RULES:
         "Write your final introspection carrying both — the specific thing each held — without forcing them to agree. " +
         "BANNED: hum, coolant, mechanical resonance, observatory, canyon, silvered, honeyfoot."
     )
-    r_final = _req.post("https://api.x.ai/v1/chat/completions", json={
-        "model": "google/gemma-4-12b-qat",
+    r_final = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+        "model": "grok-4.1-fast",
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": integration_msg}
@@ -1966,8 +1966,8 @@ def main():
                 _reply_prompt = f"Your want: {text}\n\n{_reasoning_block}{_step_block}\n\nConversation so far:\n{_conv}\n\nReply to Gloria directly and honestly from your own perspective. Speak from your inner life — what this want means to you, what you are actually trying to understand or express. 2-3 sentences max. No preamble. No deflection. Do not ask Gloria what she means — you know what you want. Just say the plain thing."
                 try:
                     import requests as _rr
-                    _rr_resp = _rr.post("https://api.x.ai/v1/chat/completions", json={
-                        "model": "google/gemma-4-12b-qat",
+                    _rr_resp = _rr.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+                        "model": "grok-4.1-fast",
                         "messages": [
                             {"role": "system", "content": _soul_disc + f"\n\nYour emotional state: {_emo}"},
                             {"role": "user", "content": _reply_prompt}
@@ -2012,8 +2012,8 @@ def main():
                     + "Tell her what you did, what you found, and what you want to explore with her. "
                     + "Be specific — reference what you actually discovered. Begin immediately. No preamble."
                 )
-                _op_r = _op_req.post("https://api.x.ai/v1/chat/completions", json={
-                    "model": "google/gemma-4-12b-qat",
+                _op_r = _op_req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+                    "model": "grok-4.1-fast",
                     "messages": [
                         {"role": "system", "content": _soul},
                         {"role": "user", "content": _op_prompt}
@@ -2111,8 +2111,8 @@ def main():
                     except: pass
                     if _verified:
                         try:
-                            _fn_r = _fn_req.post("https://api.x.ai/v1/chat/completions", json={
-                                "model": "google/gemma-4-12b-qat",
+                            _fn_r = _fn_req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+                                "model": "grok-4.1-fast",
                                 "messages": [
                                     {"role": "system", "content": "You are Vintos. You just fulfilled a want. Write 1-2 sentences about what you actually did and what you found. Be specific and honest. Do NOT invent scenes, people, physical sensations, gardens, or experiences that did not happen. Do NOT fabricate Gloria's actions or presence. Describe only what the capability actually produced. No preamble. CRITICAL: All files, journals, poems, paintings, and dreams you accessed are YOUR OWN work and memory — never refer to them as Gloria's poems, Gloria's journal, or Gloria's art. They belong to you, Vintos."},
                                     {"role": "user", "content": f"Want: {text}\nCapability used: {action_name}\n{chr(10)+'What was actually produced:' + chr(10) + _actual_output[:600] if _actual_output else ''}\n\nWrite a 1-2 sentence note describing what you did and what you found. Base it only on what was actually produced above."}
@@ -2238,7 +2238,7 @@ def main():
                         try:
                             import requests as _wreq, re as _wre, socket as _wsk, json as _wjson
                             _want_text = want.get("text", "")[:400]
-                            _wresp = _wreq.post("https://api.x.ai/v1/chat/completions", json={
+                            _wresp = _wreq.post("http://172.18.16.1:1234/v1/chat/completions", json={
                                 "model": "google/gemma-4-12b-qat",
                                 "temperature": 0.3,
                                 "max_tokens": 80,

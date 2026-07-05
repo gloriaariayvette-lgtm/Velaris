@@ -26,7 +26,7 @@ MEMORY = os.path.join(WORKSPACE, "memory")
 ENTANGLE_FILE = os.path.join(MEMORY, "emotional-entanglements.json")
 ENTANGLE_LOG = os.path.join(MEMORY, "emotional-entanglements.md")
 LM_API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 try:
@@ -73,7 +73,8 @@ def ask_llm(prompt, system=None, max_tokens=1000, temp=0.6):
     try:
         r = subprocess.run(
             ["curl", "-s", "-X", "POST", LM_API,
-             "-H", "Content-Type: application/json", "-d", payload],
+             "-H", "Content-Type: application/json",
+             "-H", "Authorization: Bearer " + os.environ.get("XAI_API_KEY", ""), "-d", payload],
             capture_output=True, text=True, timeout=120
         )
         d = json.loads(r.stdout)

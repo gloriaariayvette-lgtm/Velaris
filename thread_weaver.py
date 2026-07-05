@@ -16,7 +16,7 @@ WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 THREADS_FILE = os.path.join(MEMORY, "unfinished-threads.json")
 API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 WEAVE_THRESHOLD = 2  # weave if 2+ threads from same source same day
 
 def log(msg):
@@ -96,8 +96,8 @@ Then write a woven thread that carries the genuine unresolved heart of this clus
         user = f"These threads all emerged from the same day:\n\n" + threads_text + "\n\nWhat is the real unresolved question underneath all of these?"
 
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user}

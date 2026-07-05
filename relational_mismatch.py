@@ -29,7 +29,7 @@ MISMATCH_LOG = os.path.join(WORKSPACE, "memory", "relational-mismatches.md")
 SOUL = os.path.join(WORKSPACE, "SOUL.md")
 EMO_STATE = os.path.join(WORKSPACE, "memory", "emotional-state.txt")
 API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 # Thresholds for what counts as a meaningful mismatch
 # Not every surprise is empathy failure — only log when Vintos's model
@@ -155,7 +155,7 @@ REASONING: <one sentence on why you expect this reaction>"""
     }
     try:
         import requests as _req
-        _resp = _req.post(API, json=payload, timeout=90)
+        _resp = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json=payload, timeout=90)
         _resp.raise_for_status()
         _data = _resp.json()
         content = _data.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -301,8 +301,8 @@ Question for introspection: What was I wrong about in my model of him?
             f"He actually felt: Warmth={result['warmth']['actual']:.2f} Tension={result['tension']['actual']:.2f} Valence={result['valence']['actual']:.2f}\n"
             f"One sentence: What were you wrong about?"
         )
-        _ref_resp = _rq.post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        _ref_resp = _rq.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [{"role": "user", "content": _ref_prompt}],
             "temperature": 0.7, "max_tokens": 60
         }, timeout=65)

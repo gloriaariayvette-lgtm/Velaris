@@ -38,7 +38,7 @@ MEMORY = os.path.join(WORKSPACE, "memory")
 SOUL_PATH = os.path.join(WORKSPACE, "SOUL.md")
 PROPOSAL_DIR = os.path.join(MEMORY, "soul-proposals")
 API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 os.makedirs(PROPOSAL_DIR, exist_ok=True)
 
@@ -61,7 +61,7 @@ def ask_llm(system, prompt, max_tokens=2000, temp=0.7):
     }).encode()
     try:
         import urllib.request
-        req = urllib.request.Request(API, data=data, headers={"Content-Type": "application/json"})
+        req = urllib.request.Request(API, data=data, headers={"Content-Type": "application/json", "Authorization": "Bearer " + os.environ.get("XAI_API_KEY", "")})
         resp = urllib.request.urlopen(req, timeout=120)
         result = json.loads(resp.read().decode())
         return result["choices"][0]["message"].get("content", "").strip()

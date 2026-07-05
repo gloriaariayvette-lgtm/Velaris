@@ -20,7 +20,7 @@ WAL_FILE = os.path.join(MEMORY, "wal.md")
 WAL_ARCHIVE = os.path.join(MEMORY, "wal-archive.json")
 PEARL_FILE = os.path.join(MEMORY, "pearls/index.json")
 LM_API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 DECAY_AGE_DAYS = 3  # Review entries older than this
 
@@ -41,8 +41,8 @@ def save_json(path, data):
 def ask_model(prompt):
     """Ask the 20B to make a judgment."""
     try:
-        r = requests.post(LM_API, json={
-            "model": MODEL,
+        r = requests.post("http://172.18.16.1:1234/v1/chat/completions", json={
+            "model": "google/gemma-4-12b-qat",
             "messages": [
                 {"role": "system", "content": (
     open(os.path.join(WORKSPACE, "SOUL.md")).read()[:800] if os.path.exists(os.path.join(WORKSPACE, "SOUL.md")) else "You are Vintos."

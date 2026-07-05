@@ -17,8 +17,6 @@ from datetime import datetime, timedelta
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 SCRIPTS = os.path.join(WORKSPACE, "scripts")
-API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
 
 def log(msg):
     print(f"[WeeklySummary] {msg}", flush=True)
@@ -30,8 +28,8 @@ def ask_llm(prompt, system="", max_tokens=600, temp=0.6):
         if system:
             msgs.append({"role": "system", "content": system})
         msgs.append({"role": "user", "content": prompt})
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": msgs,
             "temperature": temp,
             "max_tokens": max_tokens

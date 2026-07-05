@@ -24,7 +24,7 @@ def get_value_map():
 AMBITIONS_FILE = os.path.join(MEMORY, "ambitions.json")
 AMBITION_LOG = os.path.join(MEMORY, "ambition-reflections.md")
 LM_API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 
@@ -162,8 +162,7 @@ NEXT: [one concrete action this week]
 Nothing else. No preamble. Start with GOAL:"""
 
     try:
-        response = requests.post(LM_API,
-            json={"model": MODEL, "messages": [{"role": "user", "content": prompt}],
+        response = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={"model": "grok-4.1-fast", "messages": [{"role": "user", "content": prompt}],
                   "temperature": 0.8, "max_tokens": 400},
             timeout=1200)
         text = response.json()["choices"][0]["message"]["content"].strip()
@@ -260,7 +259,7 @@ Nothing else. No preamble. Start with GOAL:"""
 AMBITIONS_FILE = os.path.join(MEMORY, "ambitions.json")
 AMBITION_LOG = os.path.join(MEMORY, "ambition-reflections.md")
 LM_API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 
@@ -398,8 +397,7 @@ NEXT: [one concrete action this week]
 Nothing else. No preamble. Start with GOAL:"""
 
     try:
-        response = requests.post(LM_API,
-            json={"model": MODEL, "messages": [{"role": "user", "content": prompt}],
+        response = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={"model": "grok-4.1-fast", "messages": [{"role": "user", "content": prompt}],
                   "temperature": 0.8, "max_tokens": 400},
             timeout=1200)
         text = response.json()["choices"][0]["message"]["content"].strip()

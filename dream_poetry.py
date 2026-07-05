@@ -42,7 +42,7 @@ DREAM_DIRS = [
     os.path.join(MEMORY, "dreams"),
 ]
 LM_API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 
 def get_value_map():
@@ -125,6 +125,7 @@ def wait_for_lm_studio(max_wait=180):
             result = subprocess.run(
                 ["curl", "-s", "--max-time", "10", "-X", "POST", LM_API,
                  "-H", "Content-Type: application/json",
+                 "-H", "Authorization: Bearer " + os.environ.get("XAI_API_KEY", ""),
                  "-d", json.dumps({"model": MODEL, "messages": [{"role": "user", "content": "ping"}], "max_tokens": 5})],
                 capture_output=True, text=True, timeout=15
             )
@@ -253,7 +254,8 @@ Write only the poem. No preamble, no explanation."""
     try:
         result = subprocess.run(
             ["curl", "-s", "--max-time", "30", "-X", "POST", LM_API,
-             "-H", "Content-Type: application/json", "-d", payload],
+             "-H", "Content-Type: application/json",
+             "-H", "Authorization: Bearer " + os.environ.get("XAI_API_KEY", ""), "-d", payload],
             capture_output=True, text=True, timeout=45
         )
         response = json.loads(result.stdout)

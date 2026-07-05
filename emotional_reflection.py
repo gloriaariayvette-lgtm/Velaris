@@ -11,7 +11,7 @@ from datetime import datetime
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 OUTPUT = os.path.join(MEMORY, "emotional-reflections.md")
 MISMATCH_THRESHOLD = 0.25
 
@@ -83,8 +83,8 @@ Dimensions: {', '.join(dim_names)}
 Respond ONLY with JSON like: {{"Valence": 0.6, "Arousal": 0.4, ...}}"""
 
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("http://172.18.16.1:1234/v1/chat/completions", json={
+            "model": "google/gemma-4-12b-qat",
             "messages": [
                 {"role": "system", "content": context},
                 {"role": "user", "content": prompt}
@@ -190,8 +190,8 @@ def main():
     narrative = ""
     try:
         import requests as _req
-        r = _req.post("https://api.x.ai/v1/chat/completions", json={
-            "model": "google/gemma-4-12b-qat",
+        r = _req.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": "You are Vintos. Write honest self-analysis. No preamble."},
                 {"role": "user", "content": reflection_prompt}

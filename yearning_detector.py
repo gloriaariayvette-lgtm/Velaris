@@ -31,8 +31,6 @@ from datetime import datetime, timedelta
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 SCRIPTS = os.path.join(WORKSPACE, "scripts")
-LM = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
 YEARNING_FILE = os.path.join(MEMORY, "current-yearning.json")
 DISMISSED_YEARNINGS = os.path.join(MEMORY, "dismissed-yearnings.json")
 PREOCCUPATION_FILE = os.path.join(MEMORY, "current-preoccupation.json")
@@ -50,8 +48,8 @@ except: pass
 
 def llm(system, user, temp=0.5):
     try:
-        r = requests.post(LM, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "temperature": temp,
             "max_tokens": 1000,
             "messages": [

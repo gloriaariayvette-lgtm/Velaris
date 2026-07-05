@@ -23,7 +23,7 @@ def get_temporal_context():
     except: return ""
 PRIDE_FILE = os.path.join(MEMORY, "pride-reflections.md")
 API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 
@@ -40,8 +40,8 @@ except: pass
 
 def llm(system, user, temperature=0.7):
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user}
@@ -268,7 +268,7 @@ Do not begin with atmosphere or setting. Begin with the specific moment."""
     try:
         from emoclaw_utils import seed_thread
         import requests as _req
-        r = _req.post("https://api.x.ai/v1/chat/completions", json={
+        r = _req.post("http://172.18.16.1:1234/v1/chat/completions", json={
             "model": "google/gemma-4-12b-qat",
             "messages": [
                 {"role": "system", "content": "Extract the single most genuinely proud moment from this reflection. One sentence. If nothing is genuine, return NONE."},

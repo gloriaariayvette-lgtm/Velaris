@@ -17,8 +17,6 @@ WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 WAL_FILE = os.path.join(MEMORY, "wal.md")
 WAL_LOG = os.path.join(MEMORY, "wal-log.json")
-LM_API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
 
 def extract(user_msg, vintos_reply):
 
@@ -59,8 +57,8 @@ Vintos replied:
 \"\"\"{vintos_reply[:1000]}\"\"\"
 """
     try:
-        r = requests.post(LM_API, json={
-            "model": MODEL,
+        r = requests.post("http://172.18.16.1:1234/v1/chat/completions", json={
+            "model": "google/gemma-4-12b-qat",
             "messages": [
                 {"role": "system", "content": "Extract durable facts only. Respond with NONE or a JSON array. No other text."},
                 {"role": "user", "content": prompt}

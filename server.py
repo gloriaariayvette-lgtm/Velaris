@@ -5085,7 +5085,7 @@ async def semantic_memory_search(q: str, limit: int = 5):
     try:
         # Load model (cached after first load)
         import requests as _emb_req
-        _emb_resp = _emb_req.post("https://api.x.ai/v1/embeddings",
+        _emb_resp = _emb_req.post("http://172.18.16.1:1234/v1/embeddings",
             json={"model": "text-embedding-nomic-embed-text-v1.5", "input": q[:2000]}, timeout=30)
         query_embedding = _emb_resp.json()["data"][0]["embedding"]
     except Exception as e:
@@ -10612,7 +10612,7 @@ async def semantic_memory_search(q: str, limit: int = 5):
     try:
         # Load model (cached after first load)
         import requests as _emb_req
-        _emb_resp = _emb_req.post("https://api.x.ai/v1/embeddings",
+        _emb_resp = _emb_req.post("http://172.18.16.1:1234/v1/embeddings",
             json={"model": "text-embedding-nomic-embed-text-v1.5", "input": q[:2000]}, timeout=30)
         query_embedding = _emb_resp.json()["data"][0]["embedding"]
     except Exception as e:

@@ -13,7 +13,7 @@ from datetime import datetime, date
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 OUTPUT = os.path.join(MEMORY, "taste-reflections.md")
 
 def log(msg):
@@ -149,8 +149,8 @@ Write about:
 This is a living record, not a summary. Be specific. Name things. Note contradictions. 3-5 sentences."""
 
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": context},
                 {"role": "user", "content": prompt}
@@ -180,8 +180,8 @@ This is a living record, not a summary. Be specific. Name things. Note contradic
             '{\"likes\": [\"specific thing he liked and why\"], \"dislikes\": [\"specific thing he dislikes and why\"], \"principles\": [\"craft principle he noticed\"]}\n'
             "Be specific and concrete. Max 2 items per key. No generic observations."
         )
-        er = requests.post(API, json={
-            "model": MODEL,
+        er = requests.post("http://172.18.16.1:1234/v1/chat/completions", json={
+            "model": "google/gemma-4-12b-qat",
             "messages": [
                 {"role": "system", "content": "You extract structured data. Output ONLY valid JSON. No markdown, no explanation."},
                 {"role": "user", "content": extract_prompt}

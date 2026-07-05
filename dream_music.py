@@ -206,7 +206,7 @@ def style_str(d):
                 "temperature": 0.3,
                 "max_tokens": 80
             }).encode()
-            _req = _ur.Request("https://api.x.ai/v1/chat/completions",
+            _req = _ur.Request("http://172.18.16.1:1234/v1/chat/completions",
                 data=_body, headers={"Content-Type": "application/json"})
             with _ur.urlopen(_req, timeout=15) as _r:
                 _resp = _js.loads(_r.read().decode())

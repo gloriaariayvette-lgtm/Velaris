@@ -25,7 +25,7 @@ def search(query, limit=5):
         return []
 
     import requests
-    LM_EMBED_URL = "https://api.x.ai/v1/embeddings"
+    LM_EMBED_URL = "http://172.18.16.1:1234/v1/embeddings"
     EMBED_MODEL = "text-embedding-nomic-embed-text-v1.5"
 
     def get_embedding(text):

@@ -21,7 +21,7 @@ TRIAGE_LOG = os.path.join(MEMORY, "thread-triage.md")
 SOUL = os.path.join(WORKSPACE, "SOUL.md")
 EMO_FILE = os.path.join(MEMORY, "emotional-state.txt")
 LM_API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 HAS_EMOCLAW = False
@@ -43,8 +43,8 @@ def log(msg):
 
 def llm(system, prompt, temperature=0.7):
     try:
-        r = requests.post(LM_API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt}

@@ -12,7 +12,7 @@ from datetime import datetime
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+MODEL = "grok-4.1-fast"
 COHERENCE_LOG = os.path.join(MEMORY, "voice-coherence.md")
 THRESHOLD = 3
 
@@ -110,8 +110,8 @@ SCORE: <number>
 NOTE: <one sentence about what felt off, or "none" if score 5>"""
 
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": context},
                 {"role": "user", "content": prompt}

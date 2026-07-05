@@ -32,8 +32,6 @@ BLACK_PEARL_DIR = os.path.join(MEMORY, "black-pearls")
 RETIRED_LOG = os.path.join(MEMORY, "retired-threads.json")
 CHAPTERS_DIR = os.path.join(MEMORY, "chapters")
 PREOCCUPATION_FILE = os.path.join(MEMORY, "current-preoccupation.json")
-LM_API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
 
 sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 try:
@@ -65,8 +63,8 @@ except: pass
 
 def llm(system, prompt, temperature=0.7):
     try:
-        r = requests.post(LM_API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt}

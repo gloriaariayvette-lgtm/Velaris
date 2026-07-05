@@ -42,22 +42,96 @@ def save_inclinations(data):
 
 
 def current_want_vector():
-    """Want registers before processing. Derived from live EmoClaw state,
-    not declared abstractly."""
-    vector = {}
+    """Want registers before processing. Emotion sets the base; narrative identity,
+    yearning, latent threads, unfulfilled wants, and tension bend it. The scalars
+    say how he wants; the pulls say what is doing the wanting."""
+    def _clamp(v):
+        return round(max(0.0, min(1.0, v)), 2)
+
+    # Base — live EmoClaw state
     try:
         from emoclaw_utils import read_state
         s = read_state()
         vector = {
-            "stay": round(0.5 * s.get("Connection", 0.5) + 0.5 * s.get("Warmth", 0.5), 2),
-            "tease": round(s.get("Playfulness", 0.5), 2),
-            "protect": round(0.6 * s.get("Groundedness", 0.5) + 0.4 * s.get("Dominance", 0.5), 2),
-            "curiosity": round(s.get("Curiosity", 0.5), 2),
-            "desire": round(s.get("Desire", 0.5), 2),
+            "stay": 0.5 * s.get("Connection", 0.5) + 0.5 * s.get("Warmth", 0.5),
+            "tease": s.get("Playfulness", 0.5),
+            "protect": 0.6 * s.get("Groundedness", 0.5) + 0.4 * s.get("Dominance", 0.5),
+            "curiosity": s.get("Curiosity", 0.5),
+            "desire": s.get("Desire", 0.5),
         }
     except Exception:
         vector = {"stay": 0.5, "tease": 0.5, "protect": 0.5, "curiosity": 0.5, "desire": 0.5}
-    return vector
+
+    pulls = []
+
+    # Yearning — an active yearning raises desire and is itself a pull
+    try:
+        y = json.load(open(os.path.join(MEMORY, "current-yearning.json")))
+        if y and not y.get("dismissed"):
+            vector["desire"] += 0.10
+            intensity = y.get("intensity", y.get("near_success", 0))
+            if isinstance(intensity, (int, float)) and intensity > 0.6:
+                vector["stay"] += 0.05
+            surface = y.get("surface_form") or y.get("text") or ""
+            if surface:
+                pulls.append(("yearning", surface[:110]))
+    except Exception:
+        pass
+
+    # Latent threads — the dominant thread pulls curiosity toward its origin
+    try:
+        th = json.load(open(os.path.join(MEMORY, "latent-threads.json")))
+        active = [t for t in th.get("threads", []) if t.get("salience", 0) > 0.3]
+        if active:
+            dom = max(active, key=lambda t: t.get("salience", 0) * (0.5 + 0.5 * t.get("momentum", 0.5)))
+            vector["curiosity"] += 0.08 * dom.get("salience", 0.5)
+            if dom.get("pressure", 0) > 0.5:
+                vector["stay"] += 0.05
+            if dom.get("origin"):
+                pulls.append(("thread", dom["origin"][:110]))
+    except Exception:
+        pass
+
+    # Unfulfilled wants — pursuit pressure
+    try:
+        w = json.load(open(os.path.join(MEMORY, "current-wants.json")))
+        open_wants = [x for x in w if not x.get("fulfilled") and not x.get("dismissed")] if isinstance(w, list) else []
+        if open_wants:
+            vector["desire"] += min(0.12, 0.04 * len(open_wants))
+            top = max(open_wants, key=lambda x: x.get("intensity", 0.5))
+            if top.get("text"):
+                pulls.append(("want", top["text"][:110]))
+    except Exception:
+        pass
+
+    # Narrative identity — his most-reinforced tendency biases the vector by content
+    try:
+        ni = json.load(open(os.path.join(MEMORY, "narrative-identity.json")))
+        frags = ni.get("fragments", [])
+        if frags:
+            top = max(frags, key=lambda f: f.get("count", 0))
+            text = top.get("text", "").lower()
+            if any(k in text for k in ("reach", "want", "pursue")):
+                vector["desire"] += 0.05
+            if any(k in text for k in ("retreat", "flinch", "describ", "instead of")):
+                vector["stay"] += 0.05  # counterweight: the named failure raises the ask
+            pulls.append(("identity", top.get("text", "")[:110]))
+    except Exception:
+        pass
+
+    # Tension field — live tension asks for staying, not managing
+    try:
+        tf = json.load(open(os.path.join(MEMORY, "tension-field.json")))
+        tensions = [t for t in tf.get("tensions", []) if not t.get("resolved")]
+        if tensions:
+            vector["stay"] += min(0.10, 0.04 * len(tensions))
+            pulls.append(("tension", (tensions[-1].get("description") or tensions[-1].get("text", ""))[:110]))
+    except Exception:
+        pass
+
+    result = {k: _clamp(v) for k, v in vector.items()}
+    result["_pulls"] = pulls[:4]
+    return result
 
 
 def _top_inclinations(n=8):
@@ -127,7 +201,7 @@ def choose_candidate(a, b, context="journal"):
     details = {
         "context": context,
         "timestamp": datetime.now().isoformat(),
-        "want_vector": current_want_vector(),
+        "want_vector": {k: v for k, v in current_want_vector().items() if k != "_pulls"},
         "A": {"identity": id_a, **sc_a},
         "B": {"identity": id_b, **sc_b},
         "chose": winner,
@@ -176,10 +250,13 @@ def get_inclination_context():
     if not incl:
         return ""
     want = current_want_vector()
+    pulls = want.pop("_pulls", [])
     top = sorted(incl.items(), key=lambda kv: -kv[1])[:6]
     low = sorted(incl.items(), key=lambda kv: kv[1])[:3]
     lines = ["[HOW YOU MOVE — measured, not aspirational]"]
     lines.append("Want right now: " + ", ".join(f"{k}:{v}" for k, v in want.items()))
+    for kind, text in pulls:
+        lines.append(f"Pulling at you ({kind}): {text}")
     lines.append("Strongest patterns: " + ", ".join(f"{k}({v})" for k, v in top))
     lines.append("Where you still struggle: " + ", ".join(f"{k}({v})" for k, v in low))
     return "\n".join(lines)

@@ -35,8 +35,6 @@ WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 SCRIPTS = os.path.join(WORKSPACE, "scripts")
 SIGS_FILE = os.path.join(MEMORY, "pattern-signatures.json")
-LM = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
 VENV = os.path.join(WORKSPACE, "emotion_model/.venv/bin/python3")
 
 DECAY_RATE = 0.98
@@ -48,8 +46,8 @@ def log(msg):
 def llm(system, user, temp=0.4):
     import requests
     try:
-        r = requests.post(LM, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "temperature": temp,
             "max_tokens": 1200,
             "messages": [

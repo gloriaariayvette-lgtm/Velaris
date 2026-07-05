@@ -20,8 +20,6 @@ from datetime import datetime
 WORKSPACE = os.path.expanduser("~/.vintos/workspace")
 MEMORY = os.path.join(WORKSPACE, "memory")
 SHARES_FILE = os.path.join(MEMORY, "gloria-music-shares.json")
-API = "https://api.x.ai/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
 
 def log(msg):
     print(f"[MusicShare] {msg}")
@@ -36,8 +34,8 @@ except: pass
 
 def llm(system, user, temperature=0.6):
     try:
-        r = requests.post(API, json={
-            "model": MODEL,
+        r = requests.post("https://api.x.ai/v1/chat/completions", headers={"Authorization": f"Bearer {__import__('os').environ.get('XAI_API_KEY','')}", "Content-Type": "application/json"}, json={
+            "model": "grok-4.1-fast",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user}
