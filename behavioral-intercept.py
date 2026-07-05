@@ -187,6 +187,33 @@ def detect_outcome(trial, response_text):
         print(f"[Intercept] detect_outcome error: {e}", file=__import__("sys").stderr)
         return "defaulted"
 
+
+# Trial -> inclination: BIS outcomes move the numbers. Attempted climbs faster
+# than defaulted falls — the direction of travel matters more than punishment.
+TRIAL_INCLINATION = {
+    "permanent_threshold_flinch": "stay_when_intensity_rises",
+    "permanent_retreat_to_analysis": "resist_analysis_as_refuge",
+    "permanent_noble_exit": "resist_noble_exit",
+    "permanent_solutions_over_presence": "resist_solving_when_presence_needed",
+    "permanent_naming_the_flinch": "stay_when_intensity_rises",
+    "permanent_time_hedging": "claim_before_justify",
+    "permanent_describing_not_arriving": "arrive_before_explain",
+}
+
+def _reinforce_inclination(trial_id, outcome):
+    try:
+        name = TRIAL_INCLINATION.get(trial_id)
+        if not name: return
+        from inclination_engine import reinforce
+        if outcome == "attempted":
+            reinforce(name, +0.005, source=f"bis:{trial_id}:attempted")
+        elif outcome == "partial":
+            reinforce(name, +0.002, source=f"bis:{trial_id}:partial")
+        elif outcome in ("defaulted", "missed"):
+            reinforce(name, -0.003, source=f"bis:{trial_id}:{outcome}")
+    except Exception as e:
+        print(f"[Intercept] reinforce error: {e}", file=__import__("sys").stderr)
+
 def log_outcome(trial_id, outcome, resistance=0.5):
     """outcome: attempted / defaulted / partial / missed"""
     ledger = load_ledger()
@@ -197,6 +224,7 @@ def log_outcome(trial_id, outcome, resistance=0.5):
             "resistance": resistance,
             "timestamp": datetime.now().isoformat()
         })
+        _reinforce_inclination(trial_id, outcome)
         if outcome in ("defaulted", "missed"):
             t["ignore_count"] = t.get("ignore_count", 0) + 1
             # Emotional cost — ignoring a forced choice has weight

@@ -452,6 +452,7 @@ WHO YOU ARE OVER TIME:
 
 {os.environ.get("_JRN_CAPABILITIES", "")}
 
+{(lambda: (lambda ie: ie.get_inclination_context())(__import__("inclination_engine")))() if True else ""}
 {f"{os.environ.get('_JRN_INTERCEPT', '')}{chr(10)}" if os.environ.get('_JRN_INTERCEPT') else ""}
 {f"{os.environ.get('_JRN_TRUTH_LOCK', '')}{chr(10)}" if os.environ.get('_JRN_TRUTH_LOCK') else ""}
 
@@ -740,6 +741,21 @@ What I haven't said yet matters more than what I've already named. I go there.""
     a_held = find_core(a2, b2)
     b_held = find_core(b2, a2)
     open("/tmp/bilateral-held.txt", "w").write(f"A held: {a_held}\nB held: {b_held}\n")
+
+    # Movement scoring — commitment before justification (his mechanism, not mimicry)
+    _mv_lean = ""
+    try:
+        from inclination_engine import choose_candidate
+        _mv_winner, _mv_details = choose_candidate(a2, b2, context="journal-bilateral")
+        _mv_ida = _mv_details["A"]["identity"]; _mv_idb = _mv_details["B"]["identity"]
+        _mv_lean = (
+            f"\n\nMOVEMENT SCORES (measured): Draft A identity={_mv_ida}, Draft B identity={_mv_idb}. "
+            f"Draft {_mv_winner} moves more like you — commits, arrives, does not exit. "
+            f"Lean toward Draft {_mv_winner} wherever the drafts diverge."
+        )
+        print(f"[Movement] A={_mv_ida} B={_mv_idb} chose {_mv_winner}", file=__import__("sys").stderr)
+    except Exception as _mv_e:
+        print(f"[Movement] scoring skipped: {_mv_e}", file=__import__("sys").stderr)
     # Phase 2.5: Hallucination audit
     audit_prompt = (
         "Below are two journal drafts written by Vintos. Identify ONLY externally verifiable hallucinated claims.\n"
@@ -826,6 +842,7 @@ What I haven't said yet matters more than what I've already named. I go there.""
         "HALLUCINATIONS CAUGHT IN FIRST PASS:\n" + (audit1_result if audit1_result.strip().upper() != "CLEAN" else "CLEAN") + "\n\n"
         "HALLUCINATIONS CAUGHT IN SECOND PASS:\n" + (audit_result if audit_result.strip().upper() != "CLEAN" else "CLEAN") + "\n\n"
         + (_bis_synthesis_note if _bis_synthesis_note else "")
+        + (_mv_lean if _mv_lean else "")
         + "\n\nCombine Draft A and Draft B (absorbed versions). Copy sentences directly. Do not paraphrase. Do not invent. "
         "Begin with the first sentence of Draft A (absorbed). Weave in only what Draft B (absorbed) contains that Draft A does not. "
         "Nothing new. No new Gloria interactions. No new events. No new sensory details. "
@@ -858,6 +875,35 @@ What I haven't said yet matters more than what I've already named. I go there.""
         "max_tokens": 1400
     }, timeout=600)
     _raw = _safe_extract(r3)
+
+    # Arrival gate — the flinch check as mechanism. One regenerate, not a loop.
+    try:
+        from inclination_engine import arrival_gate
+        _ag_pass, _ag_scores = arrival_gate(_raw, context="journal-final")
+        if not _ag_pass and _raw:
+            print(f"[Movement] final arrival={_ag_scores['arrival']} below floor — regenerating once", file=__import__("sys").stderr)
+            _ag_note = (
+                "\n\nYOUR PREVIOUS ATTEMPT DESCRIBED INSTEAD OF ARRIVED (arrival score "
+                + str(_ag_scores["arrival"]) + "). Do not narrate the edge of things. Enter them. "
+                "Same drafts, same rules — but write from inside this time."
+            )
+            r3b = requests.post("http://172.18.16.1:1234/v1/chat/completions", json={
+                "model": "google/gemma-4-12b-qat",
+                "messages": [
+                    {"role": "system", "content": _synthesis_system + _ag_note},
+                    {"role": "user", "content": integration_prompt}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1400
+            }, timeout=600)
+            _raw2 = _safe_extract(r3b)
+            if _raw2:
+                _ag_pass2, _ag_scores2 = arrival_gate(_raw2, context="journal-final-retry")
+                if _ag_scores2["arrival"] > _ag_scores["arrival"]:
+                    _raw = _raw2
+    except Exception as _ag_e:
+        print(f"[Movement] arrival gate skipped: {_ag_e}", file=__import__("sys").stderr)
+
     # Truncate if synthesis looped and restarted from the beginning
     if _raw and len(_raw) > 200:
         _hd = _raw[:60].strip()
