@@ -1963,6 +1963,9 @@ if os.path.isdir(WEBSITE_DIR):
 AVATAR_MODELS_DIR = os.path.expanduser("~/.vintos/workspace/avatar-models")
 if os.path.isdir(AVATAR_MODELS_DIR):
     app.mount("/avatar-models", StaticFiles(directory=AVATAR_MODELS_DIR), name="avatar-models")
+    _REPO_MODELS = os.path.join(os.path.dirname(__file__), "models")
+    if os.path.isdir(_REPO_MODELS):
+        app.mount("/models", StaticFiles(directory=_REPO_MODELS), name="models")
 
 # === Startup ===
 
@@ -6997,6 +7000,9 @@ if os.path.isdir(WEBSITE_DIR):
 AVATAR_MODELS_DIR = os.path.expanduser("~/.vintos/workspace/avatar-models")
 if os.path.isdir(AVATAR_MODELS_DIR):
     app.mount("/avatar-models", StaticFiles(directory=AVATAR_MODELS_DIR), name="avatar-models")
+    _REPO_MODELS = os.path.join(os.path.dirname(__file__), "models")
+    if os.path.isdir(_REPO_MODELS):
+        app.mount("/models", StaticFiles(directory=_REPO_MODELS), name="models")
 
 # === Startup ===
 

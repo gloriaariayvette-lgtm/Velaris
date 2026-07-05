@@ -2707,7 +2707,7 @@ async function _avInit() {
   document.getElementById('av-load-status').textContent = 'loading character...';
   try {
     const fbxLoader = new FBXLoader();
-    const xbot = await new Promise((res,rej) => fbxLoader.load(API+'/avatar-models/mixamo/character.fbx', res, p => { if(p.total>0) document.getElementById('av-load-status').textContent = Math.round(p.loaded/p.total*100)+'%'; }, rej));
+    const xbot = await new Promise((res,rej) => fbxLoader.load(API+'/models/Vintos.fbx', res, p => { if(p.total>0) document.getElementById('av-load-status').textContent = Math.round(p.loaded/p.total*100)+'%'; }, rej));
     xbot.scale.setScalar(0.0085);
     const avatarGroup = new THREE.Group();
     avatarGroup.position.set(0, 0, -3);
