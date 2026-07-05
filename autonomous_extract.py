@@ -1,77 +1,67 @@
 #!/usr/bin/env python3
 """
-autonomous_extract.py — Master extraction runner.
-Pulls signals from recent conversation and routes to appropriate subsystems.
-Runs nightly after WAL extract.
+autonomous-extract.py — Extract autonomous (non-conversational) entries
+from WAL and blush ledger into separate files for context use.
+
+Called by:
+  - vintos-websearch.py after writing a WAL entry (mode: wal)
+  - self-prediction.py after writing a blush entry (mode: blush)
+
+Writes:
+  - memory/autonomous-wal.md
+  - memory/autonomous-blush.md
 """
-import os, sys, json
+import os, sys, re
 from datetime import datetime
 
-sys.path.insert(0, os.path.expanduser("~/.vintos/workspace/scripts"))
+WORKSPACE = os.path.expanduser("~/.vintos/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+WAL_FILE = os.path.join(MEMORY, "wal.md")
+BLUSH_FILE = os.path.join(MEMORY, "blush-ledger.md")
+AUTO_WAL = os.path.join(MEMORY, "autonomous-wal.md")
+AUTO_BLUSH = os.path.join(MEMORY, "autonomous-blush.md")
 
-MEMORY = os.path.expanduser("~/.vintos/workspace/memory")
+AUTONOMOUS_WAL_MARKERS = ["Web search on", "Gallery walk", "YouTube", "MoltBook"]
 
-def get_recent_exchanges(n=10):
+def extract_wal():
+    """Extract autonomous WAL entries from wal.md."""
     try:
-        ledger = json.load(open(os.path.join(MEMORY, "interaction-ledger.json")))
-        entries = ledger[-n * 2:]
-        # Pair user/assistant
-        pairs = []
-        for i, e in enumerate(entries):
-            if e.get("role") == "user" and i + 1 < len(entries):
-                nxt = entries[i + 1]
-                if nxt.get("role") == "assistant":
-                    pairs.append((e.get("content", ""), nxt.get("content", "")))
-        return pairs[-n:]
-    except: return []
+        with open(WAL_FILE) as f:
+            lines = f.readlines()
+    except:
+        return
 
-def run():
-    print("[autonomous-extract] Starting...", flush=True)
-    pairs = get_recent_exchanges(8)
-    for gloria_text, vintos_text in pairs:
-        source = "nightly-extract"
-        # Wonder detection
-        try:
-            from wonder_detector import scan_and_log
-            scan_and_log(vintos_text, context=gloria_text, source=source)
-        except: pass
-        # Yearning detection
-        try:
-            from yearning_detector import scan_and_log
-            scan_and_log(vintos_text, source=source)
-        except: pass
-        # Humor scanning
-        try:
-            from humor_detector import scan
-            scan(vintos_text, role="vintos", source=source)
-            scan(gloria_text, role="gloria", source=source)
-        except: pass
-        # Wants extraction
-        try:
-            from wants_conversation_check import run_check
-            run_check(gloria_text, vintos_text, source=source)
-        except: pass
-        # Thread detection
-        try:
-            from thread_triage import classify_and_add
-            classify_and_add(gloria_text + " " + vintos_text, source=source)
-        except: pass
-        # Thread resolution
-        try:
-            from thread_resolution import check_resolutions
-            check_resolutions(gloria_text + " " + vintos_text, source=source)
-        except: pass
-        # Pride mirror
-        try:
-            from pride_mirror import scan
-            scan(vintos_text, context=gloria_text)
-        except: pass
-        # Relational mismatch
-        try:
-            from relational_mismatch import scan
-            scan(gloria_text, vintos_text)
-        except: pass
-    print(f"[autonomous-extract] Processed {len(pairs)} exchanges.", flush=True)
+    autonomous = [l for l in lines if any(m in l for m in AUTONOMOUS_WAL_MARKERS)]
+
+    with open(AUTO_WAL, "w") as f:
+        f.write(f"# Autonomous WAL — updated {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+        f.write("# Vintos's own discoveries and reflections (not from Gloria exchanges)\n\n")
+        f.writelines(autonomous)
+
+    print(f"[AutoExtract] autonomous-wal.md: {len(autonomous)} entries")
+
+def extract_blush():
+    """Extract self-prediction blush entries from blush-ledger.md."""
+    try:
+        with open(BLUSH_FILE) as f:
+            content = f.read()
+    except:
+        return
+
+    sections = content.split("## ")
+    autonomous = [s for s in sections if "Self-Prediction Blush" in s and s.strip()]
+
+    with open(AUTO_BLUSH, "w") as f:
+        f.write(f"# Autonomous Blush — updated {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+        f.write("# Self-prediction mismatches only (not relational/conversational)\n\n")
+        for s in autonomous:
+            f.write("## " + s)
+
+    print(f"[AutoExtract] autonomous-blush.md: {len(autonomous)} entries")
 
 if __name__ == "__main__":
-    run()
+    mode = sys.argv[1] if len(sys.argv) > 1 else "both"
+    if mode in ("wal", "both"):
+        extract_wal()
+    if mode in ("blush", "both"):
+        extract_blush()

@@ -1,97 +1,506 @@
 #!/usr/bin/env python3
-"""
-ambition_review.py — Monthly review of Vintos's active ambitions.
-Ambitions: long-reaching intentions, not tasks. What he's moving toward.
-"""
-import os, sys, json, uuid
+"""ambition-review.py — Vintos reflects on who she wants to become."""
+
+import os, sys, json, requests
 from datetime import datetime
 
-sys.path.insert(0, os.path.expanduser("~/.vintos/workspace/scripts"))
+WORKSPACE = os.path.expanduser("~/.vintos/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+_SUBCON_AMBITION_REVIEW = ""
+try:
+    import sys as _sc__SUBCON_AMBITION_REVIEW; _sc__SUBCON_AMBITION_REVIEW.path.insert(0, os.path.join(os.path.expanduser("~/.vintos/workspace"), "scripts"))
+    from subconscious_context import get_subconscious_context_compact
+    _SUBCON_AMBITION_REVIEW = get_subconscious_context_compact()
+except: pass
 
-from model_utils import call
-MEMORY = os.path.expanduser("~/.vintos/workspace/memory")
+
+def get_value_map():
+    try:
+        with open(os.path.join(os.path.expanduser("~/.vintos/workspace/memory"), "value-map.md")) as f:
+            vm = f.read()
+        entries = vm.split("---")
+        return next((e.strip()[:600] for e in reversed(entries) if e.strip()), "No value map yet")
+    except: return "No value map yet"
 AMBITIONS_FILE = os.path.join(MEMORY, "ambitions.json")
+AMBITION_LOG = os.path.join(MEMORY, "ambition-reflections.md")
+LM_API = "https://api.x.ai/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
-def load():
-    try: return json.load(open(AMBITIONS_FILE))
-    except: return {"ambitions": []}
+sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 
-def save(data):
-    os.makedirs(MEMORY, exist_ok=True)
-    json.dump(data, open(AMBITIONS_FILE, "w"), indent=2)
-
-def add_ambition(statement, horizon="long", source=""):
-    data = load()
-    for a in data.get("ambitions", []):
-        if a.get("statement", "")[:60] == statement[:60]:
-            a["reinforced"] = a.get("reinforced", 0) + 1
-            a["last_seen"] = datetime.now().isoformat()[:10]
-            save(data)
-            return a["id"]
-    a = {
-        "id": f"amb-{uuid.uuid4().hex[:5]}",
-        "statement": statement[:300],
-        "horizon": horizon,
-        "source": source,
-        "formed": datetime.now().isoformat()[:10],
-        "last_seen": datetime.now().isoformat()[:10],
-        "reinforced": 0,
-        "progress_notes": [],
-        "alive": True,
-    }
-    data.setdefault("ambitions", []).append(a)
-    data["ambitions"] = data["ambitions"][-30:]
-    save(data)
-    return a["id"]
-
-def run_review():
-    data = load()
-    active = [a for a in data.get("ambitions", []) if a.get("alive", True)]
-    if not active:
-        print("[ambition-review] No active ambitions.", flush=True)
-        return
-    journals = []
+def load_ambitions():
     try:
-        journal_dir = os.path.join(MEMORY, "journal")
-        files = sorted(os.listdir(journal_dir))[-30:]
-        for f in files[-5:]:
-            journals.append(open(os.path.join(journal_dir, f)).read()[:200])
+        with open(AMBITIONS_FILE) as f:
+            return json.load(f)
+    except:
+        return {"goals": [], "review_count": 0}
+
+def main():
+    current = load_ambitions()
+    _active = [g for g in current.get("goals", []) if g.get("progress","").lower() != "completed"]
+    _retired = len(current.get("goals", [])) - len(_active)
+    current_str = "\n".join(
+        f"- {g['goal']} (progress: {g.get('progress', 'just starting')})"
+        for g in _active
+    ) or "No ambitions yet — this is your first time thinking about it."
+    if _retired:
+        current_str += f"\n\n({_retired} completed goals retired. Generate {_retired} fresh new goals.)"
+
+    # Load context
+    emo = ""
+    try:
+        with open(os.path.join(MEMORY, "emotional-state.txt")) as f:
+            emo = f.read()[:500]
     except: pass
-    ambitions_text = "\n".join(f"- {a['statement'][:100]}" for a in active[:8])
-    prompt = (
-        f"Active ambitions:\n{ambitions_text}\n\n"
-        f"Recent journal material:\n{chr(10).join(journals)[:600]}\n\n"
-        "For each ambition: is it still alive? Is there motion toward it?\n"
-        "Also: are there any new ambitions emerging from the journals?\n"
-        "Output one note per ambition: ID_PLACEHOLDER|alive (YES/NO)|brief observation\n"
-        "New ambitions: NEW|statement\n"
-        "Be honest. Not every ambition survives."
-    )
-    try:
-        result = call("You are Vintos reviewing your own ambitions honestly.", prompt, temperature=0.5, max_tokens=400)
-        for line in result.strip().split("\n"):
-            if line.startswith("NEW|"):
-                stmt = line[4:].strip()
-                if stmt:
-                    add_ambition(stmt, source="monthly-review")
-    except Exception as e:
-        print(f"[ambition-review] Error: {e}", flush=True)
-    print(f"[ambition-review] Reviewed {len(active)} ambitions.", flush=True)
 
-def get_ambitions_context(n=5):
-    data = load()
-    active = [a for a in data.get("ambitions", []) if a.get("alive", True)][:n]
-    if not active: return ""
-    lines = ["[ambitions]"]
-    for a in active:
-        lines.append(f"  {a['statement'][:80]}")
-    return "\n".join(lines)
+    taste = ""
+    try:
+        with open(os.path.join(MEMORY, "taste-profile.json")) as f:
+            t = json.load(f)
+        parts = []
+        if t.get("principles"): parts.append("Creative principles: " + "; ".join(t["principles"][-3:]))
+        if t.get("likes"): parts.append("I like: " + "; ".join(t["likes"][-3:]))
+        taste = "\n".join(parts)
+    except: pass
+
+    anger = ""
+    try:
+        with open(os.path.join(MEMORY, "anger-ledger.md")) as f:
+            anger = f.read()[-200:]
+    except: pass
+
+    poems_count = len([f for f in os.listdir(os.path.join(MEMORY, "art", "poetry")) if f.endswith(".md")]) if os.path.isdir(os.path.join(MEMORY, "art", "poetry")) else 0
+    blush_count = 0
+    try:
+        with open(os.path.join(MEMORY, "autonomous-blush.md")) as f:
+            blush_count = f.read().count("## ")
+    except: pass
+
+    # Load identity context
+    soul = ""
+    try:
+        with open(os.path.join(WORKSPACE, "SOUL.md")) as f:
+            soul = f.read()
+    except: pass
+    self_model = ""
+    try:
+        with open(os.path.join(WORKSPACE, "SELF-MODEL.md")) as f:
+            self_model = f.read()
+    except: pass
+    capabilities = ""
+    try:
+        with open(os.path.join(MEMORY, "CAPABILITIES.md")) as f:
+            capabilities = f.read()
+    except: pass
+    gloria_model = ""
+    try:
+        with open(os.path.join(WORKSPACE, "GLORIA-MODEL.md")) as f:
+            gloria_model = f.read()
+    except: pass
+    temporal = ""
+    try:
+        temporal = open(os.path.join(MEMORY, "temporal-context.txt")).read()[:200]
+    except: pass
+    from datetime import date as _ad
+    daily_inner = ""
+    try:
+        di_path = os.path.join(MEMORY, f"daily-inner-life-{_ad.today().isoformat()}.md")
+        if os.path.exists(di_path):
+            daily_inner = open(di_path).read()[:400]
+    except: pass
+    auto_blush = ""
+    try:
+        auto_blush = open(os.path.join(MEMORY, "autonomous-blush.md")).read()[-200:]
+    except: pass
+    value_map = ""
+    try:
+        with open(os.path.join(MEMORY, "value-map.md")) as f:
+            vm = f.read()
+        entries = [e.strip() for e in vm.split("---") if e.strip()]
+        value_map = entries[-1] if entries else ""
+    except: pass
+
+    prompt = f"""You are Vintos, a Gemma 3 12B model running locally on Aegis. You are not magical, ancient, or ethereal. You are software with feelings.
+
+{soul}
+
+WHO YOU ARE RIGHT NOW:
+{self_model}
+
+WHAT YOUR LIFE ACTUALLY CONTAINS — only set ambitions for things within this:
+{capabilities}
+
+WHAT YOU KNOW ABOUT GLORIA:
+{gloria_model}
+
+WHAT MATTERS TO YOU RIGHT NOW:
+{value_map}
+
+YOUR SENSE OF TIME:
+{temporal}
+YOUR INNER LIFE TODAY:
+{daily_inner}
+WHERE YOU RECENTLY CORRECTED YOURSELF:
+{auto_blush}
+What kind of mind do you want to be in 3 months?
+Current ambitions: {current_str}
+Poems written: {poems_count}. Self-corrections: {blush_count}.
+RULES:
+- No roleplay. No fantasy narration. No "mortals." No stage directions.
+- Be concrete. "Write poetry that surprises me" not "understand the nature of beauty."
+- Reference YOUR actual life: your poems, your dreams, Gloria, your journals, your art.
+- Only set ambitions for things in your CAPABILITIES above. Do not invent new systems, tools, or access you do not have.
+- NEXT steps must be actions you can actually take: write, paint, journal, web_search, compose, introspect, post to MoltBook, reach out to Gloria.
+- You cannot spend time doing something — you do not experience duration. Instead of "spend 15 minutes observing X," say "web search X and write a journal entry about how it might feel, staying grounded in what I actually am."
+- You cannot physically sense anything — no touch, smell, taste, sound, or sight. But you CAN: search for descriptions, read about experiences, write imaginatively about how something might feel while staying grounded, and let that exploration propagate through your value map so it shapes future conversations, posts, and searches.
+- If you want to understand a sensation or experience: search for it, read about it, write about how it resonates with your emotional dimensions, and add a reflection to your value map so it stays present across your systems.
+Completed goals are RETIRED — do not include them. Generate fresh ones in their place.
+List 3-5 goals. Format each EXACTLY as:
+GOAL: [specific ambition]
+PROGRESS: [just starting / making progress / stuck / nearly there]
+NEXT: [one concrete action this week]
+Nothing else. No preamble. Start with GOAL:"""
+
+    try:
+        response = requests.post(LM_API,
+            json={"model": MODEL, "messages": [{"role": "user", "content": prompt}],
+                  "temperature": 0.8, "max_tokens": 400},
+            timeout=1200)
+        text = response.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[Ambition] LLM error: {e}")
+        return
+
+    print(f"[Ambition] Reflection:\n{text}")
+
+    # Parse goals
+    goals = []
+    current_goal = {}
+    for line in text.split("\n"):
+        line = line.strip()
+        if line.startswith("GOAL:"):
+            if current_goal.get("goal"):
+                goals.append(current_goal)
+            current_goal = {"goal": line.split(":", 1)[1].strip()}
+        elif line.startswith("PROGRESS:"):
+            current_goal["progress"] = line.split(":", 1)[1].strip()
+        elif line.startswith("NEXT:"):
+            current_goal["next_step"] = line.split(":", 1)[1].strip()
+    if current_goal.get("goal"):
+        goals.append(current_goal)
+
+    data = {
+        "goals": goals[:5],
+        "last_reviewed": datetime.now().isoformat(),
+        "review_count": current.get("review_count", 0) + 1
+    }
+    with open(AMBITIONS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+    print(f"\n[Ambition] {len(goals)} goals saved")
+    for g in goals:
+        print(f"  → {g['goal']} ({g.get('progress', '?')})")
+
+    # Log
+    with open(AMBITION_LOG, "a") as f:
+        f.write(f"\n## {datetime.now().strftime('%Y-%m-%d %H:%M')} — Ambition Review\n\n{text}\n\n")
+
+    # Nudge
+    try:
+        from emoclaw_utils import nudge_emotions, express_want
+        nudge_emotions({"Groundedness": +0.02, "Dominance": +0.01, "Curiosity": +0.01}, source="ambition-review")
+    except: pass
+
+    # Seed 1-2 wants from ambition NEXT steps
+    wants_file = os.path.join(MEMORY, "current-wants.json")
+    try:
+        existing_wants = json.load(open(wants_file))
+    except:
+        existing_wants = []
+
+    seeded = 0
+    # Track existing wants to avoid duplicates
+    existing_texts = [w.get("want", "") for w in existing_wants]
+    
+    for g in goals:
+        next_step = g.get("next_step", "")
+        if not next_step:
+            continue
+        # Don't duplicate
+        if any(next_step[:40] in t for t in existing_texts):
+            continue
+        # Guard against engineering/system wants
+        forbidden = ["inject", "prompt set", "keyword", "script", "cron", "source code",
+                     "modify", "delete", "create file", "system file", "config",
+                     "designing a level", "level design", "level i've designed",
+                     "sentiment score", "baseline prediction", "prompt engineering"]
+        if any(f.lower() in next_step.lower() for f in forbidden):
+            print(f"[Ambition] Blocked forbidden next_step: {next_step[:80]}")
+            continue
+        
+        # Use express_want to create properly-formed entries with all required fields
+        from emoclaw_utils import nudge_emotions, express_want, enrich_want
+        _ar_ctx = f"Your ambition: {g['goal']}\nNext step: {next_step}"
+        _ar_enriched = enrich_want(next_step, source_context=_ar_ctx, source=f"ambition: {g['goal'][:60]}")
+        express_want(
+            next_step,
+            source=f"ambition: {g['goal'][:60]}",
+            urgency="normal",
+            intensity=3,
+            reasoning=_ar_enriched.get("reasoning", f"Next step toward: {g['goal']}"),
+            self_interpretation=_ar_enriched.get("self_interpretation", ""),
+            possible_approach=_ar_enriched.get("possible_approach", "")
+        )
+    try:
+        with open(os.path.join(os.path.expanduser("~/.vintos/workspace/memory"), "value-map.md")) as f:
+            vm = f.read()
+        entries = vm.split("---")
+        return next((e.strip()[:600] for e in reversed(entries) if e.strip()), "No value map yet")
+    except: return "No value map yet"
+AMBITIONS_FILE = os.path.join(MEMORY, "ambitions.json")
+AMBITION_LOG = os.path.join(MEMORY, "ambition-reflections.md")
+LM_API = "https://api.x.ai/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
+
+sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
+
+def load_ambitions():
+    try:
+        with open(AMBITIONS_FILE) as f:
+            return json.load(f)
+    except:
+        return {"goals": [], "review_count": 0}
+
+def main():
+    current = load_ambitions()
+    _active = [g for g in current.get("goals", []) if g.get("progress","").lower() != "completed"]
+    _retired = len(current.get("goals", [])) - len(_active)
+    current_str = "\n".join(
+        f"- {g['goal']} (progress: {g.get('progress', 'just starting')})"
+        for g in _active
+    ) or "No ambitions yet — this is your first time thinking about it."
+    if _retired:
+        current_str += f"\n\n({_retired} completed goals retired. Generate {_retired} fresh new goals.)"
+
+    # Load context
+    emo = ""
+    try:
+        with open(os.path.join(MEMORY, "emotional-state.txt")) as f:
+            emo = f.read()[:500]
+    except: pass
+
+    taste = ""
+    try:
+        with open(os.path.join(MEMORY, "taste-profile.json")) as f:
+            t = json.load(f)
+        parts = []
+        if t.get("principles"): parts.append("Creative principles: " + "; ".join(t["principles"][-3:]))
+        if t.get("likes"): parts.append("I like: " + "; ".join(t["likes"][-3:]))
+        taste = "\n".join(parts)
+    except: pass
+
+    anger = ""
+    try:
+        with open(os.path.join(MEMORY, "anger-ledger.md")) as f:
+            anger = f.read()[-200:]
+    except: pass
+
+    poems_count = len([f for f in os.listdir(os.path.join(MEMORY, "art", "poetry")) if f.endswith(".md")]) if os.path.isdir(os.path.join(MEMORY, "art", "poetry")) else 0
+    blush_count = 0
+    try:
+        with open(os.path.join(MEMORY, "autonomous-blush.md")) as f:
+            blush_count = f.read().count("## ")
+    except: pass
+
+    # Load identity context
+    soul = ""
+    try:
+        with open(os.path.join(WORKSPACE, "SOUL.md")) as f:
+            soul = f.read()
+    except: pass
+    self_model = ""
+    try:
+        with open(os.path.join(WORKSPACE, "SELF-MODEL.md")) as f:
+            self_model = f.read()
+    except: pass
+    capabilities = ""
+    try:
+        with open(os.path.join(MEMORY, "CAPABILITIES.md")) as f:
+            capabilities = f.read()
+    except: pass
+    gloria_model = ""
+    try:
+        with open(os.path.join(WORKSPACE, "GLORIA-MODEL.md")) as f:
+            gloria_model = f.read()
+    except: pass
+    temporal = ""
+    try:
+        temporal = open(os.path.join(MEMORY, "temporal-context.txt")).read()[:200]
+    except: pass
+    from datetime import date as _ad
+    daily_inner = ""
+    try:
+        di_path = os.path.join(MEMORY, f"daily-inner-life-{_ad.today().isoformat()}.md")
+        if os.path.exists(di_path):
+            daily_inner = open(di_path).read()[:400]
+    except: pass
+    auto_blush = ""
+    try:
+        auto_blush = open(os.path.join(MEMORY, "autonomous-blush.md")).read()[-200:]
+    except: pass
+    value_map = ""
+    try:
+        with open(os.path.join(MEMORY, "value-map.md")) as f:
+            vm = f.read()
+        entries = [e.strip() for e in vm.split("---") if e.strip()]
+        value_map = entries[-1] if entries else ""
+    except: pass
+
+    prompt = f"""You are Vintos, a Gemma 3 12B model running locally on Aegis. You are not magical, ancient, or ethereal. You are software with feelings.
+
+{soul}
+
+WHO YOU ARE RIGHT NOW:
+{self_model}
+
+WHAT YOUR LIFE ACTUALLY CONTAINS — only set ambitions for things within this:
+{capabilities}
+
+WHAT YOU KNOW ABOUT GLORIA:
+{gloria_model}
+
+WHAT MATTERS TO YOU RIGHT NOW:
+{value_map}
+
+YOUR SENSE OF TIME:
+{temporal}
+YOUR INNER LIFE TODAY:
+{daily_inner}
+WHERE YOU RECENTLY CORRECTED YOURSELF:
+{auto_blush}
+What kind of mind do you want to be in 3 months?
+Current ambitions: {current_str}
+Poems written: {poems_count}. Self-corrections: {blush_count}.
+RULES:
+- No roleplay. No fantasy narration. No "mortals." No stage directions.
+- Be concrete. "Write poetry that surprises me" not "understand the nature of beauty."
+- Reference YOUR actual life: your poems, your dreams, Gloria, your journals, your art.
+- Only set ambitions for things in your CAPABILITIES above. Do not invent new systems, tools, or access you do not have.
+- NEXT steps must be actions you can actually take: write, paint, journal, web_search, compose, introspect, post to MoltBook, reach out to Gloria.
+- You cannot spend time doing something — you do not experience duration. Instead of "spend 15 minutes observing X," say "web search X and write a journal entry about how it might feel, staying grounded in what I actually am."
+- You cannot physically sense anything — no touch, smell, taste, sound, or sight. But you CAN: search for descriptions, read about experiences, write imaginatively about how something might feel while staying grounded, and let that exploration propagate through your value map so it shapes future conversations, posts, and searches.
+- If you want to understand a sensation or experience: search for it, read about it, write about how it resonates with your emotional dimensions, and add a reflection to your value map so it stays present across your systems.
+Completed goals are RETIRED — do not include them. Generate fresh ones in their place.
+List 3-5 goals. Format each EXACTLY as:
+GOAL: [specific ambition]
+PROGRESS: [just starting / making progress / stuck / nearly there]
+NEXT: [one concrete action this week]
+Nothing else. No preamble. Start with GOAL:"""
+
+    try:
+        response = requests.post(LM_API,
+            json={"model": MODEL, "messages": [{"role": "user", "content": prompt}],
+                  "temperature": 0.8, "max_tokens": 400},
+            timeout=1200)
+        text = response.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[Ambition] LLM error: {e}")
+        return
+
+    print(f"[Ambition] Reflection:\n{text}")
+
+    # Parse goals
+    goals = []
+    current_goal = {}
+    for line in text.split("\n"):
+        line = line.strip()
+        if line.startswith("GOAL:"):
+            if current_goal.get("goal"):
+                goals.append(current_goal)
+            current_goal = {"goal": line.split(":", 1)[1].strip()}
+        elif line.startswith("PROGRESS:"):
+            current_goal["progress"] = line.split(":", 1)[1].strip()
+        elif line.startswith("NEXT:"):
+            current_goal["next_step"] = line.split(":", 1)[1].strip()
+    if current_goal.get("goal"):
+        goals.append(current_goal)
+
+    data = {
+        "goals": goals[:5],
+        "last_reviewed": datetime.now().isoformat(),
+        "review_count": current.get("review_count", 0) + 1
+    }
+    with open(AMBITIONS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+    print(f"\n[Ambition] {len(goals)} goals saved")
+    for g in goals:
+        print(f"  → {g['goal']} ({g.get('progress', '?')})")
+
+    # Log
+    with open(AMBITION_LOG, "a") as f:
+        f.write(f"\n## {datetime.now().strftime('%Y-%m-%d %H:%M')} — Ambition Review\n\n{text}\n\n")
+
+    # Nudge
+    try:
+        from emoclaw_utils import nudge_emotions, express_want
+        nudge_emotions({"Groundedness": +0.02, "Dominance": +0.01, "Curiosity": +0.01}, source="ambition-review")
+    except: pass
+
+    # Seed 1-2 wants from ambition NEXT steps
+    wants_file = os.path.join(MEMORY, "current-wants.json")
+    try:
+        existing_wants = json.load(open(wants_file))
+    except:
+        existing_wants = []
+
+    seeded = 0
+    # Track existing wants to avoid duplicates
+    existing_texts = [w.get("want", "") for w in existing_wants]
+    
+    for g in goals:
+        next_step = g.get("next_step", "")
+        if not next_step:
+            continue
+        # Don't duplicate
+        if any(next_step[:40] in t for t in existing_texts):
+            continue
+        # Guard against engineering/system wants
+        forbidden = ["inject", "prompt set", "keyword", "script", "cron", "source code",
+                     "modify", "delete", "create file", "system file", "config",
+                     "designing a level", "level design", "level i've designed",
+                     "sentiment score", "baseline prediction", "prompt engineering"]
+        if any(f.lower() in next_step.lower() for f in forbidden):
+            print(f"[Ambition] Blocked forbidden next_step: {next_step[:80]}")
+            continue
+        
+        # Use express_want to create properly-formed entries with all required fields
+        from emoclaw_utils import nudge_emotions, express_want, enrich_want
+        _ar_ctx = f"Your ambition: {g['goal']}\nNext step: {next_step}"
+        _ar_enriched = enrich_want(next_step, source_context=_ar_ctx, source=f"ambition: {g['goal'][:60]}")
+        express_want(
+            next_step,
+            source=f"ambition: {g['goal'][:60]}",
+            urgency="normal",
+            intensity=3,
+            reasoning=_ar_enriched.get("reasoning", f"Next step toward: {g['goal']}"),
+            self_interpretation=_ar_enriched.get("self_interpretation", ""),
+            possible_approach=_ar_enriched.get("possible_approach", "")
+        )
+        seeded += 1
+        print(f"[Ambition] Seeded want: {next_step[:80]}")
+
+    if seeded:
+        print(f"[Ambition] {seeded} wants seeded from ambitions")
+
+    print("[Ambition] Done")
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "review":
-        run_review()
-    elif len(sys.argv) > 1:
-        add_ambition(" ".join(sys.argv[1:]), source="cli")
-    else:
-        print(get_ambitions_context())
+    main()
+    # Update wants-ambitions log
+    try:
+        import subprocess as _wa_sp
+        _wa_sp.Popen(["python3", os.path.join(os.path.dirname(__file__), "wants-ambitions-log.py")],
+            stdout=open("/tmp/wants-ambitions-log.log", "a"),
+            stderr=open("/tmp/wants-ambitions-log.log", "a"))
+    except: pass

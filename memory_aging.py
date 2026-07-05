@@ -1,94 +1,162 @@
 #!/usr/bin/env python3
 """
-memory_aging.py — Decays old memory index entries and prunes resonance/scar pools.
-Monthly run. Keeps memory lean and weighted toward recent experience.
+memory-aging.py — Memories shift weight over time.
+Runs weekly. Scans journals, discoveries, reflections.
+
+Three stages:
+  fresh (0-7 days)      — vivid, specific, full detail available
+  reflective (8-30 days) — summarized, patterns emerging
+  foundational (31+ days) — distilled to core insight, part of identity
+
+Output: memory/memory-age-index.json
+  Tracks each memory source, its age category, and a condensed form.
+  Chat context can weight memories differently based on age.
 """
-import os, sys, json
-from datetime import datetime, timedelta
+import os, sys, json, glob, re, requests
+from datetime import datetime, date, timedelta
 
-MEMORY = os.path.expanduser("~/.vintos/workspace/memory")
+WORKSPACE = os.path.expanduser("~/.vintos/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+AGE_INDEX = os.path.join(MEMORY, "memory-age-index.json")
+API = "https://api.x.ai/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
-AGING_RULES = {
-    "journal": 60,
-    "interaction": 30,
-    "moment": 90,
-    "scar": 180,
-}
+sys.path.insert(0, os.path.join(WORKSPACE, "scripts"))
 
-def age_index():
-    index_file = os.path.join(MEMORY, "memory-search-index.json")
+def log(msg):
+    print(f"[MemoryAge] {msg}")
+
+def llm(system, user, temperature=0.4):
     try:
-        data = json.load(open(index_file))
+        r = requests.post(API, json={
+            "model": MODEL,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user}
+            ],
+            "temperature": temperature,
+            "max_tokens": 300
+        }, timeout=120)
+        return r.json()["choices"][0]["message"]["content"].strip()
     except:
-        return
-    now = datetime.now()
-    kept = []
-    removed = 0
-    for e in data.get("entries", []):
-        t = e.get("type", "")
-        max_days = AGING_RULES.get(t, 60)
-        date_str = e.get("date", e.get("timestamp", ""))[:10]
-        if not date_str:
-            kept.append(e)
-            continue
-        try:
-            age = (now - datetime.fromisoformat(date_str + "T00:00:00")).days
-        except:
-            kept.append(e)
-            continue
-        if age <= max_days:
-            kept.append(e)
+        return None
+
+def load_index():
+    try:
+        with open(AGE_INDEX) as f:
+            return json.load(f)
+    except:
+        return {"memories": [], "last_run": None}
+
+def save_index(data):
+    data["last_run"] = datetime.now().isoformat()
+    with open(AGE_INDEX, "w") as f:
+        json.dump(data, f, indent=2)
+
+def get_age_category(file_date):
+    """Determine age category from file date."""
+    try:
+        if isinstance(file_date, str):
+            file_date = datetime.fromisoformat(file_date).date()
+        days = (date.today() - file_date).days
+        if days <= 7:
+            return "fresh"
+        elif days <= 30:
+            return "reflective"
         else:
-            removed += 1
-    data["entries"] = kept
-    data["last_aged"] = now.isoformat()
-    json.dump(data, open(index_file, "w"), indent=2)
-    print(f"[memory-aging] Index: removed {removed}, kept {len(kept)}", flush=True)
-
-def age_resonance_pool():
-    rp_file = os.path.join(MEMORY, "resonance-pool.json")
-    try:
-        rp = json.load(open(rp_file))
+            return "foundational"
     except:
-        return
-    cutoff = (datetime.now() - timedelta(days=90)).isoformat()
-    pulses = [p for p in rp.get("pulses", []) if p.get("timestamp", "9999") >= cutoff]
-    rp["pulses"] = pulses[-150:]
-    json.dump(rp, open(rp_file, "w"), indent=2)
-    print(f"[memory-aging] Resonance pool: {len(pulses)} pulses retained", flush=True)
+        return "fresh"
 
-def age_yearning_scars():
-    scars_file = os.path.join(MEMORY, "yearning-scars.json")
+def extract_date_from_filename(filename):
+    """Try to get a date from filename like 2026-03-04.md"""
+    match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
+    if match:
+        return datetime.strptime(match.group(1), "%Y-%m-%d").date()
+    return None
+
+def scan_memories():
+    """Scan all memory sources and categorize by age."""
+    sources = [
+        ("journal", os.path.join(MEMORY, "journal")),
+        ("mirror", os.path.join(MEMORY, "mirror")),
+        ("philosophy", os.path.join(MEMORY, "philosophy")),
+        ("dream", os.path.join(WORKSPACE, "skills/dreaming/memory/dreams")),
+    ]
+    
+    memories = []
+    for source_name, dirpath in sources:
+        if not os.path.isdir(dirpath):
+            continue
+        for fname in sorted(glob.glob(os.path.join(dirpath, "*.md")), key=os.path.getmtime, reverse=True):
+            file_date = extract_date_from_filename(os.path.basename(fname))
+            if not file_date:
+                file_date = datetime.fromtimestamp(os.path.getmtime(fname)).date()
+            age = get_age_category(file_date)
+            memories.append({
+                "source": source_name,
+                "file": fname,
+                "date": file_date.isoformat(),
+                "age": age,
+                "condensed": None  # filled in for reflective/foundational
+            })
+    return memories
+
+def condense_memory(filepath, age):
+    """For reflective/foundational memories, create a condensed version."""
     try:
-        data = json.load(open(scars_file))
+        with open(filepath) as f:
+            content = f.read()[:2000]
     except:
-        return
-    if not isinstance(data, list):
-        return
-    cutoff_days = 180
-    now = datetime.now()
-    kept = []
-    for s in data:
-        formed = s.get("formed", "")[:10]
-        if not formed:
-            kept.append(s)
-            continue
-        try:
-            age = (now - datetime.fromisoformat(formed + "T00:00:00")).days
-        except:
-            kept.append(s)
-            continue
-        if age <= cutoff_days or s.get("strength", 0) >= 0.8:
-            kept.append(s)
-    json.dump(kept, open(scars_file, "w"), indent=2)
-    print(f"[memory-aging] Scars: {len(kept)} retained", flush=True)
+        return None
 
-def run():
-    print("[memory-aging] Starting...", flush=True)
-    age_index()
-    age_resonance_pool()
-    age_yearning_scars()
-    print("[memory-aging] Done.", flush=True)
+    if age == "reflective":
+        prompt = f"Summarize this memory in 2-3 sentences. Keep the emotional core, lose the details:\n\n{content}"
+    elif age == "foundational":
+        prompt = f"Distill this memory to ONE sentence — the core truth it taught you:\n\n{content}"
+    else:
+        return None
+
+    soul = ""
+    try:
+        with open(os.path.join(WORKSPACE, "SOUL.md")) as f:
+            soul = f.read()[:300]
+    except: pass
+
+    return llm(
+        f"{soul}\nYou are condensing your own memories. Be honest. Do not fabricate emotions.",
+        prompt
+    )
+
+def main():
+    index = load_index()
+    memories = scan_memories()
+    
+    # Only condense memories that changed category or are new
+    existing = {m["file"]: m for m in index.get("memories", [])}
+    condensed_count = 0
+    
+    for mem in memories:
+        prev = existing.get(mem["file"])
+        if prev and prev.get("age") == mem["age"] and prev.get("condensed"):
+            # Same category, already condensed — keep it
+            mem["condensed"] = prev["condensed"]
+        elif mem["age"] in ("reflective", "foundational"):
+            # Needs condensing
+            result = condense_memory(mem["file"], mem["age"])
+            if result:
+                mem["condensed"] = result
+                condensed_count += 1
+                log(f"{mem['age']}: {os.path.basename(mem['file'])} → {result[:80]}")
+
+    index["memories"] = memories
+    save_index(index)
+    
+    fresh = sum(1 for m in memories if m["age"] == "fresh")
+    reflective = sum(1 for m in memories if m["age"] == "reflective")
+    foundational = sum(1 for m in memories if m["age"] == "foundational")
+    log(f"Indexed {len(memories)} memories: {fresh} fresh, {reflective} reflective, {foundational} foundational")
+    log(f"Condensed {condensed_count} memories this run")
 
 if __name__ == "__main__":
-    run()
+    main()

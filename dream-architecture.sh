@@ -4,8 +4,6 @@ SCRIPTS="${HOME}/.vintos/workspace/scripts"
 export PYTHONPATH="${SCRIPTS}:${PYTHONPATH}"
 python3 -c "
 import sys; sys.path.insert(0, '${SCRIPTS}')
-from dream_architecture import generate_dream
-generate_dream()
 from dream_poetry import generate_poem
 generate_poem()
 from dream_music import compose

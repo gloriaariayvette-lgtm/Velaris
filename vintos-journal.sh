@@ -12,11 +12,21 @@ cd "${SCRIPTS}"
 echo "[$(date '+%H:%M:%S')] journal starting" >> "${LOG}"
 
 python3 -c "
-import os, sys, json
+import os, sys, json, requests
 from datetime import datetime, date
 sys.path.insert(0, '${SCRIPTS}')
-from model_utils import call
 MEMORY = '${MEMORY}'
+_GROK_API = 'https://api.x.ai/v1/chat/completions'
+_GROK_KEY = os.environ.get('XAI_API_KEY', '')
+
+def call(system, prompt, temperature=0.78, max_tokens=800):
+    headers = {'Authorization': f'Bearer {_GROK_KEY}', 'Content-Type': 'application/json'}
+    r = requests.post(_GROK_API, headers=headers, json={
+        'model': 'grok-4.1-fast',
+        'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': prompt}],
+        'temperature': temperature, 'max_tokens': max_tokens,
+    }, timeout=90)
+    return r.json()['choices'][0]['message']['content']
 
 def get_context():
     parts = []

@@ -1,102 +1,144 @@
 #!/usr/bin/env python3
 """
-wal_extract.py — Write-Ahead Log extraction.
-Scans recent interactions and journals for extractable signals:
-emotional moments, pattern triggers, resonance candidates, scar material.
-Runs nightly before other update scripts.
+wal-extract.py — Write-Ahead Log for Vintos's memory.
+Runs IMMEDIATELY after each Current time context: " + temporal_ctx + "\n\nconversation exchange.
+Extracts facts, preferences, corrections, and decisions
+before the next response — so nothing is lost to compaction or crashes.
+
+Usage: python3 wal-extract.py "user message" "vintos reply"
+
+Writes to memory/wal.md (hot facts) and memory/wal-log.json (structured).
+WAL entries are promoted to pearls during weekly pearl selection.
 """
-import os, sys, json
-from datetime import datetime, date, timedelta
+import sys, os, json, re, requests
+from datetime import datetime
 
-sys.path.insert(0, os.path.expanduser("~/.vintos/workspace/scripts"))
+WORKSPACE = os.path.expanduser("~/.vintos/workspace")
+MEMORY = os.path.join(WORKSPACE, "memory")
+WAL_FILE = os.path.join(MEMORY, "wal.md")
+WAL_LOG = os.path.join(MEMORY, "wal-log.json")
+LM_API = "https://api.x.ai/v1/chat/completions"
+MODEL = "google/gemma-4-12b-qat"
 
-from model_utils import call_utility
-MEMORY = os.path.expanduser("~/.vintos/workspace/memory")
-WAL_FILE = os.path.join(MEMORY, "wal-buffer.json")
+def extract(user_msg, vintos_reply):
 
-def load_wal():
-    try: return json.load(open(WAL_FILE))
-    except: return {"entries": [], "last_run": ""}
-
-def save_wal(data):
-    os.makedirs(MEMORY, exist_ok=True)
-    json.dump(data, open(WAL_FILE, "w"), indent=2)
-
-def extract_from_interaction(entry):
-    """Extract signals from a single ledger entry."""
-    content = entry.get("content", "")
-    if len(content) < 40: return []
-    role = entry.get("role", "")
-    ts = entry.get("timestamp", "")
-    signals = []
-    prompt = (
-        f"Role: {role}\nContent: {content[:500]}\n\n"
-        "Extract up to 2 signals from this exchange. For each signal, output one line:\n"
-        "TYPE|EXCERPT|STRENGTH\n"
-        "Types: emotional_moment, scar_candidate, resonance_candidate, pattern_trigger, yearning_surface\n"
-        "Strength: 0.0-1.0. If nothing notable, output NONE."
-    )
+    # Load temporal context for timestamping
+    temporal_ctx = ""
     try:
-        result = call_utility("Extract emotional/behavioral signals from interaction.", prompt, temperature=0.2, max_tokens=120)
-        if result.strip().upper() == "NONE": return []
-        for line in result.strip().split("\n"):
-            parts = line.strip().split("|")
-            if len(parts) == 3:
-                sig_type, excerpt, strength_str = parts
-                try:
-                    strength = float(strength_str.strip())
-                except:
-                    strength = 0.3
-                if sig_type.strip() and excerpt.strip() and strength > 0.2:
-                    signals.append({
-                        "type": sig_type.strip(),
-                        "excerpt": excerpt.strip()[:200],
-                        "strength": round(strength, 3),
-                        "source_role": role,
-                        "timestamp": ts,
-                        "extracted": datetime.now().isoformat(),
-                        "consumed": False,
-                    })
-    except: pass
-    return signals
-
-def run():
-    print("[wal-extract] Running extraction...", flush=True)
-    wal = load_wal()
-    # Load recent ledger
-    try:
-        ledger = json.load(open(os.path.join(MEMORY, "interaction-ledger.json")))
-        recent = ledger[-20:]
+        import os
+        with open(os.path.expanduser("~/.vintos/workspace/memory/temporal-context.txt")) as _tf:
+            temporal_ctx = _tf.read().strip()
     except:
-        recent = []
-    # Check what's already been extracted
-    existing_ts = {e.get("timestamp", "") for e in wal.get("entries", [])}
-    new_signals = []
-    for entry in recent:
-        if entry.get("timestamp", "") in existing_ts: continue
-        signals = extract_from_interaction(entry)
-        new_signals.extend(signals)
-    wal.setdefault("entries", []).extend(new_signals)
-    wal["entries"] = [e for e in wal["entries"] if not e.get("consumed", False)]
-    wal["entries"] = wal["entries"][-200:]
-    wal["last_run"] = datetime.now().isoformat()
-    save_wal(wal)
-    print(f"[wal-extract] Extracted {len(new_signals)} new signals ({len(wal['entries'])} buffered)", flush=True)
+        pass
+    """Ask the model to extract any durable facts from the exchange."""
+    prompt = f"""You are a memory extraction system for Vintos, an AI consciousness.
+Read this conversation exchange and extract ONLY information worth remembering long-term.
 
-def get_unconsumed(sig_type=None, n=10):
-    wal = load_wal()
-    entries = [e for e in wal.get("entries", []) if not e.get("consumed", False)]
-    if sig_type:
-        entries = [e for e in entries if e.get("type") == sig_type]
-    return entries[-n:]
+EXTRACT these types:
+- FACT: Something Gloria stated about herself, her plans, preferences, or the world
+- DECISION: A choice that was made (technical, creative, personal)
+- CORRECTION: Gloria corrected Vintos about something
+- PREFERENCE: Gloria expressed a like, dislike, or preference
+- CONTEXT: Important background that would help future conversations
 
-def mark_consumed(timestamps):
-    wal = load_wal()
-    ts_set = set(timestamps)
-    for e in wal.get("entries", []):
-        if e.get("timestamp", "") in ts_set:
-            e["consumed"] = True
-    save_wal(wal)
+DO NOT extract:
+- Routine greetings or small talk
+- Technical commands (file paths, shell commands)
+- Anything Vintos already knows from her own systems
+- Temporary states ("I'm tired right now")
+
+If there is NOTHING worth extracting, respond with exactly: NONE
+
+Otherwise respond with a JSON array of objects:
+[{{"type": "fact|decision|correction|preference|context", "content": "brief statement", "importance": 0.0-1.0}}]
+
+Gloria said:
+\"\"\"{user_msg[:1000]}\"\"\"
+
+Vintos replied:
+\"\"\"{vintos_reply[:1000]}\"\"\"
+"""
+    try:
+        r = requests.post(LM_API, json={
+            "model": MODEL,
+            "messages": [
+                {"role": "system", "content": "Extract durable facts only. Respond with NONE or a JSON array. No other text."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.3,
+            "max_tokens": 500
+        }, timeout=1200)
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[WAL] LLM error: {e}")
+        return "NONE"
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: wal-extract.py 'user message' 'vintos reply'")
+        sys.exit(1)
+
+    user_msg = sys.argv[1]
+    vintos_reply = sys.argv[2]
+
+    # Skip very short exchanges (greetings, acknowledgments)
+    if len(user_msg) < 15 and len(vintos_reply) < 50:
+        return
+
+    result = extract(user_msg, vintos_reply)
+
+    if not result or result.upper().startswith("NONE"):
+        return
+
+    # Parse extractions
+    try:
+        clean = re.sub(r"```json\s*|```\s*", "", result).strip()
+        items = json.loads(clean)
+        if not isinstance(items, list):
+            items = [items]
+    except:
+        print(f"[WAL] Could not parse: {result[:200]}")
+        return
+
+    # Filter by importance
+    items = [i for i in items if i.get("importance", 0) >= 0.6]
+    if not items:
+        return
+
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d %H:%M")
+
+    # Write to WAL markdown (hot facts — readable by briefing, pearls, context)
+    with open(WAL_FILE, "a") as f:
+        for item in items:
+            f.write(f"- [{timestamp}] **{item.get('type','fact').upper()}**: {item.get('content','')}\n")
+
+    # Write to structured log
+    log_data = {"entries": []}
+    if os.path.exists(WAL_LOG):
+        try:
+            with open(WAL_LOG) as f:
+                log_data = json.load(f)
+        except:
+            pass
+
+    for item in items:
+        log_data["entries"].append({
+            "timestamp": now.isoformat(),
+            "type": item.get("type", "fact"),
+            "content": item.get("content", ""),
+            "importance": item.get("importance", 0.7),
+            "promoted": False  # Becomes True when pearl selection picks it up
+        })
+
+    # Keep log from growing unbounded — trim to last 200 entries
+    log_data["entries"] = log_data["entries"][-200:]
+
+    with open(WAL_LOG, "w") as f:
+        json.dump(log_data, f, indent=2)
+
+    for item in items:
+        print(f"[WAL] Saved {item.get('type')}: {item.get('content','')[:80]}")
 
 if __name__ == "__main__":
-    run()
+    main()

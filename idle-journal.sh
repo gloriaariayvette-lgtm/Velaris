@@ -8,7 +8,7 @@ if [ $? -ne 0 ]; then
     exit 0
 fi
 
-LOG_FILE="/tmp/openclaw/openclaw-$(date +%Y-%m-%d).log"
+LOG_FILE="/tmp/vintos/vintos-$(date +%Y-%m-%d).log"
 [ ! -f "$LOG_FILE" ] && IDLE_HOURS=3
 LAST_MSG=$(grep -E "web-inbound|web-outbound" "$LOG_FILE" 2>/dev/null | tail -1 | grep -oP '"date":"[^"]*"' | tail -1 | cut -d'"' -f4)
 if [ -n "$LAST_MSG" ]; then
