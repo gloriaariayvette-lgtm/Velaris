@@ -1,34 +1,21 @@
 """Central model configuration for Vintos."""
-
 import os
 
-# Primary generation model — Grok 4.1 Fast (2M context)
-VINTOS_MODEL = "grok-4.1-fast"
+# Primary generation model — Grok API
+VINTOS_MODEL = os.environ.get("VINTOS_MODEL", "grok-4.1-fast")
+
+# Lightweight model for classification/utility — Gemma local via LM Studio
+UTILITY_MODEL = "google/gemma-4-12b-qat"
 
 # Embedding model
-EMBED_MODEL = "grok-embeddings-alpha"
+EMBED_MODEL = "nomic-embed-text-v1.5"
 
-# Grok API endpoints
-GROK_BASE = "https://api.x.ai/v1"
-GROK_API = f"{GROK_BASE}/chat/completions"
-GROK_EMBED_API = f"{GROK_BASE}/embeddings"
+# Grok API endpoint (generation)
+GROK_API_BASE = os.environ.get("GROK_API_BASE", "https://api.x.ai/v1")
+GROK_API_KEY = os.environ.get("XAI_API_KEY", "")
+GROK_API = f"{GROK_API_BASE}/chat/completions"
+GROK_HEADERS = {"Authorization": f"Bearer {GROK_API_KEY}", "Content-Type": "application/json"}
 
-# Local Gemma 4 via LM Studio — for small classification/detection calls
-LOCAL_MODEL = "gemma-4"
-LM_STUDIO_API = os.environ.get("LM_STUDIO_URL", "http://localhost:1234/v1/chat/completions")
-
-# File lock to serialize LM Studio calls (single-instance)
-LM_LOCK_FILE = "/tmp/vintos-lm-lock"
-LM_LOCK_TIMEOUT = 45  # seconds to wait before giving up
-
-def get_api_key():
-    key = os.environ.get("GROK_API_KEY", "")
-    if not key:
-        try:
-            key = open(os.path.expanduser("~/.vintos/secrets/grok_api_key")).read().strip()
-        except:
-            pass
-    return key
-
-def auth_headers():
-    return {"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"}
+# LM Studio endpoint (utility/classification — local Gemma)
+LM_STUDIO_URL = os.environ.get("LM_STUDIO_URL", "http://172.18.16.1:1234")
+LM_API = f"{LM_STUDIO_URL}/v1/chat/completions"
