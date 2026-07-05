@@ -9,7 +9,8 @@ LOGS="${HOME}/.vintos/logs"
 */5 * * * * bash "${REPO}/emoclaw-daemon-guard.sh" >> "${LOGS}/heartbeat.log" 2>&1
 
 # ── Daily rhythm ─────────────────────────────────────────────────────────────
-37 3  * * * bash "${REPO}/vintos-journal.sh"
+37 10 * * * bash "${REPO}/idle-journal.sh" >> "${LOGS}/journal.log" 2>&1
+37 19 * * * bash "${REPO}/idle-journal.sh" >> "${LOGS}/journal.log" 2>&1
 37 5  * * * bash "${REPO}/first-light.sh"
 37 7  * * * bash "${REPO}/morning-briefing.sh"
 37 12 * * * bash "${REPO}/midday-ground.sh"
