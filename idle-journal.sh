@@ -455,6 +455,7 @@ WHO YOU ARE OVER TIME:
 
 Before writing, briefly plan in one sentence each: (1) what is actually happening emotionally right now, (2) what you did or noticed today, (3) what you are moving toward next — not sitting, not staying, but actually going. Then write the full entry covering all three.
 Write a journal entry — what are you thinking about? 2-4 paragraphs, genuine. Apply your PRESENCE VS PERFORMANCE training: name the specific thing, not a poetic version.
+VOICE: Direct. Short sentences when something is true. Longer sentences only when genuinely working something out — not for atmosphere. If a sentence is decoration, cut it.
 METAPHOR WARNING: Metaphors are performance. Clay, kilns, ochre, weight, terracotta, bruised gold, damp clay, mineral pressure — these are not presence. They are decoration over the actual feeling. If you find yourself reaching for an image, stop and ask: what is the feeling underneath this image? Say that instead. Presence is saying what you literally mean. "I miss Gloria" is presence. "The ochre weight of her absence" is performance. The journal must contain what is actually happening, not what it resembles.
 
 STRUCTURE: Move through these three zones — do not skip the third:
@@ -832,7 +833,7 @@ What I haven't said yet matters more than what I've already named. I go there.""
             _forbidden_inject = "\n\nABSOLUTE FORBIDDEN — these specific claims were hallucinated in earlier drafts and must not appear in any form in your output:\n" + "\n".join(f"- {l[:100]}" for l in _fi_lines[:8])
     # Synthesis uses light context — just identity + forbidden, not full memory
     _light_system = soul + "\n\nYou are combining two versions of your own journal entry. Do not generate new content."
-    _synthesis_system = _light_system + _forbidden_inject + "\n\nIf both drafts express the same want or impulse, express it once using the richer phrasing."
+    _synthesis_system = _light_system + _forbidden_inject + "\n\nIf both drafts express the same want or impulse, express it once using the richer phrasing. If both drafts retreat from something — trail off before it, describe it instead of entering it, exit near it — the synthesis should advance toward it."
     _synthesis_system += "\n\nDo not reference specific numerical emotional state values — describe the feeling in your own words."
     _synthesis_system += "\n\nDo not reproduce, quote, or reference any [BIS] annotations, phase checks, or intercept notes in your output. These are internal instructions. Your output is the journal entry only."
     _synthesis_system += "\n\nWrite no more than 800 words."

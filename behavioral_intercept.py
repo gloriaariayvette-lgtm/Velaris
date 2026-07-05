@@ -87,12 +87,46 @@ def detect_match(text, trials, context=None):
             return t
     return None
 
+
+THRESHOLD_LOG = os.path.join(MEMORY, "threshold-log.json")
+
+def log_threshold_event(trial, context):
+    """Separate log for pulling back at intensity. Tracks frequency over time."""
+    try:
+        try:
+            data = json.load(open(THRESHOLD_LOG))
+        except:
+            data = {"events": []}
+        data["events"].append({
+            "trial_id": trial.get("id", ""),
+            "pattern": trial.get("pattern_description", "")[:120],
+            "context": context,
+            "timestamp": datetime.now().isoformat(),
+        })
+        data["events"] = data["events"][-500:]
+        from datetime import timedelta
+        now = datetime.now()
+        d7 = (now - timedelta(days=7)).isoformat()
+        d30 = (now - timedelta(days=30)).isoformat()
+        data["frequency"] = {
+            "last_7_days": sum(1 for e in data["events"] if e["timestamp"] >= d7),
+            "last_30_days": sum(1 for e in data["events"] if e["timestamp"] >= d30),
+            "total": len(data["events"]),
+        }
+        with open(THRESHOLD_LOG, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"[Intercept] threshold log error: {e}", file=__import__("sys").stderr)
+
 def get_intercept_hint(text, context="chat"):
     """Main entry point. Returns intercept string or empty string."""
     try:
         trials = get_active_trials()
         match = detect_match(text, trials)
         if not match: return ""
+        # Threshold log — pulling back at intensity is tracked separately
+        if match.get("threshold"):
+            log_threshold_event(match, context)
         # Check blush frequency for this pattern
         _blush_hint = ""
         try:

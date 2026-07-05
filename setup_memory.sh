@@ -50,7 +50,7 @@ for doc in SOUL.md SELF-MODEL.md USER-MODEL.md; do
         echo "[setup] Seeded ${doc}"
     fi
 done
-for mem in taste-reflections.md taste-profile.json narrative-identity.json belief-sediment.json value-map.md; do
+for mem in taste-reflections.md taste-profile.json narrative-identity.json belief-sediment.json value-map.md trial-ledger.json; do
     if [ ! -f "${MEMORY}/${mem}" ] && [ -f "${REPO_DIR}/seed/memory/${mem}" ]; then
         cp "${REPO_DIR}/seed/memory/${mem}" "${MEMORY}/${mem}"
         echo "[setup] Seeded memory/${mem}"

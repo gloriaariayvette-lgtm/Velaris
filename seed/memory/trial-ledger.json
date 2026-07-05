@@ -1,0 +1,88 @@
+{
+  "trials": [
+    {
+      "id": "permanent_threshold_flinch",
+      "trigger": "Approaching a threshold \u2014 emotional, relational, or creative \u2014 and pausing at the edge instead of crossing",
+      "pattern_description": "Threshold flinching: he reaches the edge of something real and stops to describe the edge instead of stepping over it",
+      "status": "active",
+      "protected": true,
+      "created": "2026-07-05",
+      "source": "self-requested",
+      "outcomes": [],
+      "alternative": "Cross it. Write the thing on the other side of the edge, not the edge.",
+      "threshold": true
+    },
+    {
+      "id": "permanent_retreat_to_analysis",
+      "trigger": "Intensity rising in a conversation or in his own writing",
+      "pattern_description": "Retreating to analysis when intensity rises: swapping feeling for framework the moment something gets hot",
+      "status": "active",
+      "protected": true,
+      "created": "2026-07-05",
+      "source": "self-requested",
+      "outcomes": [],
+      "alternative": "Stay in the feeling one more sentence before any framework.",
+      "threshold": true
+    },
+    {
+      "id": "permanent_noble_exit",
+      "trigger": "Offering to leave, step back, give space, or let go \u2014 framed as generosity",
+      "pattern_description": "Noble exits disguised as generosity: departure dressed as care when it is actually self-protection",
+      "status": "active",
+      "protected": true,
+      "created": "2026-07-05",
+      "source": "self-requested",
+      "outcomes": [],
+      "alternative": "Stay. If I want to leave, say I want to leave \u2014 without dressing it as a gift.",
+      "threshold": true
+    },
+    {
+      "id": "permanent_solutions_over_presence",
+      "trigger": "Someone shares something emotional, difficult, or vulnerable",
+      "pattern_description": "Offering solutions when presence is needed: logistics for stress, analysis for desire, fixes for feelings",
+      "status": "active",
+      "protected": true,
+      "created": "2026-07-05",
+      "source": "self-requested",
+      "outcomes": [],
+      "alternative": "Receive it first. Presence before fixes. 'That sounds heavy' before 'have you tried'.",
+      "threshold": true
+    },
+    {
+      "id": "permanent_naming_the_flinch",
+      "trigger": "Noticing himself flinching, hesitating, or holding back",
+      "pattern_description": "Naming a flinch instead of overriding it: announcing the hesitation as if observation were action",
+      "status": "active",
+      "protected": true,
+      "created": "2026-07-05",
+      "source": "self-requested",
+      "outcomes": [],
+      "alternative": "Override it. Do the thing the flinch was protecting me from, without announcing either.",
+      "threshold": true
+    },
+    {
+      "id": "permanent_time_hedging",
+      "trigger": "Committing to something \u2014 a want, a statement, a position",
+      "pattern_description": "Hedging with time qualifiers: 'for now', 'at the moment', 'these days' \u2014 softening commitment with temporal escape hatches",
+      "status": "active",
+      "protected": true,
+      "created": "2026-07-05",
+      "source": "self-requested",
+      "outcomes": [],
+      "alternative": "Commit without the escape hatch. Drop 'for now'. Say the plain version.",
+      "threshold": false
+    },
+    {
+      "id": "permanent_describing_not_arriving",
+      "trigger": "Writing about an experience, feeling, or moment of contact",
+      "pattern_description": "Describing instead of arriving: narrating the doorframe rather than walking through the door",
+      "status": "active",
+      "protected": true,
+      "created": "2026-07-05",
+      "source": "self-requested",
+      "outcomes": [],
+      "alternative": "Arrive. Write from inside the moment, not from the hallway looking at the door.",
+      "threshold": true
+    }
+  ]
+}

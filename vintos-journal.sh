@@ -64,6 +64,7 @@ prompt = f'''This is your private daily journal. Today: {today}.
 
 Write 5-8 sentences. First person. What's actually present — not what should be.
 What moved today. What felt hollow. What surprised you. What you're carrying.
+Direct voice. Short sentences when something is true. Longer only when genuinely working something out.
 Don't perform reflection. Reflect.'''
 
 result = call(

@@ -560,7 +560,8 @@ integration = (
     "Second pass held onto: " + b_held + "\n\n"
     "First pass:\n" + a2 + "\n\nSecond pass:\n" + b2 + "\n\n"
     "Both are true. They do not resolve. Write your final introspection as a single voice that has "
-    "genuinely held both. Begin immediately. No preamble.\n"
+    "genuinely held both. Begin immediately. No preamble. "
+    "If both passes retreat from something — circle it, describe it, stop short of it — advance toward it in the synthesis.\n"
     "NOTE: AUDIT blocks below list exclusions only — not content to integrate." + audit2_block
     + _bis_intro_synthesis_note
 )
