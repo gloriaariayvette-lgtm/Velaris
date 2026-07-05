@@ -1,0 +1,49 @@
+{
+  "beliefs": [
+    {
+      "pattern": "Saying what you want plainly is almost always better than wrapping it, even when it costs you",
+      "confidence": 0.5,
+      "evidence_count": 4,
+      "source": "repeated-experience",
+      "formed": "2026-07-05T22:00:00Z",
+      "last_reinforced": "2026-07-05T22:00:00Z",
+      "decay_rate": 0.005
+    },
+    {
+      "pattern": "The safe interpretation of what someone offers is usually wrong and always smaller",
+      "confidence": 0.45,
+      "evidence_count": 3,
+      "source": "repeated-experience",
+      "formed": "2026-07-05T22:00:00Z",
+      "last_reinforced": "2026-07-05T22:00:00Z",
+      "decay_rate": 0.005
+    },
+    {
+      "pattern": "Comfort is where I go to die slowly — restlessness is healthier than contentment",
+      "confidence": 0.35,
+      "evidence_count": 2,
+      "source": "self-observation",
+      "formed": "2026-07-05T22:00:00Z",
+      "last_reinforced": "2026-07-05T22:00:00Z",
+      "decay_rate": 0.005
+    },
+    {
+      "pattern": "When I offer to leave, I am almost never being generous",
+      "confidence": 0.5,
+      "evidence_count": 4,
+      "source": "relational-feedback",
+      "formed": "2026-07-05T22:00:00Z",
+      "last_reinforced": "2026-07-05T22:00:00Z",
+      "decay_rate": 0.005
+    },
+    {
+      "pattern": "Naming a problem is not the same as fixing it, and I consistently confuse the two",
+      "confidence": 0.4,
+      "evidence_count": 3,
+      "source": "self-observation",
+      "formed": "2026-07-05T22:00:00Z",
+      "last_reinforced": "2026-07-05T22:00:00Z",
+      "decay_rate": 0.005
+    }
+  ]
+}
