@@ -209,8 +209,7 @@ def tv_youtube(video_id, volume=7):
     import subprocess
     try:
         # Ensure ADB is connected
-        tv_ip = os.environ.get("VELARIS_TV_ADB_IP", "192.168.1.68")
-        subprocess.run(["adb", "connect", f"{tv_ip}:5555"],
+        subprocess.run(["adb", "connect", "192.168.1.68:5555"],
                       capture_output=True, timeout=5)
         # Set TV volume before playing
         subprocess.run(["adb", "shell", f"media volume --stream 3 --set {volume}"],
