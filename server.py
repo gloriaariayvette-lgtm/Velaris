@@ -1819,20 +1819,33 @@ async def get_velqan():
 
 
 @app.get("/api/atelier/reveals")
-async def get_atelier_reveals(limit: int = 20):
+async def get_atelier_reveals(request: Request, limit: int = 20):
     """Pieces Vintos has chosen to reveal from the atelier. Only what he
     released himself appears here — the sealed room stays sealed."""
+    if request.headers.get("X-Vintos-Secret") != APP_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     path = os.path.join(MEMORY, "atelier-reveals.json")
+    if not os.path.exists(path):
+        return {"reveals": []}
     try:
         with open(path) as f:
             entries = json.load(f)
-    except Exception:
-        return {"reveals": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="reveal export ledger unreadable: " + str(e))
     if not isinstance(entries, list):
-        return {"reveals": []}
-    revealed = [e for e in entries if isinstance(e, dict) and e.get("revealed", True)]
+        raise HTTPException(status_code=500, detail="reveal export ledger is not a list")
+    fields = ("artifact", "revealed_at", "disclosure", "disclosure_sentence", "content")
+    revealed = [{key: e.get(key) for key in fields if e.get(key) is not None}
+                for e in entries if isinstance(e, dict) and e.get("revealed", True) is True
+                and (e.get("artifact") or e.get("content"))]
+    for entry, source in zip(revealed,
+                             [e for e in entries if isinstance(e, dict)
+                              and e.get("revealed", True) is True
+                              and (e.get("artifact") or e.get("content"))]):
+        if not entry.get("revealed_at") and source.get("at") is not None:
+            entry["revealed_at"] = source.get("at")
     revealed.sort(key=lambda e: e.get("revealed_at", ""), reverse=True)
-    return {"reveals": revealed[:limit]}
+    return {"reveals": revealed[:max(1, min(int(limit), 100))]}
 
 
 @app.get("/api/confessions")
@@ -7109,11 +7122,6 @@ async def reject_proposal(filename: str):
     with open(filepath, 'w') as f:
         f.write(content)
     return {"status": "rejected"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("VINTOS_PORT", "8500")))
-
 
 # === Mobile App Routes ===
 
@@ -13924,5 +13932,8 @@ async def get_fragments(request: Request):
         return {"unread": [], "read": []}
 
 
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("VINTOS_PORT", "8500")))
 
 
