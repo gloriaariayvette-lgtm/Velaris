@@ -2090,9 +2090,8 @@ async def transcribe_audio(audio: UploadFile = File(...)):
     text = result["text"].strip().replace("cloud","Claude").replace("Cloud","Claude")
     return {"text": text}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("VINTOS_PORT", "8500")))
+# (removed stray mid-file __main__ block: it started the server before
+#  the routes below were registered)
 
 
 # === Mobile App Routes ===
