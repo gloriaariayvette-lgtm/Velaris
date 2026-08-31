@@ -1818,6 +1818,23 @@ async def get_velqan():
     return result
 
 
+@app.get("/api/atelier/reveals")
+async def get_atelier_reveals(limit: int = 20):
+    """Pieces Vintos has chosen to reveal from the atelier. Only what he
+    released himself appears here — the sealed room stays sealed."""
+    path = os.path.join(MEMORY, "atelier-reveals.json")
+    try:
+        with open(path) as f:
+            entries = json.load(f)
+    except Exception:
+        return {"reveals": []}
+    if not isinstance(entries, list):
+        return {"reveals": []}
+    revealed = [e for e in entries if isinstance(e, dict) and e.get("revealed", True)]
+    revealed.sort(key=lambda e: e.get("revealed_at", ""), reverse=True)
+    return {"reveals": revealed[:limit]}
+
+
 @app.get("/api/confessions")
 async def get_confessions(limit: int = 10):
     config = get_publish_config()
