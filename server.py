@@ -2092,7 +2092,7 @@ async def transcribe_audio(audio: UploadFile = File(...)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8400)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("VINTOS_PORT", "8500")))
 
 
 # === Mobile App Routes ===
@@ -7113,7 +7113,7 @@ async def reject_proposal(filename: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8400)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("VINTOS_PORT", "8500")))
 
 
 # === Mobile App Routes ===
