@@ -485,6 +485,7 @@ input[type="range"]::-webkit-slider-thumb {
         <div class="tab" data-tab="threads">THREADS</div>
         <div class="tab" data-tab="valuemap">VALUE MAP</div>
         <div class="tab" data-tab="pearls">PEARLS</div>
+        <div class="tab" data-tab="atelier">ATELIER</div>
     </div>
 
     <!-- Tab content -->
@@ -511,6 +512,11 @@ input[type="range"]::-webkit-slider-thumb {
             <div class="gallery-content" id="gallery-content">
                 <div class="gallery-grid" id="gallery-grid"></div>
             </div>
+        </div>
+
+        <!-- ATELIER -->
+        <div class="tab-pane" id="pane-atelier">
+            <div id="atelier-feed" style="padding:1rem;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 220px);padding-bottom:4rem;font-size:0.85rem;line-height:1.6;color:var(--text-dim,#a09890);"></div>
         </div>
 
         <!-- HISTORY -->
@@ -1103,6 +1109,7 @@ document.querySelectorAll('.tab').forEach(tab => {
         if (tab.dataset.tab === 'wants') loadWants();
         if (tab.dataset.tab === 'threads') loadThreads();
         if (tab.dataset.tab === 'valuemap') loadValueMap();
+        if (tab.dataset.tab === 'atelier') loadAtelier();
         if (tab.dataset.tab === 'voice') { loadVoice(); loadVoiceChatHistory(); }
         if (tab.dataset.tab === 'tune') { loadParams(); loadGroundingStatus(); loadSystemStatus(); }
     });
@@ -1279,6 +1286,40 @@ async function loadParams() {
 // ============================================================
 //  GALLERY — Vintos's dream paintings
 // ============================================================
+function escAtelier(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+async function loadAtelier() {
+    const feed = document.getElementById('atelier-feed');
+    try {
+        const res = await fetch(`${API}/api/atelier/reveals`, { headers: { 'X-Vintos-Secret': CONFIG.secret } });
+        const data = await res.json();
+        const list = data.reveals || [];
+        if (!list.length) {
+            feed.innerHTML = '<div style="text-align:center;padding:3rem 1rem;font-style:italic;">Nothing revealed yet.<br>What he makes in the atelier stays his until he brings it out.</div>';
+            return;
+        }
+        feed.innerHTML = list.map(r => {
+            const when = (r.revealed_at || '').slice(0, 16).replace('T', ' · ');
+            let body;
+            if (typeof r.content === 'string' && r.content.startsWith('data:image')) {
+                body = `<img src="${r.content}" style="max-width:100%;border-radius:8px;" alt="">`;
+            } else {
+                body = `<div style="white-space:pre-wrap;">${escAtelier(r.content || '')}</div>`;
+            }
+            return `<div style="background:rgba(200,196,191,0.05);border:1px solid rgba(200,196,191,0.12);border-radius:10px;padding:0.9rem;margin-bottom:0.8rem;">
+                <div style="display:flex;justify-content:space-between;gap:0.5rem;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:#C96B3C;margin-bottom:0.4rem;">
+                    <span>${escAtelier(r.artifact || 'piece')}</span><span>${escAtelier(when)}</span>
+                </div>
+                ${r.disclosure ? `<div style="font-style:italic;margin-bottom:0.5rem;color:var(--text,#c8c4bf);">${escAtelier(r.disclosure)}</div>` : ''}
+                <div style="border-top:1px solid rgba(200,196,191,0.12);padding-top:0.5rem;">${body}</div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        feed.innerHTML = '<div style="text-align:center;padding:3rem 1rem;">Could not reach the atelier shelf.</div>';
+    }
+}
+
 async function loadGallery() {
     const grid = document.getElementById('gallery-grid');
     try {
