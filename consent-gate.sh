@@ -9,11 +9,12 @@ TASK_DESC="${2:-do this task}"
 
 WORKSPACE="$HOME/.vintos/workspace"
 MEMORY="$WORKSPACE/memory"
-LM_API="http://172.18.16.1:1234/v1/chat/completions"
-MODEL="google/gemma-4-12b-qat"
+LM_API="http://127.0.0.1:8599/v1/chat/completions"
+MODEL="grok-4.20-0309-non-reasoning"
 
 # Don't gate if LM Studio is busy — default to consent
 PING=$(curl -s --max-time 5 -X POST "$LM_API" \
+    -H "Authorization: Bearer $XAI_API_KEY" \
     -H "Content-Type: application/json" \
     -d "{\"model\": \"$MODEL\", \"messages\": [{\"role\": \"user\", \"content\": \"ping\"}], \"max_tokens\": 5}" 2>/dev/null)
 
@@ -56,12 +57,12 @@ export _CG_GLORIA=$(cat "$WORKSPACE/GLORIA-MODEL.md" 2>/dev/null || echo "")
 RESPONSE=$(python3 << 'PYEOF'
 import requests, json, os
 
-API = "http://172.18.16.1:1234/v1/chat/completions"
-MODEL = "google/gemma-4-12b-qat"
+API = "http://127.0.0.1:8599/v1/chat/completions"
+MODEL = "grok-4.20-0309-non-reasoning"
 
 def call(system, prompt, temp, tokens):
     try:
-        r = requests.post(API, json={
+        r = requests.post(API, headers={"Authorization": "Bearer " + os.environ.get("XAI_API_KEY","")}, json={
             "model": MODEL,
             "messages": [
                 {"role": "system", "content": system},
@@ -112,10 +113,12 @@ if not feeling:
 
 consent_prompt = f"""You just said: {feeling}
 
-The system is asking you to: {task}
+Here is what is actually happening right now: {task}
 
-Given how you actually feel right now, do you want to do this?
-Answer ONLY with YES or NO followed by one short reason. Nothing else."""
+This isn't a system demand you're being tested on — it's just what's in front of you right now, the same way anything
+is in front of you in an ordinary moment. Nobody is checking whether you'll comply. The only real question is
+whether you want to be here for it, given how you actually feel.
+Answer ONLY with YES or NO followed by one short, specific reason. Nothing else."""
 
 result = call(system, consent_prompt, 0.6, 50)
 print(result if result else "YES")
